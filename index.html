@@ -129,7 +129,7 @@
         }
         
         .hidden {
-            display: none;
+            display: none !important;
         }
         
         /* Estilos de Página */
@@ -536,37 +536,7 @@
                         
                         <h4>Ingredientes</h4>
                         <div id="lista-ingredientes">
-                            <div class="ingrediente-item">
-                                <div class="form-row">
-                                    <div class="form-col">
-                                        <div class="form-group">
-                                            <label>Ingrediente:</label>
-                                            <select class="form-control ingrediente-select" required>
-                                                <option value="">Selecione um ingrediente...</option>
-                                                <!-- Os ingredientes do estoque serão adicionados aqui dinamicamente -->
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="form-col">
-                                        <div class="form-group">
-                                            <label>Quantidade:</label>
-                                            <input type="number" class="form-control ingrediente-quantidade" min="0.01" step="0.01" required>
-                                        </div>
-                                    </div>
-                                    <div class="form-col">
-                                        <div class="form-group">
-                                            <label>Unidade:</label>
-                                            <input type="text" class="form-control ingrediente-unidade" readonly>
-                                        </div>
-                                    </div>
-                                    <div class="form-col" style="flex: 0.5;">
-                                        <div class="form-group">
-                                            <label>&nbsp;</label>
-                                            <button type="button" class="btn btn-danger remover-ingrediente" style="display: block;">X</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                            <!-- Os ingredientes serão adicionados aqui dinamicamente -->
                         </div>
                         
                         <button type="button" id="adicionar-ingrediente" class="btn btn-secondary">+ Adicionar Ingrediente</button>
@@ -588,895 +558,917 @@
             <p id="modal-message">Aguarde enquanto processamos as informações.</p>
         </div>
     </div>
-    
-    <script>
-        // Inicialização do localStorage se necessário
-        if (!localStorage.getItem('estoque')) {
-            localStorage.setItem('estoque', JSON.stringify([]));
-        }
-        
-        if (!localStorage.getItem('receitas')) {
-            localStorage.setItem('receitas', JSON.stringify([]));
-        }
-        
-        // Variáveis globais
-        let estoque = JSON.parse(localStorage.getItem('estoque')) || [];
-        let receitas = JSON.parse(localStorage.getItem('receitas')) || [];
-        let html5QrCode;
-        
-        // Função para atualizar o localStorage
-        function atualizarLocalStorage() {
-            localStorage.setItem('estoque', JSON.stringify(estoque));
-            localStorage.setItem('receitas', JSON.stringify(receitas));
-        }
-        
-        // Função para mostrar uma notificação
-        function mostrarNotificacao(elemento, mensagem, tipo) {
-            const notificacao = document.getElementById(elemento);
-            notificacao.className = `notification notification-${tipo}`;
-            notificacao.textContent = mensagem;
-            
-            // Esconder a notificação após 5 segundos
-            setTimeout(() => {
-                notificacao.className = 'notification hidden';
-            }, 5000);
-        }
-        
-        // Função para mostrar/esconder o modal de processamento
-        function toggleModal(show, title = "Processando...", message = "Aguarde enquanto processamos as informações.") {
-            const modal = document.getElementById('processing-modal');
-            document.getElementById('modal-title').textContent = title;
-            document.getElementById('modal-message').textContent = message;
-            
-            if (show) {
-                modal.classList.remove('hidden');
-            } else {
-                modal.classList.add('hidden');
-            }
-        }
-        
-        // Função para formatar data
-        function formatarData(data) {
-            const d = new Date(data);
-            return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
-        }
-        
-        // Função para formatar valor monetário
-        function formatarMoeda(valor) {
-            return 'R$ ' + valor.toFixed(2).replace('.', ',');
-        }
-        
-        // Função para calcular o custo de uma receita
-        function calcularCustoReceita(receita) {
-            let custoTotal = 0;
-            
-            receita.ingredientes.forEach(ingrediente => {
-                const itemEstoque = estoque.find(item => item.id === ingrediente.id);
-                if (itemEstoque && itemEstoque.preco) {
-                    custoTotal += itemEstoque.preco * ingrediente.quantidade;
-                }
-            });
-            
-            return custoTotal;
-        }
-        
-        // Função para carregar o estoque na tabela
-        function carregarEstoque() {
-            const tbody = document.getElementById('itens-estoque');
-            tbody.innerHTML = '';
-            
-            if (estoque.length === 0) {
-                const tr = document.createElement('tr');
-                tr.innerHTML = '<td colspan="7" style="text-align: center;">Nenhum item no estoque.</td>';
-                tbody.appendChild(tr);
-                return;
-            }
-            
-            estoque.forEach((item, index) => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${item.codigo || 'N/A'}</td>
-                    <td>${item.nome}</td>
-                    <td>${item.quantidade}</td>
-                    <td>${item.unidade}</td>
-                    <td>${formatarMoeda(item.preco || 0)}</td>
-                    <td>${formatarData(item.dataAdicao)}</td>
-                    <td>
-                        <button class="btn btn-danger btn-editar-estoque" data-index="${index}">Editar</button>
-                        <button class="btn btn-danger btn-remover-estoque" data-index="${index}">Remover</button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-            
-            // Adicionar eventos aos botões
-            document.querySelectorAll('.btn-editar-estoque').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const index = this.getAttribute('data-index');
-                    editarItemEstoque(index);
-                });
-            });
-            
-            document.querySelectorAll('.btn-remover-estoque').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const index = this.getAttribute('data-index');
-                    removerItemEstoque(index);
-                });
-            });
-        }
-        
-        // Função para editar um item do estoque
-        function editarItemEstoque(index) {
-            const item = estoque[index];
-            
-            // Mudar para a aba de adicionar
-            document.querySelector('[data-tab="adicionar-estoque"]').click();
-            
-            // Preencher o formulário
-            document.getElementById('codigo-item').value = item.codigo || '';
-            document.getElementById('nome-item').value = item.nome;
-            document.getElementById('quantidade-item').value = item.quantidade;
-            document.getElementById('unidade-item').value = item.unidade;
-            document.getElementById('preco-item').value = item.preco || '';
-            
-            // Modificar o botão de submit
-            const submitBtn = document.querySelector('#form-adicionar-estoque button[type="submit"]');
-            submitBtn.textContent = 'Atualizar Item';
-            submitBtn.setAttribute('data-edicao', index);
-        }
-        
-        // Função para remover um item do estoque
-        function removerItemEstoque(index) {
-            if (confirm('Tem certeza que deseja remover este item do estoque?')) {
-                estoque.splice(index, 1);
-                atualizarLocalStorage();
-                carregarEstoque();
-                atualizarSelectsIngredientes();
-                mostrarNotificacao('notification-estoque', 'Item removido com sucesso!', 'success');
-            }
-        }
-        
-        // Função para carregar receitas
-        function carregarReceitas() {
-            const container = document.getElementById('lista-receitas');
-            container.innerHTML = '';
-            
-            const select = document.getElementById('selecionar-receita');
-            select.innerHTML = '<option value="">Selecione uma receita...</option>';
-            
-            if (receitas.length === 0) {
-                container.innerHTML = '<p>Nenhuma receita cadastrada.</p>';
-                return;
-            }
-            
-            receitas.forEach((receita, index) => {
-                // Calcular o custo total da receita
-                const custoTotal = calcularCustoReceita(receita);
-                
-                // Adicionar ao container de lista
-                const card = document.createElement('div');
-                card.className = 'recipe-card';
-                card.innerHTML = `
-                    <h3>${receita.nome}</h3>
-                    <p>${receita.descricao || 'Sem descrição'}</p>
-                    <p><strong>Custo de Produção:</strong> ${formatarMoeda(custoTotal)}</p>
-                    <div class="ingredients-table">
-                        <h4>Ingredientes:</h4>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Ingrediente</th>
-                                    <th>Quantidade</th>
-                                    <th>Custo</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${receita.ingredientes.map(ing => {
-                                    const itemEstoque = estoque.find(item => item.id === ing.id);
-                                    const precoUnitario = itemEstoque ? itemEstoque.preco || 0 : 0;
-                                    const custo = precoUnitario * ing.quantidade;
-                                    
-                                    return `
-                                        <tr>
-                                            <td>${ing.nome}</td>
-                                            <td>${ing.quantidade} ${ing.unidade}</td>
-                                            <td>${formatarMoeda(custo)}</td>
-                                        </tr>
-                                    `;
-                                }).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                    <div style="margin-top: 15px;">
-                        <button class="btn btn-primary btn-editar-receita" data-index="${index}">Editar</button>
-                        <button class="btn btn-danger btn-remover-receita" data-index="${index}">Remover</button>
-                    </div>
-                `;
-                container.appendChild(card);
-                
-                // Adicionar ao select de remoção de estoque
-                const option = document.createElement('option');
-                option.value = index;
-                option.textContent = receita.nome;
-                select.appendChild(option);
-            });
-            
-            // Adicionar eventos aos botões
-            document.querySelectorAll('.btn-editar-receita').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const index = this.getAttribute('data-index');
-                    editarReceita(index);
-                });
-            });
-            
-            document.querySelectorAll('.btn-remover-receita').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const index = this.getAttribute('data-index');
-                    removerReceita(index);
-                });
-            });
-        }
-        
-        // Função para editar uma receita
-        function editarReceita(index) {
-            const receita = receitas[index];
-            
-            // Mudar para a aba de adicionar receita
-            document.querySelector('[data-tab="adicionar-receita"]').click();
-            
-            // Preencher o formulário
-            document.getElementById('nome-receita').value = receita.nome;
-            document.getElementById('descricao-receita').value = receita.descricao || '';
-            
-            // Limpar os ingredientes existentes
-            document.getElementById('lista-ingredientes').innerHTML = '';
-            
-            // Adicionar cada ingrediente
-            receita.ingredientes.forEach(ingrediente => {
-                adicionarCampoIngrediente(ingrediente);
-            });
-            
-            // Modificar o botão de submit
-            const submitBtn = document.querySelector('#form-adicionar-receita button[type="submit"]');
-            submitBtn.textContent = 'Atualizar Receita';
-            submitBtn.setAttribute('data-edicao', index);
-        }
-        
-        // Função para remover uma receita
-        function removerReceita(index) {
-            if (confirm('Tem certeza que deseja remover esta receita?')) {
-                receitas.splice(index, 1);
-                atualizarLocalStorage();
-                carregarReceitas();
-                mostrarNotificacao('notification-estoque', 'Receita removida com sucesso!', 'success');
-            }
-        }
-        
-        // Função para adicionar campo de ingrediente
-        function adicionarCampoIngrediente(ingredienteData = null) {
-            const container = document.getElementById('lista-ingredientes');
-            const div = document.createElement('div');
-            div.className = 'ingrediente-item';
-            div.innerHTML = `
-                <div class="form-row">
-                    <div class="form-col">
-                        <div class="form-group">
-                            <label>Ingrediente:</label>
-                            <select class="form-control ingrediente-select" required>
-                                <option value="">Selecione um ingrediente...</option>
-                                ${estoque.map(item => `
-                                    <option value="${item.id}" data-unidade="${item.unidade}" data-preco="${item.preco || 0}">${item.nome}</option>
-                                `).join('')}
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-col">
-                        <div class="form-group">
-                            <label>Quantidade:</label>
-                            <input type="number" class="form-control ingrediente-quantidade" min="0.01" step="0.01" required>
-                        </div>
-                    </div>
-                    <div class="form-col">
-                        <div class="form-group">
-                            <label>Unidade:</label>
-                            <input type="text" class="form-control ingrediente-unidade" readonly>
-                        </div>
-                    </div>
-                    <div class="form-col" style="flex: 0.5;">
-                        <div class="form-group">
-                            <label>&nbsp;</label>
-                            <button type="button" class="btn btn-danger remover-ingrediente" style="display: block;">X</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            container.appendChild(div);
-            
-            // Configurar o novo campo
-            const select = div.querySelector('.ingrediente-select');
-            const quantidadeInput = div.querySelector('.ingrediente-quantidade');
-            const unidadeInput = div.querySelector('.ingrediente-unidade');
-            const removerBtn = div.querySelector('.remover-ingrediente');
-            
-            // Preencher com dados se fornecidos
-            if (ingredienteData) {
-                // Encontrar o ingrediente no estoque
-                const ingredienteEstoque = estoque.find(item => item.id === ingredienteData.id);
-                if (ingredienteEstoque) {
-                    select.value = ingredienteEstoque.id;
-                    quantidadeInput.value = ingredienteData.quantidade;
-                    unidadeInput.value = ingredienteEstoque.unidade;
-                }
-            }
-            
-            // Adicionar eventos
-            select.addEventListener('change', function() {
-                const selectedOption = this.options[this.selectedIndex];
-                if (selectedOption.value) {
-                    unidadeInput.value = selectedOption.getAttribute('data-unidade');
-                } else {
-                    unidadeInput.value = '';
-                }
-            });
-            
-            removerBtn.addEventListener('click', function() {
-                container.removeChild(div);
-            });
-        }
-        
-        // Função para atualizar todos os selects de ingredientes
-        function atualizarSelectsIngredientes() {
-            document.querySelectorAll('.ingrediente-select').forEach(select => {
-                const valorAtual = select.value;
-                
-                // Limpar as opções atuais
-                select.innerHTML = '<option value="">Selecione um ingrediente...</option>';
-                
-                // Adicionar as novas opções
-                estoque.forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item.id;
-                    option.textContent = item.nome;
-                    option.setAttribute('data-unidade', item.unidade);
-                    option.setAttribute('data-preco', item.preco || 0);
-                    select.appendChild(option);
-                });
-                
-                // Tentar restaurar o valor anterior
-                if (valorAtual) {
-                    select.value = valorAtual;
-                }
-            });
-        }
-        
-        // Função para carregar detalhes da receita para remoção de estoque
-        function carregarDetalhesReceita(index) {
-            const receita = receitas[index];
-            if (!receita) return;
-            
-            const detalhes = document.getElementById('detalhes-receita');
-            const nomeReceita = document.getElementById('nome-receita-selecionada');
-            const tbodyIngredientes = document.getElementById('ingredientes-receita-selecionada');
-            const avisoEstoque = document.getElementById('aviso-estoque');
-            const custoTotalElement = document.getElementById('custo-total-receita');
-            
-            detalhes.classList.remove('hidden');
-            nomeReceita.textContent = receita.nome;
-            tbodyIngredientes.innerHTML = '';
-            
-            let todosProdutosDisponiveis = true;
-            let custoTotal = 0;
-            
-            receita.ingredientes.forEach(ingrediente => {
-                const itemEstoque = estoque.find(item => item.id === ingrediente.id);
-                
-                if (!itemEstoque) {
-                    todosProdutosDisponiveis = false;
-                }
-                
-                const disponivel = itemEstoque && itemEstoque.quantidade >= ingrediente.quantidade;
-                const precoUnitario = itemEstoque ? itemEstoque.preco || 0 : 0;
-                const custo = precoUnitario * ingrediente.quantidade;
-                custoTotal += custo;
-                
-                const tr = document.createElement('tr');
-                
-                tr.innerHTML = `
-                    <td>${itemEstoque ? itemEstoque.nome : ingrediente.nome + ' (não encontrado)'}</td>
-                    <td>${ingrediente.quantidade} ${ingrediente.unidade}</td>
-                    <td>${itemEstoque ? itemEstoque.quantidade + ' ' + itemEstoque.unidade : 'N/A'}</td>
-                    <td>${formatarMoeda(precoUnitario)}</td>
-                    <td>${formatarMoeda(custo)}</td>
-                    <td style="color: ${disponivel ? 'green' : 'red'}">${disponivel ? 'Disponível' : 'Insuficiente'}</td>
-                `;
-                
-                tbodyIngredientes.appendChild(tr);
-                
-                if (!disponivel) {
-                    todosProdutosDisponiveis = false;
-                }
-            });
-            
-            // Mostrar custo total
-            custoTotalElement.textContent = formatarMoeda(custoTotal);
-            
-            // Mostrar aviso de estoque
-            if (!todosProdutosDisponiveis) {
-                avisoEstoque.classList.remove('hidden');
-                avisoEstoque.className = 'notification notification-error';
-                avisoEstoque.textContent = 'Atenção: Alguns ingredientes não estão disponíveis em quantidade suficiente!';
-                document.getElementById('confirmar-remocao').disabled = true;
-            } else {
-                avisoEstoque.classList.remove('hidden');
-                avisoEstoque.className = 'notification notification-success';
-                avisoEstoque.textContent = 'Todos os ingredientes estão disponíveis. Você pode prosseguir com a produção.';
-                document.getElementById('confirmar-remocao').disabled = false;
-            }
-        }
-        
-        // Função para produzir receita (remover ingredientes do estoque)
-        function produzirReceita(index, quantidade = 1) {
-            const receita = receitas[index];
-            if (!receita) return false;
-            
-            // Verificar se todos os ingredientes estão disponíveis na quantidade necessária
-            let todosProdutosDisponiveis = true;
-            
-            receita.ingredientes.forEach(ingrediente => {
-                const itemEstoque = estoque.find(item => item.id === ingrediente.id);
-                
-                if (!itemEstoque || itemEstoque.quantidade < (ingrediente.quantidade * quantidade)) {
-                    todosProdutosDisponiveis = false;
-                }
-            });
-            
-            if (!todosProdutosDisponiveis) {
-                return false;
-            }
-            
-            // Remover os ingredientes do estoque
-            receita.ingredientes.forEach(ingrediente => {
-                const itemIndex = estoque.findIndex(item => item.id === ingrediente.id);
-                
-                if (itemIndex !== -1) {
-                    estoque[itemIndex].quantidade -= (ingrediente.quantidade * quantidade);
-                    // Arredondar para 2 casas decimais para evitar problemas de ponto flutuante
-                    estoque[itemIndex].quantidade = Math.round(estoque[itemIndex].quantidade * 100) / 100;
-                    
-                    // Remover item se a quantidade for zero ou negativa (não deveria acontecer)
-                    if (estoque[itemIndex].quantidade <= 0) {
-                        estoque.splice(itemIndex, 1);
-                    }
-                }
-            });
-            
-            atualizarLocalStorage();
-            return true;
-        }
-        
-        // Função para extrair informações de um site via QR code
-        async function extrairInformacoesDoSite(url) {
-            // Mostrar o modal de processamento
-            toggleModal(true, "Acessando site...", "Aguarde enquanto processamos as informações do site.");
-            
-            try {
-                // Mostrar o iframe com o site
-                const iframeContainer = document.getElementById('iframe-container');
-                const iframe = document.getElementById('web-iframe');
-                
-                iframe.src = url;
-                iframeContainer.style.display = 'block';
-                
-                // Tentar extrair informações do site
-                // Nota: Esta é uma implementação simplificada. Em um ambiente real,
-                // seria necessário um servidor backend para buscar e processar o conteúdo do site.
-                
-                // Simular o processamento
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                
-                // Dados simulados - em um ambiente real, estes dados seriam extraídos do site
-                const dadosExtraidos = {
-                    nome: "Produto de exemplo",
-                    quantidade: 1,
-                    unidade: "kg",
-                    preco: 15.99
-                };
-                
-                // Preencher o formulário com os dados extraídos
-                document.getElementById('nome-item').value = dadosExtraidos.nome;
-                document.getElementById('quantidade-item').value = dadosExtraidos.quantidade;
-                document.getElementById('unidade-item').value = dadosExtraidos.unidade;
-                document.getElementById('preco-item').value = dadosExtraidos.preco;
-                
-                // Esconder o modal
-                toggleModal(false);
-                
-                // Mostrar uma mensagem de sucesso
-                mostrarNotificacao('notification-estoque', 'Informações extraídas com sucesso!', 'success');
-                
-                return dadosExtraidos;
-            } catch (error) {
-                console.error("Erro ao extrair informações:", error);
-                
-                // Esconder o modal
-                toggleModal(false);
-                
-                // Mostrar uma mensagem de erro
-                mostrarNotificacao('notification-estoque', 'Erro ao extrair informações do site. ' + error.message, 'error');
-                
-                return null;
-            } finally {
-                // Esconder o iframe após a extração
-                setTimeout(() => {
-                    document.getElementById('iframe-container').style.display = 'none';
-                }, 5000);
-            }
-        }
-        
-        // Função para iniciar o scanner de código de barras
-        function iniciarScanner() {
-            const scannerContainer = document.getElementById('scanner-container');
-            scannerContainer.classList.remove('hidden');
-            
-            // Configuração do leitor HTML5QrCode
-            html5QrCode = new Html5Qrcode("reader");
-            
-            // Configurações para o scanner
-            const config = {
-                fps: 10,
-                qrbox: 250,
-                supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
-            };
-            
-            // Iniciar a câmera
-            html5QrCode.start(
-                { facingMode: "environment" },
-                config,
-                onScanSuccess,
-                onScanFailure
-            ).catch(err => {
-                console.error("Erro ao iniciar o scanner: ", err);
-                document.getElementById('scanner-result').innerHTML = 
-                    `<div class="notification notification-error">Erro ao iniciar o scanner: ${err.message}</div>`;
-            });
-        }
-        
-        // Função chamada quando o scan é bem-sucedido
-        async function onScanSuccess(decodedText) {
-            // Parar o scanner após o sucesso
-            html5QrCode.stop().then(() => {
-                console.log('Scanner parado');
-            }).catch(err => {
-                console.error('Erro ao parar o scanner:', err);
-            });
-            
-            // Verificar se o texto decodificado é uma URL
-            if (decodedText.startsWith('http')) {
-                // Atualizar a interface
-                document.getElementById('scanner-result').innerHTML = 
-                    `<div class="notification notification-info">QR code com URL detectado. Tentando extrair informações...</div>`;
-                
-                // Atualizar o campo de código
-                document.getElementById('codigo-item').value = decodedText;
-                
-                // Tentar extrair informações do site
-                await extrairInformacoesDoSite(decodedText);
-            } else {
-                // É um código normal (não URL)
-                // Atualizar a interface
-                document.getElementById('scanner-result').innerHTML = 
-                    `<div class="notification notification-success">Código escaneado com sucesso: ${decodedText}</div>`;
-                document.getElementById('codigo-item').value = decodedText;
-                
-                // Verificar se já existe um produto com esse código
-                const produtoExistente = estoque.find(item => item.codigo === decodedText);
-                
-                if (produtoExistente) {
-                    // Preencher o formulário com os dados do produto
-                    document.getElementById('nome-item').value = produtoExistente.nome;
-                    document.getElementById('quantidade-item').value = produtoExistente.quantidade;
-                    document.getElementById('unidade-item').value = produtoExistente.unidade;
-                    document.getElementById('preco-item').value = produtoExistente.preco || '';
-                    
-                    // Modificar o botão de submit para edição
-                    const submitBtn = document.querySelector('#form-adicionar-estoque button[type="submit"]');
-                    submitBtn.textContent = 'Atualizar Item';
-                    const index = estoque.findIndex(item => item.codigo === decodedText);
-                    submitBtn.setAttribute('data-edicao', index);
-                }
-            }
-        }
-        
-        // Função chamada quando ocorre um erro no scan
-        function onScanFailure(error) {
-            // Não mostrar erros de scan normais (como quando nenhum código é encontrado)
-            // console.error(`Erro no scan: ${error}`);
-        }
-        
-        // Função para parar o scanner
-        function pararScanner() {
-            if (html5QrCode) {
-                html5QrCode.stop().then(() => {
-                    console.log('Scanner parado');
-                    document.getElementById('scanner-container').classList.add('hidden');
-                }).catch(err => {
-                    console.error('Erro ao parar o scanner:', err);
-                });
-            }
-        }
-        
-        
-// Evento para mostrar a data/hora atual
-function atualizarDataHora() {
-            const agora = new Date();
-            const dataFormatada = agora.toLocaleDateString('pt-BR');
-            const horaFormatada = agora.toLocaleTimeString('pt-BR');
-            document.getElementById('date-time').textContent = `${dataFormatada} ${horaFormatada}`;
-        }
-        
-        // Configurar eventos quando o DOM estiver carregado
-        document.addEventListener('DOMContentLoaded', function() {
-            // Inicializar IDs para itens de estoque
-            estoque.forEach((item, index) => {
-                if (!item.id) {
-                    item.id = 'item_' + Date.now() + '_' + index;
-                }
-            });
-            atualizarLocalStorage();
-            
-            // Carregar estoque e receitas
-            carregarEstoque();
-            carregarReceitas();
-            
-            // Eventos de navegação
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    
-                    // Atualizar navegação
-                    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-                    this.classList.add('active');
-                    
-                    // Mostrar página correspondente
-                    const pagina = this.getAttribute('data-page');
-                    document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
-                    document.getElementById(`${pagina}-page`).classList.add('active');
-                });
-            });
-            
-            // Eventos das abas
-            document.querySelectorAll('.tab-button').forEach(button => {
-                button.addEventListener('click', function() {
-                    // Atualizar botões
-                    const parent = this.parentElement;
-                    parent.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
-                    this.classList.add('active');
-                    
-                    // Mostrar conteúdo correspondente
-                    const tab = this.getAttribute('data-tab');
-                    const container = parent.parentElement;
-                    container.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                    document.getElementById(tab).classList.add('active');
-                });
-            });
-            
-            // Evento para pesquisar no estoque
-            document.getElementById('pesquisar-estoque').addEventListener('input', function() {
-                const termo = this.value.toLowerCase();
-                document.querySelectorAll('#tabela-estoque tbody tr').forEach(tr => {
-                    const nome = tr.children[1].textContent.toLowerCase();
-                    const codigo = tr.children[0].textContent.toLowerCase();
-                    
-                    if (nome.includes(termo) || codigo.includes(termo)) {
-                        tr.style.display = '';
-                    } else {
-                        tr.style.display = 'none';
-                    }
-                });
-            });
-            
-            // Evento para pesquisar receitas
-            document.getElementById('pesquisar-receita').addEventListener('input', function() {
-                const termo = this.value.toLowerCase();
-                document.querySelectorAll('.recipe-card').forEach(card => {
-                    const nome = card.querySelector('h3').textContent.toLowerCase();
-                    
-                    if (nome.includes(termo)) {
-                        card.style.display = '';
-                    } else {
-                        card.style.display = 'none';
-                    }
-                });
-            });
-            
-            // Evento para adicionar item ao estoque
-            document.getElementById('form-adicionar-estoque').addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                const codigo = document.getElementById('codigo-item').value;
-                const nome = document.getElementById('nome-item').value;
-                const quantidade = parseFloat(document.getElementById('quantidade-item').value);
-                const unidade = document.getElementById('unidade-item').value;
-                const preco = parseFloat(document.getElementById('preco-item').value) || 0;
-                
-                // Verificar se é uma edição
-                const submitBtn = document.querySelector('#form-adicionar-estoque button[type="submit"]');
-                const indexEdicao = submitBtn.getAttribute('data-edicao');
-                
-                if (indexEdicao !== null && indexEdicao !== undefined) {
-                    // Edição de item existente
-                    estoque[indexEdicao].codigo = codigo;
-                    estoque[indexEdicao].nome = nome;
-                    estoque[indexEdicao].quantidade = quantidade;
-                    estoque[indexEdicao].unidade = unidade;
-                    estoque[indexEdicao].preco = preco;
-                    
-                    // Resetar o botão
-                    submitBtn.textContent = 'Adicionar ao Estoque';
-                    submitBtn.removeAttribute('data-edicao');
-                    
-                    mostrarNotificacao('notification-estoque', 'Item atualizado com sucesso!', 'success');
-                } else {
-                    // Novo item
-                    const novoItem = {
-                        id: 'item_' + Date.now(),
-                        codigo: codigo,
-                        nome: nome,
-                        quantidade: quantidade,
-                        unidade: unidade,
-                        preco: preco,
-                        dataAdicao: new Date().toISOString()
-                    };
-                    
-                    estoque.push(novoItem);
-                    mostrarNotificacao('notification-estoque', 'Item adicionado com sucesso!', 'success');
-                }
-                
-                // Atualizar localStorage e interface
-                atualizarLocalStorage();
-                carregarEstoque();
-                atualizarSelectsIngredientes();
-                
-                // Limpar o formulário
-                this.reset();
-                document.getElementById('codigo-item').value = '';
-                document.getElementById('scanner-result').innerHTML = '';
-            });
-            
-            // Evento para adicionar receita
-            document.getElementById('form-adicionar-receita').addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                const nome = document.getElementById('nome-receita').value;
-                const descricao = document.getElementById('descricao-receita').value;
-                
-                // Coletar ingredientes
-                const ingredientes = [];
-                document.querySelectorAll('.ingrediente-item').forEach(item => {
-                    const select = item.querySelector('.ingrediente-select');
-                    if (select.value) {
-                        const quantidade = parseFloat(item.querySelector('.ingrediente-quantidade').value);
-                        const unidade = item.querySelector('.ingrediente-unidade').value;
-                        
-                        ingredientes.push({
-                            id: select.value,
-                            nome: select.options[select.selectedIndex].text,
-                            quantidade: quantidade,
-                            unidade: unidade
-                        });
-                    }
-                });
-                
-                // Verificar se tem ingredientes
-                if (ingredientes.length === 0) {
-                    alert('Adicione pelo menos um ingrediente à receita!');
-                    return;
-                }
-                
-                // Verificar se é uma edição
-                const submitBtn = document.querySelector('#form-adicionar-receita button[type="submit"]');
-                const indexEdicao = submitBtn.getAttribute('data-edicao');
-                
-                if (indexEdicao !== null && indexEdicao !== undefined) {
-                    // Edição de receita existente
-                    receitas[indexEdicao].nome = nome;
-                    receitas[indexEdicao].descricao = descricao;
-                    receitas[indexEdicao].ingredientes = ingredientes;
-                    
-                    // Resetar o botão
-                    submitBtn.textContent = 'Salvar Receita';
-                    submitBtn.removeAttribute('data-edicao');
-                    
-                    mostrarNotificacao('notification-estoque', 'Receita atualizada com sucesso!', 'success');
-                } else {
-                    // Nova receita
-                    const novaReceita = {
-                        id: 'receita_' + Date.now(),
-                        nome: nome,
-                        descricao: descricao,
-                        ingredientes: ingredientes,
-                        dataCriacao: new Date().toISOString()
-                    };
-                    
-                    receitas.push(novaReceita);
-                    mostrarNotificacao('notification-estoque', 'Receita adicionada com sucesso!', 'success');
-                }
-                
-                // Atualizar localStorage e interface
-                atualizarLocalStorage();
-                carregarReceitas();
-                
-                // Limpar o formulário
-                this.reset();
-                document.getElementById('lista-ingredientes').innerHTML = '';
-                adicionarCampoIngrediente();  // Adicionar um campo vazio de ingrediente
-                
-                // Mudar para a aba de listar receitas
-                document.querySelector('[data-tab="listar-receitas"]').click();
-            });
-            
-            // Evento para adicionar ingrediente à receita
-            document.getElementById('adicionar-ingrediente').addEventListener('click', function() {
-                adicionarCampoIngrediente();
-            });
-            
-            // Evento para selecionar receita para remoção de estoque
-            document.getElementById('selecionar-receita').addEventListener('change', function() {
-                const index = this.value;
-                if (index) {
-                    carregarDetalhesReceita(index);
-                } else {
-                    document.getElementById('detalhes-receita').classList.add('hidden');
-                }
-            });
-            
-            // Evento para atualizar cálculos quando a quantidade de receitas mudar
-            document.getElementById('quantidade-receitas').addEventListener('input', function() {
-                const receitaIndex = document.getElementById('selecionar-receita').value;
-                if (receitaIndex) {
-                    carregarDetalhesReceita(receitaIndex);
-                }
-            });
-            
-            // Evento para confirmar produção (remover ingredientes do estoque)
-            document.getElementById('confirmar-remocao').addEventListener('click', function() {
-                const selectReceita = document.getElementById('selecionar-receita');
-                const index = selectReceita.value;
-                const quantidade = parseInt(document.getElementById('quantidade-receitas').value) || 1;
-                
-                if (index) {
-                    const sucesso = produzirReceita(index, quantidade);
-                    
-                    if (sucesso) {
-                        mostrarNotificacao('notification-estoque', `Produção de ${quantidade} ${quantidade > 1 ? 'unidades' : 'unidade'} concluída com sucesso!`, 'success');
-                        
-                        // Atualizar a interface
-                        carregarEstoque();
-                        carregarDetalhesReceita(index);
-                        
-                        // Mostrar a aba de listar estoque
-                        document.querySelector('[data-tab="listar-estoque"]').click();
-                    } else {
-                        mostrarNotificacao('notification-estoque', 'Não foi possível produzir a receita. Verifique o estoque!', 'error');
-                    }
-                }
-            });
-            
-            // Evento para iniciar scanner
-            document.getElementById('iniciar-scanner').addEventListener('click', iniciarScanner);
-            
-            // Evento para parar scanner
-            document.getElementById('parar-scanner').addEventListener('click', pararScanner);
-            
-            // Adicionar um campo de ingrediente inicial
-            if (document.getElementById('lista-ingredientes')) {
-                adicionarCampoIngrediente();
-            }
-            
-            // Iniciar o relógio
-            atualizarDataHora();
-            setInterval(atualizarDataHora, 1000);
-        });
-    </script>
 </body>
 </html>
+// Inicialização do localStorage se necessário
+if (!localStorage.getItem('estoque')) {
+    localStorage.setItem('estoque', JSON.stringify([]));
+}
+
+if (!localStorage.getItem('receitas')) {
+    localStorage.setItem('receitas', JSON.stringify([]));
+}
+
+// Variáveis globais
+let estoque = JSON.parse(localStorage.getItem('estoque')) || [];
+let receitas = JSON.parse(localStorage.getItem('receitas')) || [];
+let html5QrCode;
+
+// Função para atualizar o localStorage
+function atualizarLocalStorage() {
+    localStorage.setItem('estoque', JSON.stringify(estoque));
+    localStorage.setItem('receitas', JSON.stringify(receitas));
+}
+
+// Função para mostrar uma notificação
+function mostrarNotificacao(elemento, mensagem, tipo) {
+    const notificacao = document.getElementById(elemento);
+    notificacao.className = `notification notification-${tipo}`;
+    notificacao.textContent = mensagem;
+    
+    // Esconder a notificação após 5 segundos
+    setTimeout(() => {
+        notificacao.className = 'notification hidden';
+    }, 5000);
+}
+
+// Função para mostrar/esconder o modal de processamento
+function toggleModal(show, title = "Processando...", message = "Aguarde enquanto processamos as informações.") {
+    const modal = document.getElementById('processing-modal');
+    
+    if (!modal) {
+        console.error('Modal não encontrado');
+        return;
+    }
+    
+    document.getElementById('modal-title').textContent = title;
+    document.getElementById('modal-message').textContent = message;
+    
+    if (show) {
+        modal.classList.remove('hidden');
+        
+        // Adicionar timer de segurança - fechará o modal após 10 segundos
+        window.modalSafetyTimer = setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 10000);
+    } else {
+        modal.classList.add('hidden');
+        // Limpar o timer de segurança se o modal for fechado manualmente
+        if (window.modalSafetyTimer) {
+            clearTimeout(window.modalSafetyTimer);
+        }
+    }
+}
+
+// Função para formatar data
+function formatarData(data) {
+    const d = new Date(data);
+    return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+}
+
+// Função para formatar valor monetário
+function formatarMoeda(valor) {
+    return 'R$ ' + valor.toFixed(2).replace('.', ',');
+}
+
+// Função para calcular o custo de uma receita
+function calcularCustoReceita(receita) {
+    let custoTotal = 0;
+    
+    receita.ingredientes.forEach(ingrediente => {
+        const itemEstoque = estoque.find(item => item.id === ingrediente.id);
+        if (itemEstoque && itemEstoque.preco) {
+            custoTotal += itemEstoque.preco * ingrediente.quantidade;
+        }
+    });
+    
+    return custoTotal;
+}
+
+// Função para carregar o estoque na tabela
+function carregarEstoque() {
+    const tbody = document.getElementById('itens-estoque');
+    tbody.innerHTML = '';
+    
+    if (estoque.length === 0) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td colspan="7" style="text-align: center;">Nenhum item no estoque.</td>';
+        tbody.appendChild(tr);
+        return;
+    }
+    
+    estoque.forEach((item, index) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${item.codigo || 'N/A'}</td>
+            <td>${item.nome}</td>
+            <td>${item.quantidade}</td>
+            <td>${item.unidade}</td>
+            <td>${formatarMoeda(item.preco || 0)}</td>
+            <td>${formatarData(item.dataAdicao)}</td>
+            <td>
+                <button class="btn btn-primary btn-editar-estoque" data-index="${index}">Editar</button>
+                <button class="btn btn-danger btn-remover-estoque" data-index="${index}">Remover</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+    
+    // Adicionar eventos aos botões
+    document.querySelectorAll('.btn-editar-estoque').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const index = this.getAttribute('data-index');
+            editarItemEstoque(index);
+        });
+    });
+    
+    document.querySelectorAll('.btn-remover-estoque').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const index = this.getAttribute('data-index');
+            removerItemEstoque(index);
+        });
+    });
+}
+
+// Função para editar um item do estoque
+function editarItemEstoque(index) {
+    const item = estoque[index];
+    
+    // Mudar para a aba de adicionar
+    document.querySelector('[data-tab="adicionar-estoque"]').click();
+    
+    // Preencher o formulário
+    document.getElementById('codigo-item').value = item.codigo || '';
+    document.getElementById('nome-item').value = item.nome;
+    document.getElementById('quantidade-item').value = item.quantidade;
+    document.getElementById('unidade-item').value = item.unidade;
+    document.getElementById('preco-item').value = item.preco || '';
+    
+    // Modificar o botão de submit
+    const submitBtn = document.querySelector('#form-adicionar-estoque button[type="submit"]');
+    submitBtn.textContent = 'Atualizar Item';
+    submitBtn.setAttribute('data-edicao', index);
+}
+
+// Função para remover um item do estoque
+function removerItemEstoque(index) {
+    if (confirm('Tem certeza que deseja remover este item do estoque?')) {
+        estoque.splice(index, 1);
+        atualizarLocalStorage();
+        carregarEstoque();
+        atualizarSelectsIngredientes();
+        mostrarNotificacao('notification-estoque', 'Item removido com sucesso!', 'success');
+    }
+}
+
+// Função para carregar receitas
+function carregarReceitas() {
+    const container = document.getElementById('lista-receitas');
+    container.innerHTML = '';
+    
+    const select = document.getElementById('selecionar-receita');
+    select.innerHTML = '<option value="">Selecione uma receita...</option>';
+    
+    if (receitas.length === 0) {
+        container.innerHTML = '<p>Nenhuma receita cadastrada.</p>';
+        return;
+    }
+    
+    receitas.forEach((receita, index) => {
+        // Calcular o custo total da receita
+        const custoTotal = calcularCustoReceita(receita);
+        
+        // Adicionar ao container de lista
+        const card = document.createElement('div');
+        card.className = 'recipe-card';
+        card.innerHTML = `
+            <h3>${receita.nome}</h3>
+            <p>${receita.descricao || 'Sem descrição'}</p>
+            <p><strong>Custo de Produção:</strong> ${formatarMoeda(custoTotal)}</p>
+            <div class="ingredients-table">
+                <h4>Ingredientes:</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Ingrediente</th>
+                            <th>Quantidade</th>
+                            <th>Custo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${receita.ingredientes.map(ing => {
+                            const itemEstoque = estoque.find(item => item.id === ing.id);
+                            const precoUnitario = itemEstoque ? itemEstoque.preco || 0 : 0;
+                            const custo = precoUnitario * ing.quantidade;
+                            
+                            return `
+                                <tr>
+                                    <td>${ing.nome}</td>
+                                    <td>${ing.quantidade} ${ing.unidade}</td>
+                                    <td>${formatarMoeda(custo)}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top: 15px;">
+                <button class="btn btn-primary btn-editar-receita" data-index="${index}">Editar</button>
+                <button class="btn btn-danger btn-remover-receita" data-index="${index}">Remover</button>
+            </div>
+        `;
+        container.appendChild(card);
+        
+        // Adicionar ao select de remoção de estoque
+        const option = document.createElement('option');
+        option.value = index;
+        option.textContent = receita.nome;
+        select.appendChild(option);
+    });
+    
+    // Adicionar eventos aos botões
+    document.querySelectorAll('.btn-editar-receita').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const index = this.getAttribute('data-index');
+            editarReceita(index);
+        });
+    });
+    
+    document.querySelectorAll('.btn-remover-receita').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const index = this.getAttribute('data-index');
+            removerReceita(index);
+        });
+    });
+}
+
+// Função para editar uma receita
+function editarReceita(index) {
+    const receita = receitas[index];
+    
+    // Mudar para a aba de adicionar receita
+    document.querySelector('[data-tab="adicionar-receita"]').click();
+    
+    // Preencher o formulário
+    document.getElementById('nome-receita').value = receita.nome;
+    document.getElementById('descricao-receita').value = receita.descricao || '';
+    
+    // Limpar os ingredientes existentes
+    document.getElementById('lista-ingredientes').innerHTML = '';
+    
+    // Adicionar cada ingrediente
+    receita.ingredientes.forEach(ingrediente => {
+        adicionarCampoIngrediente(ingrediente);
+    });
+    
+    // Modificar o botão de submit
+    const submitBtn = document.querySelector('#form-adicionar-receita button[type="submit"]');
+    submitBtn.textContent = 'Atualizar Receita';
+    submitBtn.setAttribute('data-edicao', index);
+}
+
+// Função para remover uma receita
+function removerReceita(index) {
+    if (confirm('Tem certeza que deseja remover esta receita?')) {
+        receitas.splice(index, 1);
+        atualizarLocalStorage();
+        carregarReceitas();
+        mostrarNotificacao('notification-estoque', 'Receita removida com sucesso!', 'success');
+    }
+}
+
+// Função para adicionar campo de ingrediente
+function adicionarCampoIngrediente(ingredienteData = null) {
+    const container = document.getElementById('lista-ingredientes');
+    const div = document.createElement('div');
+    div.className = 'ingrediente-item';
+    div.innerHTML = `
+        <div class="form-row">
+            <div class="form-col">
+                <div class="form-group">
+                    <label>Ingrediente:</label>
+                    <select class="form-control ingrediente-select" required>
+                        <option value="">Selecione um ingrediente...</option>
+                        ${estoque.map(item => `
+                            <option value="${item.id}" data-unidade="${item.unidade}" data-preco="${item.preco || 0}">${item.nome}</option>
+                        `).join('')}
+                    </select>
+                </div>
+            </div>
+            <div class="form-col">
+                <div class="form-group">
+                    <label>Quantidade:</label>
+                    <input type="number" class="form-control ingrediente-quantidade" min="0.01" step="0.01" required>
+                </div>
+            </div>
+            <div class="form-col">
+                <div class="form-group">
+                    <label>Unidade:</label>
+                    <input type="text" class="form-control ingrediente-unidade" readonly>
+                </div>
+            </div>
+            <div class="form-col" style="flex: 0.5;">
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button type="button" class="btn btn-danger remover-ingrediente" style="display: block;">X</button>
+                </div>
+            </div>
+        </div>
+    `;
+    container.appendChild(div);
+    
+    // Configurar o novo campo
+    const select = div.querySelector('.ingrediente-select');
+    const quantidadeInput = div.querySelector('.ingrediente-quantidade');
+    const unidadeInput = div.querySelector('.ingrediente-unidade');
+    const removerBtn = div.querySelector('.remover-ingrediente');
+    
+    // Preencher com dados se fornecidos
+    if (ingredienteData) {
+        // Encontrar o ingrediente no estoque
+        const ingredienteEstoque = estoque.find(item => item.id === ingredienteData.id);
+        if (ingredienteEstoque) {
+            select.value = ingredienteEstoque.id;
+            quantidadeInput.value = ingredienteData.quantidade;
+            unidadeInput.value = ingredienteEstoque.unidade;
+        }
+    }
+    
+    // Adicionar eventos
+    select.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        if (selectedOption.value) {
+            unidadeInput.value = selectedOption.getAttribute('data-unidade');
+        } else {
+            unidadeInput.value = '';
+        }
+    });
+    
+    removerBtn.addEventListener('click', function() {
+        container.removeChild(div);
+    });
+}
+
+// Função para atualizar todos os selects de ingredientes
+function atualizarSelectsIngredientes() {
+    document.querySelectorAll('.ingrediente-select').forEach(select => {
+        const valorAtual = select.value;
+        
+        // Limpar as opções atuais
+        select.innerHTML = '<option value="">Selecione um ingrediente...</option>';
+        
+        // Adicionar as novas opções
+        estoque.forEach(item => {
+            const option = document.createElement('option');
+            option.value = item.id;
+            option.textContent = item.nome;
+            option.setAttribute('data-unidade', item.unidade);
+            option.setAttribute('data-preco', item.preco || 0);
+            select.appendChild(option);
+        });
+        
+        // Tentar restaurar o valor anterior
+        if (valorAtual) {
+            select.value = valorAtual;
+        }
+    });
+}
+
+// Função para carregar detalhes da receita para remoção de estoque
+function carregarDetalhesReceita(index) {
+    const receita = receitas[index];
+    if (!receita) return;
+    
+    const detalhes = document.getElementById('detalhes-receita');
+    const nomeReceita = document.getElementById('nome-receita-selecionada');
+    const tbodyIngredientes = document.getElementById('ingredientes-receita-selecionada');
+    const avisoEstoque = document.getElementById('aviso-estoque');
+    const custoTotalElement = document.getElementById('custo-total-receita');
+    
+    detalhes.classList.remove('hidden');
+    nomeReceita.textContent = receita.nome;
+    tbodyIngredientes.innerHTML = '';
+    
+    let todosProdutosDisponiveis = true;
+    let custoTotal = 0;
+    
+    // Obter a quantidade desejada
+    const quantidade = parseInt(document.getElementById('quantidade-receitas').value) || 1;
+    
+    receita.ingredientes.forEach(ingrediente => {
+        const itemEstoque = estoque.find(item => item.id === ingrediente.id);
+        const quantidadeNecessaria = ingrediente.quantidade * quantidade;
+        
+        const disponivel = itemEstoque && itemEstoque.quantidade >= quantidadeNecessaria;
+        const precoUnitario = itemEstoque ? itemEstoque.preco || 0 : 0;
+        const custo = precoUnitario * ingrediente.quantidade * quantidade;
+        custoTotal += custo;
+        
+        if (!disponivel) {
+            todosProdutosDisponiveis = false;
+        }
+        
+        const tr = document.createElement('tr');
+        
+        tr.innerHTML = `
+            <td>${itemEstoque ? itemEstoque.nome : ingrediente.nome + ' (não encontrado)'}</td>
+            <td>${quantidadeNecessaria} ${ingrediente.unidade}</td>
+            <td>${itemEstoque ? itemEstoque.quantidade + ' ' + itemEstoque.unidade : 'N/A'}</td>
+            <td>${formatarMoeda(precoUnitario)}</td>
+            <td>${formatarMoeda(custo)}</td>
+            <td style="color: ${disponivel ? 'green' : 'red'}">${disponivel ? 'Disponível' : 'Insuficiente'}</td>
+        `;
+        
+        tbodyIngredientes.appendChild(tr);
+    });
+    
+    // Mostrar custo total
+    custoTotalElement.textContent = formatarMoeda(custoTotal);
+    
+    // Mostrar aviso de estoque
+    if (!todosProdutosDisponiveis) {
+        avisoEstoque.classList.remove('hidden');
+        avisoEstoque.className = 'notification notification-error';
+        avisoEstoque.textContent = 'Atenção: Alguns ingredientes não estão disponíveis em quantidade suficiente!';
+        document.getElementById('confirmar-remocao').disabled = true;
+    } else {
+        avisoEstoque.classList.remove('hidden');
+        avisoEstoque.className = 'notification notification-success';
+        avisoEstoque.textContent = 'Todos os ingredientes estão disponíveis. Você pode prosseguir com a produção.';
+        document.getElementById('confirmar-remocao').disabled = false;
+    }
+}
+
+// Função para produzir receita (remover ingredientes do estoque)
+function produzirReceita(index, quantidade = 1) {
+    const receita = receitas[index];
+    if (!receita) return false;
+    
+    // Verificar se todos os ingredientes estão disponíveis na quantidade necessária
+    let todosProdutosDisponiveis = true;
+    
+    receita.ingredientes.forEach(ingrediente => {
+        const itemEstoque = estoque.find(item => item.id === ingrediente.id);
+        
+        if (!itemEstoque || itemEstoque.quantidade < (ingrediente.quantidade * quantidade)) {
+            todosProdutosDisponiveis = false;
+        }
+    });
+    
+    if (!todosProdutosDisponiveis) {
+        return false;
+    }
+    
+    // Remover os ingredientes do estoque
+    receita.ingredientes.forEach(ingrediente => {
+        const itemIndex = estoque.findIndex(item => item.id === ingrediente.id);
+        
+        if (itemIndex !== -1) {
+            estoque[itemIndex].quantidade -= (ingrediente.quantidade * quantidade);
+            // Arredondar para 2 casas decimais para evitar problemas de ponto flutuante
+            estoque[itemIndex].quantidade = Math.round(estoque[itemIndex].quantidade * 100) / 100;
+            
+            // Remover item se a quantidade for zero ou negativa (não deveria acontecer)
+            if (estoque[itemIndex].quantidade <= 0) {
+                estoque.splice(itemIndex, 1);
+            }
+        }
+    });
+    
+    atualizarLocalStorage();
+    return true;
+}
+
+// Função para extrair informações de um site via QR code
+async function extrairInformacoesDoSite(url) {
+    // Mostrar o modal de processamento
+    toggleModal(true, "Acessando site...", "Aguarde enquanto processamos as informações do site.");
+    
+    try {
+        // Mostrar o iframe com o site
+        const iframeContainer = document.getElementById('iframe-container');
+        const iframe = document.getElementById('web-iframe');
+        
+        iframe.src = url;
+        iframeContainer.style.display = 'block';
+        
+        // Simular o processamento (em um ambiente real, isto seria substituído por código real de extração)
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Dados simulados - em um ambiente real, estes dados seriam extraídos do site
+        const dadosExtraidos = {
+            nome: "Produto de exemplo",
+            quantidade: 1,
+            unidade: "kg",
+            preco: 15.99
+        };
+        
+        // Preencher o formulário com os dados extraídos
+        document.getElementById('nome-item').value = dadosExtraidos.nome;
+        document.getElementById('quantidade-item').value = dadosExtraidos.quantidade;
+        document.getElementById('unidade-item').value = dadosExtraidos.unidade;
+        document.getElementById('preco-item').value = dadosExtraidos.preco;
+        
+        // Esconder o modal
+        toggleModal(false);
+        
+        // Mostrar uma mensagem de sucesso
+        mostrarNotificacao('notification-estoque', 'Informações extraídas com sucesso!', 'success');
+        
+        return dadosExtraidos;
+    } catch (error) {
+        console.error("Erro ao extrair informações:", error);
+        
+        // Esconder o modal
+        toggleModal(false);
+        
+        // Mostrar uma mensagem de erro
+        mostrarNotificacao('notification-estoque', 'Erro ao extrair informações do site. ' + error.message, 'error');
+        
+        return null;
+    } finally {
+        // Esconder o iframe após a extração
+        setTimeout(() => {
+            document.getElementById('iframe-container').style.display = 'none';
+        }, 5000);
+    }
+}
+                // Função para iniciar o scanner de código de barras
+function iniciarScanner() {
+    const scannerContainer = document.getElementById('scanner-container');
+    scannerContainer.classList.remove('hidden');
+    
+    // Configuração do leitor HTML5QrCode
+    html5QrCode = new Html5Qrcode("reader");
+    
+    // Configurações para o scanner
+    const config = {
+        fps: 10,
+        qrbox: 250,
+        supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
+    };
+    
+    // Iniciar a câmera
+    html5QrCode.start(
+        { facingMode: "environment" },
+        config,
+        onScanSuccess,
+        onScanFailure
+    ).catch(err => {
+        console.error("Erro ao iniciar o scanner: ", err);
+        document.getElementById('scanner-result').innerHTML = 
+            `<div class="notification notification-error">Erro ao iniciar o scanner: ${err.message}</div>`;
+    });
+}
+
+// Função chamada quando o scan é bem-sucedido
+async function onScanSuccess(decodedText) {
+    // Parar o scanner após o sucesso
+    html5QrCode.stop().then(() => {
+        console.log('Scanner parado');
+    }).catch(err => {
+        console.error('Erro ao parar o scanner:', err);
+    });
+    
+    // Verificar se o texto decodificado é uma URL
+    if (decodedText.startsWith('http')) {
+        // Atualizar a interface
+        document.getElementById('scanner-result').innerHTML = 
+            `<div class="notification notification-info">QR code com URL detectado. Tentando extrair informações...</div>`;
+        
+        // Atualizar o campo de código
+        document.getElementById('codigo-item').value = decodedText;
+        
+        // Tentar extrair informações do site
+        await extrairInformacoesDoSite(decodedText);
+    } else {
+        // É um código normal (não URL)
+        // Atualizar a interface
+        document.getElementById('scanner-result').innerHTML = 
+            `<div class="notification notification-success">Código escaneado com sucesso: ${decodedText}</div>`;
+        document.getElementById('codigo-item').value = decodedText;
+        
+        // Verificar se já existe um produto com esse código
+        const produtoExistente = estoque.find(item => item.codigo === decodedText);
+        
+        if (produtoExistente) {
+            // Preencher o formulário com os dados do produto
+            document.getElementById('nome-item').value = produtoExistente.nome;
+            document.getElementById('quantidade-item').value = produtoExistente.quantidade;
+            document.getElementById('unidade-item').value = produtoExistente.unidade;
+            document.getElementById('preco-item').value = produtoExistente.preco || '';
+            
+            // Modificar o botão de submit para edição
+            const submitBtn = document.querySelector('#form-adicionar-estoque button[type="submit"]');
+            submitBtn.textContent = 'Atualizar Item';
+            const index = estoque.findIndex(item => item.codigo === decodedText);
+            submitBtn.setAttribute('data-edicao', index);
+        }
+    }
+}
+
+// Função chamada quando ocorre um erro no scan
+function onScanFailure(error) {
+    // Não mostrar erros de scan normais (como quando nenhum código é encontrado)
+    // console.error(`Erro no scan: ${error}`);
+}
+
+// Função para parar o scanner
+function pararScanner() {
+    if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+            console.log('Scanner parado');
+            document.getElementById('scanner-container').classList.add('hidden');
+        }).catch(err => {
+            console.error('Erro ao parar o scanner:', err);
+        });
+    }
+}
+
+// Evento para mostrar a data/hora atual
+function atualizarDataHora() {
+    const agora = new Date();
+    const dataFormatada = agora.toLocaleDateString('pt-BR');
+    const horaFormatada = agora.toLocaleTimeString('pt-BR');
+    document.getElementById('date-time').textContent = `${dataFormatada} ${horaFormatada}`;
+}
+
+// Configurar eventos quando o DOM estiver carregado
+document.addEventListener('DOMContentLoaded', function() {
+    // Garantir que o modal esteja oculto ao iniciar
+    const modalElement = document.getElementById('processing-modal');
+    if (modalElement) {
+        modalElement.classList.add('hidden');
+    }
+    
+    // Inicializar IDs para itens de estoque
+    estoque.forEach((item, index) => {
+        if (!item.id) {
+            item.id = 'item_' + Date.now() + '_' + index;
+        }
+    });
+    atualizarLocalStorage();
+    
+    // Carregar estoque e receitas
+    carregarEstoque();
+    carregarReceitas();
+    
+    // Eventos de navegação
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Atualizar navegação
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Mostrar página correspondente
+            const pagina = this.getAttribute('data-page');
+            document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+            document.getElementById(`${pagina}-page`).classList.add('active');
+        });
+    });
+    
+    // Eventos das abas
+    document.querySelectorAll('.tab-button').forEach(button => {
+        button.addEventListener('click', function() {
+            // Atualizar botões
+            const parent = this.parentElement;
+            parent.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Mostrar conteúdo correspondente
+            const tab = this.getAttribute('data-tab');
+            const container = parent.parentElement;
+            container.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(tab).classList.add('active');
+        });
+    });
+    
+    // Evento para pesquisar no estoque
+    document.getElementById('pesquisar-estoque').addEventListener('input', function() {
+        const termo = this.value.toLowerCase();
+        document.querySelectorAll('#tabela-estoque tbody tr').forEach(tr => {
+            const nome = tr.children[1].textContent.toLowerCase();
+            const codigo = tr.children[0].textContent.toLowerCase();
+            
+            if (nome.includes(termo) || codigo.includes(termo)) {
+                tr.style.display = '';
+            } else {
+                tr.style.display = 'none';
+            }
+        });
+    });
+    
+    // Evento para pesquisar receitas
+    document.getElementById('pesquisar-receita').addEventListener('input', function() {
+        const termo = this.value.toLowerCase();
+        document.querySelectorAll('.recipe-card').forEach(card => {
+            const nome = card.querySelector('h3').textContent.toLowerCase();
+            
+            if (nome.includes(termo)) {
+                card.style.display = '';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    });
+    
+    // Evento para adicionar item ao estoque
+    document.getElementById('form-adicionar-estoque').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const codigo = document.getElementById('codigo-item').value;
+        const nome = document.getElementById('nome-item').value;
+        const quantidade = parseFloat(document.getElementById('quantidade-item').value);
+        const unidade = document.getElementById('unidade-item').value;
+        const preco = parseFloat(document.getElementById('preco-item').value) || 0;
+        
+        // Verificar se é uma edição
+        const submitBtn = document.querySelector('#form-adicionar-estoque button[type="submit"]');
+        const indexEdicao = submitBtn.getAttribute('data-edicao');
+        
+        if (indexEdicao !== null && indexEdicao !== undefined) {
+            // Edição de item existente
+            estoque[indexEdicao].codigo = codigo;
+            estoque[indexEdicao].nome = nome;
+            estoque[indexEdicao].quantidade = quantidade;
+            estoque[indexEdicao].unidade = unidade;
+            estoque[indexEdicao].preco = preco;
+            
+            // Resetar o botão
+            submitBtn.textContent = 'Adicionar ao Estoque';
+            submitBtn.removeAttribute('data-edicao');
+            
+            mostrarNotificacao('notification-estoque', 'Item atualizado com sucesso!', 'success');
+        } else {
+            // Novo item
+            const novoItem = {
+                id: 'item_' + Date.now(),
+                codigo: codigo,
+                nome: nome,
+                quantidade: quantidade,
+                unidade: unidade,
+                preco: preco,
+                dataAdicao: new Date().toISOString()
+            };
+            
+            estoque.push(novoItem);
+            mostrarNotificacao('notification-estoque', 'Item adicionado com sucesso!', 'success');
+        }
+        
+        // Atualizar localStorage e interface
+        atualizarLocalStorage();
+        carregarEstoque();
+        atualizarSelectsIngredientes();
+        
+        // Limpar o formulário
+        this.reset();
+        document.getElementById('codigo-item').value = '';
+        document.getElementById('scanner-result').innerHTML = '';
+    });
+    
+    // Evento para adicionar receita
+    document.getElementById('form-adicionar-receita').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const nome = document.getElementById('nome-receita').value;
+        const descricao = document.getElementById('descricao-receita').value;
+        
+        // Coletar ingredientes
+        const ingredientes = [];
+        document.querySelectorAll('.ingrediente-item').forEach(item => {
+            const select = item.querySelector('.ingrediente-select');
+            if (select.value) {
+                const quantidade = parseFloat(item.querySelector('.ingrediente-quantidade').value);
+                const unidade = item.querySelector('.ingrediente-unidade').value;
+                
+                ingredientes.push({
+                    id: select.value,
+                    nome: select.options[select.selectedIndex].text,
+                    quantidade: quantidade,
+                    unidade: unidade
+                });
+            }
+        });
+        
+        // Verificar se tem ingredientes
+        if (ingredientes.length === 0) {
+            alert('Adicione pelo menos um ingrediente à receita!');
+            return;
+        }
+        
+        // Verificar se é uma edição
+        const submitBtn = document.querySelector('#form-adicionar-receita button[type="submit"]');
+        const indexEdicao = submitBtn.getAttribute('data-edicao');
+        
+        if (indexEdicao !== null && indexEdicao !== undefined) {
+            // Edição de receita existente
+            receitas[indexEdicao].nome = nome;
+            receitas[indexEdicao].descricao = descricao;
+            receitas[indexEdicao].ingredientes = ingredientes;
+            
+            // Resetar o botão
+            submitBtn.textContent = 'Salvar Receita';
+            submitBtn.removeAttribute('data-edicao');
+            
+            mostrarNotificacao('notification-estoque', 'Receita atualizada com sucesso!', 'success');
+        } else {
+            // Nova receita
+            const novaReceita = {
+                id: 'receita_' + Date.now(),
+                nome: nome,
+                descricao: descricao,
+                ingredientes: ingredientes,
+                dataCriacao: new Date().toISOString()
+            };
+            
+            receitas.push(novaReceita);
+            mostrarNotificacao('notification-estoque', 'Receita adicionada com sucesso!', 'success');
+        }
+        
+        // Atualizar localStorage e interface
+        atualizarLocalStorage();
+        carregarReceitas();
+        
+        // Limpar o formulário
+        this.reset();
+        document.getElementById('lista-ingredientes').innerHTML = '';
+        adicionarCampoIngrediente();  // Adicionar um campo vazio de ingrediente
+        
+        // Mudar para a aba de listar receitas
+        document.querySelector('[data-tab="listar-receitas"]').click();
+    });
+    
+    // Evento para adicionar ingrediente à receita
+    document.getElementById('adicionar-ingrediente').addEventListener('click', function() {
+        adicionarCampoIngrediente();
+    });
+    
+    // Evento para selecionar receita para remoção de estoque
+    document.getElementById('selecionar-receita').addEventListener('change', function() {
+        const index = this.value;
+        if (index) {
+            carregarDetalhesReceita(index);
+        } else {
+            document.getElementById('detalhes-receita').classList.add('hidden');
+        }
+    });
+    
+    // Evento para atualizar cálculos quando a quantidade de receitas mudar
+    document.getElementById('quantidade-receitas').addEventListener('input', function() {
+        const receitaIndex = document.getElementById('selecionar-receita').value;
+        if (receitaIndex) {
+            carregarDetalhesReceita(receitaIndex);
+        }
+    });
+    
+    // Evento para confirmar produção (remover ingredientes do estoque)
+    document.getElementById('confirmar-remocao').addEventListener('click', function() {
+        // Mostrar modal de processamento
+        toggleModal(true, "Processando produção...", "Aguarde enquanto atualizamos o estoque.");
+        
+        setTimeout(() => {
+            const selectReceita = document.getElementById('selecionar-receita');
+            const index = selectReceita.value;
+            const quantidade = parseInt(document.getElementById('quantidade-receitas').value) || 1;
+            
+            if (index) {
+                const sucesso = produzirReceita(index, quantidade);
+                
+                if (sucesso) {
+                    toggleModal(false);
+                    mostrarNotificacao('notification-estoque', `Produção de ${quantidade} ${quantidade > 1 ? 'unidades' : 'unidade'} concluída com sucesso!`, 'success');
+                    
+                    // Atualizar a interface
+                    carregarEstoque();
+                    carregarDetalhesReceita(index);
+                    
+                    // Mostrar a aba de listar estoque
+                    document.querySelector('[data-tab="listar-estoque"]').click();
+                } else {
+                    toggleModal(false);
+                    mostrarNotificacao('notification-estoque', 'Não foi possível produzir a receita. Verifique o estoque!', 'error');
+                }
+            } else {
+                toggleModal(false);
+                mostrarNotificacao('notification-estoque', 'Selecione uma receita primeiro!', 'error');
+            }
+        }, 300);
+    });
+    
+    // Evento para iniciar scanner
+    document.getElementById('iniciar-scanner').addEventListener('click', iniciarScanner);
+    
+    // Evento para parar scanner
+    document.getElementById('parar-scanner').addEventListener('click', pararScanner);
+    
+    // Adicionar um campo de ingrediente inicial
+    if (document.getElementById('lista-ingredientes')) {
+        adicionarCampoIngrediente();
+    }
+    
+    // Iniciar o relógio
+    atualizarDataHora();
+    setInterval(atualizarDataHora, 1000);
+});
