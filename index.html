@@ -370,6 +370,7 @@
                                 <th>Nome</th>
                                 <th>Quantidade</th>
                                 <th>Unidade</th>
+                                <th>Unidade de Medida</th>
                                 <th>Preço (R$)</th>
                                 <th>Data de Adição</th>
                                 <th>Ações</th>
@@ -416,7 +417,7 @@
                         <div class="form-row">
                             <div class="form-col">
                                 <div class="form-group">
-                                    <label for="quantidade-item">Quantidade:</label>
+                                    <label for="quantidade-item">Quantidade de Itens:</label>
                                     <input type="number" id="quantidade-item" class="form-control" min="0" step="0.01" required>
                                 </div>
                             </div>
@@ -424,21 +425,41 @@
                                 <div class="form-group">
                                     <label for="unidade-item">Unidade:</label>
                                     <select id="unidade-item" class="form-control" required>
+                                        <option value="un">Unidades (un)</option>
+                                        <option value="cx">Caixas (cx)</option>
+                                        <option value="pct">Pacotes (pct)</option>
+                                        <option value="lata">Latas (lata)</option>
+                                        <option value="garrafa">Garrafas (garrafa)</option>
+                                        <option value="caixa">Caixas (caixa)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-col">
+                                <div class="form-group">
+                                    <label for="unidade-medida-item">Unidade de Medida:</label>
+                                    <select id="unidade-medida-item" class="form-control" required>
                                         <option value="kg">Quilogramas (kg)</option>
                                         <option value="g">Gramas (g)</option>
                                         <option value="l">Litros (l)</option>
                                         <option value="ml">Mililitros (ml)</option>
-                                        <option value="un">Unidades (un)</option>
-                                        <option value="cx">Caixas (cx)</option>
-                                        <option value="pct">Pacotes (pct)</option>
                                     </select>
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="form-group">
-                            <label for="preco-item">Preço (R$):</label>
-                            <input type="number" id="preco-item" class="form-control" min="0" step="0.01" placeholder="0.00" required>
+                        <div class="form-row">
+                            <div class="form-col">
+                                <div class="form-group">
+                                    <label for="quantidade-medida-item">Quantidade por Unidade:</label>
+                                    <input type="number" id="quantidade-medida-item" class="form-control" min="0" step="0.01" required placeholder="Ex: 350 (para 350ml)">
+                                </div>
+                            </div>
+                            <div class="form-col">
+                                <div class="form-group">
+                                    <label for="preco-item">Preço (R$):</label>
+                                    <input type="number" id="preco-item" class="form-control" min="0" step="0.01" placeholder="0.00" required>
+                                </div>
+                            </div>
                         </div>
                         
                         <button type="submit" class="btn btn-primary">Adicionar ao Estoque</button>
@@ -637,7 +658,9 @@ function calcularCustoReceita(receita) {
     receita.ingredientes.forEach(ingrediente => {
         const itemEstoque = estoque.find(item => item.id === ingrediente.id);
         if (itemEstoque && itemEstoque.preco) {
-            custoTotal += itemEstoque.preco * ingrediente.quantidade;
+            // Calculamos o custo com base na quantidade da unidade de medida
+            const custoUnitario = itemEstoque.preco / (itemEstoque.quantidade * itemEstoque.quantidadeMedida);
+            custoTotal += custoUnitario * ingrediente.quantidade;
         }
     });
     
@@ -651,7 +674,7 @@ function carregarEstoque() {
     
     if (estoque.length === 0) {
         const tr = document.createElement('tr');
-        tr.innerHTML = '<td colspan="7" style="text-align: center;">Nenhum item no estoque.</td>';
+        tr.innerHTML = '<td colspan="8" style="text-align: center;">Nenhum item no estoque.</td>';
         tbody.appendChild(tr);
         return;
     }
@@ -663,6 +686,7 @@ function carregarEstoque() {
             <td>${item.nome}</td>
             <td>${item.quantidade}</td>
             <td>${item.unidade}</td>
+            <td>${item.quantidadeMedida || 0} ${item.unidadeMedida || 'N/A'}</td>
             <td>${formatarMoeda(item.preco || 0)}</td>
             <td>${formatarData(item.dataAdicao)}</td>
             <td>
@@ -701,6 +725,8 @@ function editarItemEstoque(index) {
     document.getElementById('nome-item').value = item.nome;
     document.getElementById('quantidade-item').value = item.quantidade;
     document.getElementById('unidade-item').value = item.unidade;
+    document.getElementById('unidade-medida-item').value = item.unidadeMedida || 'ml';
+    document.getElementById('quantidade-medida-item').value = item.quantidadeMedida || '';
     document.getElementById('preco-item').value = item.preco || '';
     
     // Modificar o botão de submit
@@ -757,14 +783,19 @@ function carregarReceitas() {
                     <tbody>
                         ${receita.ingredientes.map(ing => {
                             const itemEstoque = estoque.find(item => item.id === ing.id);
-                            const precoUnitario = itemEstoque ? itemEstoque.preco || 0 : 0;
-                            const custo = precoUnitario * ing.quantidade;
+                            let custoExibicao = 0;
+                            
+                            if (itemEstoque) {
+                                // Calculamos o custo unitário baseado na unidade de medida
+                                const custoUnitario = itemEstoque.preco / (itemEstoque.quantidade * itemEstoque.quantidadeMedida);
+                                custoExibicao = custoUnitario * ing.quantidade
+                                }
                             
                             return `
                                 <tr>
                                     <td>${ing.nome}</td>
-                                    <td>${ing.quantidade} ${ing.unidade}</td>
-                                    <td>${formatarMoeda(custo)}</td>
+                                    <td>${ing.quantidade} ${ing.unidadeMedida}</td>
+                                    <td>${formatarMoeda(custoExibicao)}</td>
                                 </tr>
                             `;
                         }).join('')}
@@ -849,7 +880,13 @@ function adicionarCampoIngrediente(ingredienteData = null) {
                     <select class="form-control ingrediente-select" required>
                         <option value="">Selecione um ingrediente...</option>
                         ${estoque.map(item => `
-                            <option value="${item.id}" data-unidade="${item.unidade}" data-preco="${item.preco || 0}">${item.nome}</option>
+                            <option value="${item.id}" 
+                                data-unidade="${item.unidade}" 
+                                data-preco="${item.preco || 0}"
+                                data-unidade-medida="${item.unidadeMedida || ''}"
+                                data-quantidade-medida="${item.quantidadeMedida || 0}">
+                                ${item.nome}
+                            </option>
                         `).join('')}
                     </select>
                 </div>
@@ -862,8 +899,13 @@ function adicionarCampoIngrediente(ingredienteData = null) {
             </div>
             <div class="form-col">
                 <div class="form-group">
-                    <label>Unidade:</label>
-                    <input type="text" class="form-control ingrediente-unidade" readonly>
+                    <label>Unidade de Medida:</label>
+                    <select class="form-control ingrediente-unidade-medida" required>
+                        <option value="kg">Quilogramas (kg)</option>
+                        <option value="g">Gramas (g)</option>
+                        <option value="l">Litros (l)</option>
+                        <option value="ml">Mililitros (ml)</option>
+                    </select>
                 </div>
             </div>
             <div class="form-col" style="flex: 0.5;">
@@ -879,7 +921,7 @@ function adicionarCampoIngrediente(ingredienteData = null) {
     // Configurar o novo campo
     const select = div.querySelector('.ingrediente-select');
     const quantidadeInput = div.querySelector('.ingrediente-quantidade');
-    const unidadeInput = div.querySelector('.ingrediente-unidade');
+    const unidadeMedidaSelect = div.querySelector('.ingrediente-unidade-medida');
     const removerBtn = div.querySelector('.remover-ingrediente');
     
     // Preencher com dados se fornecidos
@@ -889,7 +931,7 @@ function adicionarCampoIngrediente(ingredienteData = null) {
         if (ingredienteEstoque) {
             select.value = ingredienteEstoque.id;
             quantidadeInput.value = ingredienteData.quantidade;
-            unidadeInput.value = ingredienteEstoque.unidade;
+            unidadeMedidaSelect.value = ingredienteData.unidadeMedida || 'ml';
         }
     }
     
@@ -897,9 +939,10 @@ function adicionarCampoIngrediente(ingredienteData = null) {
     select.addEventListener('change', function() {
         const selectedOption = this.options[this.selectedIndex];
         if (selectedOption.value) {
-            unidadeInput.value = selectedOption.getAttribute('data-unidade');
-        } else {
-            unidadeInput.value = '';
+            const unidadeMedida = selectedOption.getAttribute('data-unidade-medida');
+            if (unidadeMedida) {
+                unidadeMedidaSelect.value = unidadeMedida;
+            }
         }
     });
     
@@ -923,6 +966,8 @@ function atualizarSelectsIngredientes() {
             option.textContent = item.nome;
             option.setAttribute('data-unidade', item.unidade);
             option.setAttribute('data-preco', item.preco || 0);
+            option.setAttribute('data-unidade-medida', item.unidadeMedida || '');
+            option.setAttribute('data-quantidade-medida', item.quantidadeMedida || 0);
             select.appendChild(option);
         });
         
@@ -931,6 +976,50 @@ function atualizarSelectsIngredientes() {
             select.value = valorAtual;
         }
     });
+}
+
+// Função para calcular quantidades de unidades utilizadas em uma receita
+function calcularUnidadesUtilizadas(itemEstoque, quantidadeNecessaria) {
+    // Se não tem informações de unidade de medida, retorna a quantidade direta
+    if (!itemEstoque.quantidadeMedida || itemEstoque.quantidadeMedida <= 0) {
+        return {
+            unidades: quantidadeNecessaria,
+            fracao: 0,
+            texto: `${quantidadeNecessaria} ${itemEstoque.unidade}`
+        };
+    }
+    
+    // Calcula quantas unidades inteiras são necessárias
+    const unidadesInteiras = Math.floor(quantidadeNecessaria / itemEstoque.quantidadeMedida);
+    
+    // Calcula a fração restante
+    const fracaoRestante = (quantidadeNecessaria % itemEstoque.quantidadeMedida) / itemEstoque.quantidadeMedida;
+    
+    // Formata o texto de saída
+    let textoSaida = '';
+    if (unidadesInteiras > 0) {
+        textoSaida += `${unidadesInteiras} ${itemEstoque.unidade}`;
+    }
+    
+    if (fracaoRestante > 0) {
+        // Formata a fração como percentual
+        const percentual = Math.round(fracaoRestante * 100);
+        if (unidadesInteiras > 0) {
+            textoSaida += ` + `;
+        }
+        textoSaida += `${percentual}% de 1 ${itemEstoque.unidade}`;
+    }
+    
+    // Se não tem nada, significa que é uma quantidade muito pequena
+    if (textoSaida === '') {
+        textoSaida = `quantidade mínima`;
+    }
+    
+    return {
+        unidades: unidadesInteiras,
+        fracao: fracaoRestante,
+        texto: textoSaida
+    };
 }
 
 // Função para carregar detalhes da receita para remoção de estoque
@@ -958,22 +1047,68 @@ function carregarDetalhesReceita(index) {
         const itemEstoque = estoque.find(item => item.id === ingrediente.id);
         const quantidadeNecessaria = ingrediente.quantidade * quantidade;
         
-        const disponivel = itemEstoque && itemEstoque.quantidade >= quantidadeNecessaria;
-        const precoUnitario = itemEstoque ? itemEstoque.preco || 0 : 0;
-        const custo = precoUnitario * ingrediente.quantidade * quantidade;
-        custoTotal += custo;
+        if (!itemEstoque) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${ingrediente.nome} (não encontrado)</td>
+                <td>${quantidadeNecessaria} ${ingrediente.unidadeMedida || 'N/A'}</td>
+                <td>N/A</td>
+                <td>N/A</td>
+                <td>N/A</td>
+                <td style="color: red">Não disponível</td>
+            `;
+            tbodyIngredientes.appendChild(tr);
+            todosProdutosDisponiveis = false;
+            return;
+        }
+        
+        // Converter a quantidade necessária para a unidade de medida do item no estoque
+        let quantidadeTotalNecessaria = 0;
+        
+        // Se as unidades de medida são iguais, usamos diretamente
+        if (ingrediente.unidadeMedida === itemEstoque.unidadeMedida) {
+            quantidadeTotalNecessaria = quantidadeNecessaria;
+        } else {
+            // Precisaria de conversão entre unidades (simplificado)
+            // Por exemplo, converter ml para l ou g para kg
+            if (ingrediente.unidadeMedida === 'ml' && itemEstoque.unidadeMedida === 'l') {
+                quantidadeTotalNecessaria = quantidadeNecessaria / 1000;
+            } else if (ingrediente.unidadeMedida === 'l' && itemEstoque.unidadeMedida === 'ml') {
+                quantidadeTotalNecessaria = quantidadeNecessaria * 1000;
+            } else if (ingrediente.unidadeMedida === 'g' && itemEstoque.unidadeMedida === 'kg') {
+                quantidadeTotalNecessaria = quantidadeNecessaria / 1000;
+            } else if (ingrediente.unidadeMedida === 'kg' && itemEstoque.unidadeMedida === 'g') {
+                quantidadeTotalNecessaria = quantidadeNecessaria * 1000;
+            } else {
+                // Caso não consigamos converter, usamos a quantidade diretamente
+                quantidadeTotalNecessaria = quantidadeNecessaria;
+            }
+        }
+        
+        // Calcular quantas unidades físicas (embalagens) precisaremos usar
+        const unidadesUtilizadas = calcularUnidadesUtilizadas(itemEstoque, quantidadeTotalNecessaria);
+        
+        // Verificar disponibilidade
+        // Se precisamos de unidades inteiras, verificamos se temos essas unidades
+        // Se precisamos de uma fração, verificamos se temos pelo menos uma unidade
+        const unidadesNecessarias = unidadesUtilizadas.unidades + (unidadesUtilizadas.fracao > 0 ? 1 : 0);
+        const disponivel = itemEstoque.quantidade >= unidadesNecessarias;
         
         if (!disponivel) {
             todosProdutosDisponiveis = false;
         }
         
-        const tr = document.createElement('tr');
+        // Calcular custo
+        const custoUnitario = itemEstoque.preco / itemEstoque.quantidade;
+        const custo = custoUnitario * unidadesNecessarias;
+        custoTotal += custo;
         
+        const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td>${itemEstoque ? itemEstoque.nome : ingrediente.nome + ' (não encontrado)'}</td>
-            <td>${quantidadeNecessaria} ${ingrediente.unidade}</td>
-            <td>${itemEstoque ? itemEstoque.quantidade + ' ' + itemEstoque.unidade : 'N/A'}</td>
-            <td>${formatarMoeda(precoUnitario)}</td>
+            <td>${itemEstoque.nome}</td>
+            <td>${quantidadeNecessaria} ${ingrediente.unidadeMedida} (${unidadesUtilizadas.texto})</td>
+            <td>${itemEstoque.quantidade} ${itemEstoque.unidade}</td>
+            <td>${formatarMoeda(custoUnitario)}</td>
             <td>${formatarMoeda(custo)}</td>
             <td style="color: ${disponivel ? 'green' : 'red'}">${disponivel ? 'Disponível' : 'Insuficiente'}</td>
         `;
@@ -1005,12 +1140,49 @@ function produzirReceita(index, quantidade = 1) {
     
     // Verificar se todos os ingredientes estão disponíveis na quantidade necessária
     let todosProdutosDisponiveis = true;
+    let itensParaRemover = [];
     
     receita.ingredientes.forEach(ingrediente => {
         const itemEstoque = estoque.find(item => item.id === ingrediente.id);
         
-        if (!itemEstoque || itemEstoque.quantidade < (ingrediente.quantidade * quantidade)) {
+        if (!itemEstoque) {
             todosProdutosDisponiveis = false;
+            return;
+        }
+        
+        // Converter a quantidade necessária para a unidade de medida do item no estoque
+        let quantidadeTotalNecessaria = 0;
+        
+        // Se as unidades de medida são iguais, usamos diretamente
+        if (ingrediente.unidadeMedida === itemEstoque.unidadeMedida) {
+            quantidadeTotalNecessaria = ingrediente.quantidade * quantidade;
+        } else {
+            // Conversão entre unidades (simplificado)
+            if (ingrediente.unidadeMedida === 'ml' && itemEstoque.unidadeMedida === 'l') {
+                quantidadeTotalNecessaria = (ingrediente.quantidade * quantidade) / 1000;
+            } else if (ingrediente.unidadeMedida === 'l' && itemEstoque.unidadeMedida === 'ml') {
+                quantidadeTotalNecessaria = (ingrediente.quantidade * quantidade) * 1000;
+            } else if (ingrediente.unidadeMedida === 'g' && itemEstoque.unidadeMedida === 'kg') {
+                quantidadeTotalNecessaria = (ingrediente.quantidade * quantidade) / 1000;
+            } else if (ingrediente.unidadeMedida === 'kg' && itemEstoque.unidadeMedida === 'g') {
+                quantidadeTotalNecessaria = (ingrediente.quantidade * quantidade) * 1000;
+            } else {
+                quantidadeTotalNecessaria = ingrediente.quantidade * quantidade;
+            }
+        }
+        
+        // Calcular quantas unidades físicas (embalagens) precisaremos usar
+        const unidadesUtilizadas = calcularUnidadesUtilizadas(itemEstoque, quantidadeTotalNecessaria);
+        const unidadesNecessarias = unidadesUtilizadas.unidades + (unidadesUtilizadas.fracao > 0 ? 1 : 0);
+        
+        if (itemEstoque.quantidade < unidadesNecessarias) {
+            todosProdutosDisponiveis = false;
+        } else {
+            // Adicionar à lista de itens para remover
+            itensParaRemover.push({
+                id: itemEstoque.id,
+                quantidade: unidadesNecessarias
+            });
         }
     });
     
@@ -1019,11 +1191,11 @@ function produzirReceita(index, quantidade = 1) {
     }
     
     // Remover os ingredientes do estoque
-    receita.ingredientes.forEach(ingrediente => {
-        const itemIndex = estoque.findIndex(item => item.id === ingrediente.id);
+    itensParaRemover.forEach(item => {
+        const itemIndex = estoque.findIndex(i => i.id === item.id);
         
         if (itemIndex !== -1) {
-            estoque[itemIndex].quantidade -= (ingrediente.quantidade * quantidade);
+            estoque[itemIndex].quantidade -= item.quantidade;
             // Arredondar para 2 casas decimais para evitar problemas de ponto flutuante
             estoque[itemIndex].quantidade = Math.round(estoque[itemIndex].quantidade * 100) / 100;
             
@@ -1058,7 +1230,9 @@ async function extrairInformacoesDoSite(url) {
         const dadosExtraidos = {
             nome: "Produto de exemplo",
             quantidade: 1,
-            unidade: "kg",
+            unidade: "lata",
+            unidadeMedida: "ml",
+            quantidadeMedida: 350,
             preco: 15.99
         };
         
@@ -1066,6 +1240,8 @@ async function extrairInformacoesDoSite(url) {
         document.getElementById('nome-item').value = dadosExtraidos.nome;
         document.getElementById('quantidade-item').value = dadosExtraidos.quantidade;
         document.getElementById('unidade-item').value = dadosExtraidos.unidade;
+        document.getElementById('unidade-medida-item').value = dadosExtraidos.unidadeMedida;
+        document.getElementById('quantidade-medida-item').value = dadosExtraidos.quantidadeMedida;
         document.getElementById('preco-item').value = dadosExtraidos.preco;
         
         // Esconder o modal
@@ -1092,7 +1268,8 @@ async function extrairInformacoesDoSite(url) {
         }, 5000);
     }
 }
-                // Função para iniciar o scanner de código de barras
+
+// Função para iniciar o scanner de código de barras
 function iniciarScanner() {
     const scannerContainer = document.getElementById('scanner-container');
     scannerContainer.classList.remove('hidden');
@@ -1155,6 +1332,8 @@ async function onScanSuccess(decodedText) {
             document.getElementById('nome-item').value = produtoExistente.nome;
             document.getElementById('quantidade-item').value = produtoExistente.quantidade;
             document.getElementById('unidade-item').value = produtoExistente.unidade;
+            document.getElementById('unidade-medida-item').value = produtoExistente.unidadeMedida || 'ml';
+            document.getElementById('quantidade-medida-item').value = produtoExistente.quantidadeMedida || '';
             document.getElementById('preco-item').value = produtoExistente.preco || '';
             
             // Modificar o botão de submit para edição
@@ -1281,6 +1460,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const nome = document.getElementById('nome-item').value;
         const quantidade = parseFloat(document.getElementById('quantidade-item').value);
         const unidade = document.getElementById('unidade-item').value;
+        const unidadeMedida = document.getElementById('unidade-medida-item').value;
+        const quantidadeMedida = parseFloat(document.getElementById('quantidade-medida-item').value) || 0;
         const preco = parseFloat(document.getElementById('preco-item').value) || 0;
         
         // Verificar se é uma edição
@@ -1293,6 +1474,8 @@ document.addEventListener('DOMContentLoaded', function() {
             estoque[indexEdicao].nome = nome;
             estoque[indexEdicao].quantidade = quantidade;
             estoque[indexEdicao].unidade = unidade;
+            estoque[indexEdicao].unidadeMedida = unidadeMedida;
+            estoque[indexEdicao].quantidadeMedida = quantidadeMedida;
             estoque[indexEdicao].preco = preco;
             
             // Resetar o botão
@@ -1308,6 +1491,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 nome: nome,
                 quantidade: quantidade,
                 unidade: unidade,
+                unidadeMedida: unidadeMedida,
+                quantidadeMedida: quantidadeMedida,
                 preco: preco,
                 dataAdicao: new Date().toISOString()
             };
@@ -1340,13 +1525,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const select = item.querySelector('.ingrediente-select');
             if (select.value) {
                 const quantidade = parseFloat(item.querySelector('.ingrediente-quantidade').value);
-                const unidade = item.querySelector('.ingrediente-unidade').value;
+                const unidadeMedidaSelect = item.querySelector('.ingrediente-unidade-medida');
                 
                 ingredientes.push({
                     id: select.value,
                     nome: select.options[select.selectedIndex].text,
                     quantidade: quantidade,
-                    unidade: unidade
+                    unidadeMedida: unidadeMedidaSelect.value
                 });
             }
         });
@@ -1471,6 +1656,6 @@ document.addEventListener('DOMContentLoaded', function() {
     atualizarDataHora();
     setInterval(atualizarDataHora, 1000);
 });
-        </script>
+    </script>
 </body>
 </html>
