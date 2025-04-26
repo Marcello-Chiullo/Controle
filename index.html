@@ -558,8 +558,7 @@
             <p id="modal-message">Aguarde enquanto processamos as informações.</p>
         </div>
     </div>
-</body>
-</html>
+    <script>
 // Inicialização do localStorage se necessário
 if (!localStorage.getItem('estoque')) {
     localStorage.setItem('estoque', JSON.stringify([]));
@@ -1472,3 +1471,6 @@ document.addEventListener('DOMContentLoaded', function() {
     atualizarDataHora();
     setInterval(atualizarDataHora, 1000);
 });
+        </script>
+</body>
+</html>
