@@ -383,17 +383,12 @@
 <body>
     <header>
        <div class="header-content">
-                <h1>Deia Cakes Controle Gerencial</h1>
-                <div>
-                    <span id="date-time"></span>
-                </div>
-            </div>
-            <div>
-                <span id="date-time"></span>
-            </div>
-        </div>
+           <h1>Deia Cakes Controle Gerencial</h1>
+           <div>
+               <span id="date-time"></span>
+           </div>
+       </div>
     </header>
-    
     <nav>
         <ul>
             <li><a href="#estoque" class="nav-link active" data-page="estoque">Estoque</a></li>
@@ -1957,14 +1952,6 @@ document.addEventListener('DOMContentLoaded', function() {
                switch(id) {
                     case 'pesquisar-estoque':
                         itens = document.querySelectorAll('#tabela-estoque tbody tr');
-                        itens.forEach(tr => {
-                            const nome = tr.children[1].textContent.toLowerCase();
-                            const codigo = tr.children[0].textContent.toLowerCase();
-                            tr.style.display = (nome.includes(termo) || codigo.includes(termo)) ? '' : 'none';
-                        });
-                        break;
-                    case 'pesquisar-materiais':
-                        itens = document.querySelectorAll('#tabela-materiais tbody tr');
                         itens.forEach(tr => {
                             const nome = tr.children[1].textContent.toLowerCase();
                             const codigo = tr.children[0].textContent.toLowerCase();
