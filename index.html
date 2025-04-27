@@ -382,10 +382,11 @@
 </head>
 <body>
     <header>
-        <div class="header-content">
-            <div class="header-logo">
+       <div class="header-content">
                 <h1>Deia Cakes Controle Gerencial</h1>
-                <img src="https://i.imgur.com/7x4hJxs.png" alt="Deia Cakes Logo">
+                <div>
+                    <span id="date-time"></span>
+                </div>
             </div>
             <div>
                 <span id="date-time"></span>
@@ -1954,20 +1955,22 @@ document.addEventListener('DOMContentLoaded', function() {
                let itens;
                
                switch(id) {
-                   case 'pesquisar-estoque':
-                       itens = document.querySelectorAll('#tabela-estoque tbody tr');
-                       itens.forEach(tr => {
-                           const nome = tr.children[1].textContent.toLowerCase();
-                           const codigo = tr.children[0].textContent.toLowerCase();
-                           tr.style.display = (nome.includes(termo) || codigo.includes(termo)) ? '' : 'none';
-                       });
-                       break;
-                   case 'pesquisar-materiais':
-                       itens = document.querySelectorAll('#tabela-materiais tbody tr');
-                       itens.forEach(tr => {
-                           const nome = tr.children[1].textContent.toLowerCase();
-                           const codigo = tr.children[0].textContent.toLowerCase();
-                           tr.style.display = (nome.includes(termobreak;
+                    case 'pesquisar-estoque':
+                        itens = document.querySelectorAll('#tabela-estoque tbody tr');
+                        itens.forEach(tr => {
+                            const nome = tr.children[1].textContent.toLowerCase();
+                            const codigo = tr.children[0].textContent.toLowerCase();
+                            tr.style.display = (nome.includes(termo) || codigo.includes(termo)) ? '' : 'none';
+                        });
+                        break;
+                    case 'pesquisar-materiais':
+                        itens = document.querySelectorAll('#tabela-materiais tbody tr');
+                        itens.forEach(tr => {
+                            const nome = tr.children[1].textContent.toLowerCase();
+                            const codigo = tr.children[0].textContent.toLowerCase();
+                            tr.style.display = (nome.includes(termo) || codigo.includes(termo)) ? '' : 'none';
+                        });
+                        break;
                     case 'pesquisar-materiais':
                         itens = document.querySelectorAll('#tabela-materiais tbody tr');
                         itens.forEach(tr => {
