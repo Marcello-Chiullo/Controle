@@ -246,6 +246,7 @@
         .tab-buttons {
             display: flex;
             margin-bottom: 20px;
+            flex-wrap: wrap;
         }
         
         .tab-button {
@@ -256,6 +257,7 @@
             transition: background-color 0.3s;
             border-radius: 5px 5px 0 0;
             margin-right: 5px;
+            margin-bottom: 5px;
         }
         
         .tab-button.active {
@@ -326,6 +328,33 @@
             height: 100%;
             border: none;
         }
+        
+        /* Estilos para área de vendas */
+        .sale-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .sale-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .sale-title {
+            font-weight: bold;
+            font-size: 18px;
+        }
+        
+        .sale-date {
+            color: #666;
+        }
+        
+        .sale-details {
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -341,7 +370,9 @@
     <nav>
         <ul>
             <li><a href="#estoque" class="nav-link active" data-page="estoque">Estoque</a></li>
+            <li><a href="#materiais" class="nav-link" data-page="materiais">Materiais</a></li>
             <li><a href="#receitas" class="nav-link" data-page="receitas">Receitas</a></li>
+            <li><a href="#vendas" class="nav-link" data-page="vendas">Vendas</a></li>
         </ul>
     </nav>
     
@@ -518,6 +549,107 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Página de Materiais -->
+        <div class="page-content" id="materiais-page">
+            <h2>Catálogo de Materiais</h2>
+            
+            <div class="tab-buttons">
+                <button class="tab-button active" data-tab="listar-materiais">Listar Materiais</button>
+                <button class="tab-button" data-tab="adicionar-material">Adicionar Material</button>
+            </div>
+            
+            <!-- Tab: Listar Materiais -->
+            <div class="tab-content active" id="listar-materiais">
+                <div class="card">
+                    <h3>Materiais Cadastrados</h3>
+                    <div id="notification-materiais"></div>
+                    <input type="text" id="pesquisar-materiais" class="form-control" placeholder="Pesquisar material..." style="margin-bottom: 20px;">
+                    
+                    <table id="tabela-materiais">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Nome</th>
+                                <th>Unidade</th>
+                                <th>Unidade de Medida</th>
+                                <th>Quantidade por Unidade</th>
+                                <th>Última Compra</th>
+                                <th>Último Preço (R$)</th>
+                                <th>Preço Médio (R$)</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="itens-materiais">
+                            <!-- Os materiais serão adicionados aqui dinamicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Tab: Adicionar Material -->
+            <div class="tab-content" id="adicionar-material">
+                <div class="card">
+                    <h3>Adicionar Novo Material</h3>
+                    
+                    <form id="form-adicionar-material">
+                        <div class="form-group">
+                            <label for="codigo-material">Código do Material:</label>
+                            <input type="text" id="codigo-material" class="form-control" placeholder="Código ou código de barras">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="nome-material">Nome do Material:</label>
+                            <input type="text" id="nome-material" class="form-control" placeholder="Ex: Farinha de Trigo" required>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-col">
+                                <div class="form-group">
+                                    <label for="unidade-material">Unidade:</label>
+                                    <select id="unidade-material" class="form-control" required>
+                                        <option value="un">Unidades (un)</option>
+                                        <option value="cx">Caixas (cx)</option>
+                                        <option value="pct">Pacotes (pct)</option>
+                                        <option value="lata">Latas (lata)</option>
+                                        <option value="garrafa">Garrafas (garrafa)</option>
+                                        <option value="caixa">Caixas (caixa)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-col">
+                                <div class="form-group">
+                                    <label for="unidade-medida-material">Unidade de Medida:</label>
+                                    <select id="unidade-medida-material" class="form-control" required>
+                                        <option value="kg">Quilogramas (kg)</option>
+                                        <option value="g">Gramas (g)</option>
+                                        <option value="l">Litros (l)</option>
+                                        <option value="ml">Mililitros (ml)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-col">
+                                <div class="form-group">
+                                    <label for="quantidade-medida-material">Quantidade por Unidade:</label>
+                                    <input type="number" id="quantidade-medida-material" class="form-control" min="0" step="0.01" required placeholder="Ex: 350 (para 350ml)">
+                                </div>
+                            </div>
+                            <div class="form-col">
+                                <div class="form-group">
+                                    <label for="preco-material">Preço (R$):</label>
+                                    <input type="number" id="preco-material" class="form-control" min="0" step="0.01" placeholder="0.00" required>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">Adicionar Material</button>
+                    </form>
+                </div>
+            </div>
+        </div>
         <!-- Página de Receitas -->
         <div class="page-content" id="receitas-page">
             <h2>Gestão de Receitas</h2>
@@ -569,6 +701,56 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Página de Vendas -->
+        <div class="page-content" id="vendas-page">
+            <h2>Histórico de Vendas</h2>
+            
+            <div class="tab-buttons">
+                <button class="tab-button active" data-tab="listar-vendas">Histórico de Vendas</button>
+            </div>
+            
+            <!-- Tab: Listar Vendas -->
+            <div class="tab-content active" id="listar-vendas">
+                <div class="card">
+                    <h3>Registro de Produções / Vendas</h3>
+                    <div id="notification-vendas"></div>
+                    <input type="text" id="pesquisar-vendas" class="form-control" placeholder="Pesquisar vendas..." style="margin-bottom: 20px;">
+                    
+                    <div class="form-row" style="margin-bottom: 20px;">
+                        <div class="form-col">
+                            <div class="form-group">
+                                <label for="filtro-data-inicio">Data Inicial:</label>
+                                <input type="date" id="filtro-data-inicio" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-col">
+                            <div class="form-group">
+                                <label for="filtro-data-fim">Data Final:</label>
+                                <input type="date" id="filtro-data-fim" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-col">
+                            <div class="form-group">
+                                <label for="filtro-receita">Receita:</label>
+                                <select id="filtro-receita" class="form-control">
+                                    <option value="">Todas as receitas</option>
+                                    <!-- As receitas serão adicionadas aqui dinamicamente -->
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-col" style="display: flex; align-items: flex-end;">
+                            <button id="btn-filtrar-vendas" class="btn btn-primary">Filtrar</button>
+                            <button id="btn-limpar-filtros" class="btn btn-secondary" style="margin-left: 10px;">Limpar</button>
+                        </div>
+                    </div>
+                    
+                    <div id="lista-vendas">
+                        <!-- As vendas serão adicionadas aqui dinamicamente -->
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
     
     <!-- Modal para processamento de dados -->
@@ -585,19 +767,31 @@ if (!localStorage.getItem('estoque')) {
     localStorage.setItem('estoque', JSON.stringify([]));
 }
 
+if (!localStorage.getItem('materiais')) {
+    localStorage.setItem('materiais', JSON.stringify([]));
+}
+
 if (!localStorage.getItem('receitas')) {
     localStorage.setItem('receitas', JSON.stringify([]));
 }
 
+if (!localStorage.getItem('vendas')) {
+    localStorage.setItem('vendas', JSON.stringify([]));
+}
+
 // Variáveis globais
 let estoque = JSON.parse(localStorage.getItem('estoque')) || [];
+let materiais = JSON.parse(localStorage.getItem('materiais')) || [];
 let receitas = JSON.parse(localStorage.getItem('receitas')) || [];
+let vendas = JSON.parse(localStorage.getItem('vendas')) || [];
 let html5QrCode;
 
 // Função para atualizar o localStorage
 function atualizarLocalStorage() {
     localStorage.setItem('estoque', JSON.stringify(estoque));
+    localStorage.setItem('materiais', JSON.stringify(materiais));
     localStorage.setItem('receitas', JSON.stringify(receitas));
+    localStorage.setItem('vendas', JSON.stringify(vendas));
 }
 
 // Função para mostrar uma notificação
@@ -651,6 +845,154 @@ function formatarMoeda(valor) {
     return 'R$ ' + valor.toFixed(2).replace('.', ',');
 }
 
+// Função para gerar ID único
+function gerarId() {
+    return 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+// Função para encontrar um material pelo código
+function encontrarMaterialPorCodigo(codigo) {
+    return materiais.find(m => m.codigo === codigo);
+}
+
+// Função para adicionar ou atualizar um material no catálogo
+function adicionarOuAtualizarMaterial(codigoMaterial, nomeMaterial, unidadeMaterial, unidadeMedidaMaterial, quantidadeMedidaMaterial, precoMaterial) {
+    // Verificar se o material já existe
+    const materialExistente = encontrarMaterialPorCodigo(codigoMaterial);
+    
+    if (materialExistente) {
+        // Atualizar material existente
+        materialExistente.nome = nomeMaterial;
+        materialExistente.unidade = unidadeMaterial;
+        materialExistente.unidadeMedida = unidadeMedidaMaterial;
+        materialExistente.quantidadeMedida = quantidadeMedidaMaterial;
+        
+        // Adicionar histórico de preço
+        materialExistente.historicoPrecos.push({
+            data: new Date().toISOString(),
+            preco: precoMaterial
+        });
+        
+        // Atualizar o último preço
+        materialExistente.ultimoPreco = precoMaterial;
+        materialExistente.ultimaCompra = new Date().toISOString();
+        
+        // Recalcular o preço médio
+        const totalPrecos = materialExistente.historicoPrecos.reduce((soma, item) => soma + item.preco, 0);
+        materialExistente.precoMedio = totalPrecos / materialExistente.historicoPrecos.length;
+        
+        return materialExistente.id;
+    } else {
+        // Criar novo material
+        const novoMaterial = {
+            id: gerarId(),
+            codigo: codigoMaterial,
+            nome: nomeMaterial,
+            unidade: unidadeMaterial,
+            unidadeMedida: unidadeMedidaMaterial,
+            quantidadeMedida: quantidadeMedidaMaterial,
+            ultimoPreco: precoMaterial,
+            precoMedio: precoMaterial,
+            ultimaCompra: new Date().toISOString(),
+            dataCadastro: new Date().toISOString(),
+            historicoPrecos: [{
+                data: new Date().toISOString(),
+                preco: precoMaterial
+            }]
+        };
+        
+        materiais.push(novoMaterial);
+        return novoMaterial.id;
+    }
+}
+
+// Função para carregar materiais na tabela
+function carregarMateriais() {
+    const tbody = document.getElementById('itens-materiais');
+    tbody.innerHTML = '';
+    
+    if (materiais.length === 0) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td colspan="9" style="text-align: center;">Nenhum material cadastrado.</td>';
+        tbody.appendChild(tr);
+        return;
+    }
+    
+    materiais.forEach((material, index) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${material.codigo || 'N/A'}</td>
+            <td>${material.nome}</td>
+            <td>${material.unidade}</td>
+            <td>${material.unidadeMedida}</td>
+            <td>${material.quantidadeMedida}</td>
+            <td>${formatarData(material.ultimaCompra)}</td>
+            <td>${formatarMoeda(material.ultimoPreco)}</td>
+            <td>${formatarMoeda(material.precoMedio)}</td>
+            <td>
+                <button class="btn btn-primary btn-editar-material" data-index="${index}">Editar</button>
+                <button class="btn btn-success btn-adicionar-estoque" data-id="${material.id}">+ Estoque</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+    
+    // Adicionar eventos aos botões
+    document.querySelectorAll('.btn-editar-material').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const index = this.getAttribute('data-index');
+            editarMaterial(index);
+        });
+    });
+    
+    document.querySelectorAll('.btn-adicionar-estoque').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.getAttribute('data-id');
+            adicionarAoEstoque(id);
+        });
+    });
+}
+
+// Função para editar um material
+function editarMaterial(index) {
+    const material = materiais[index];
+    
+    // Mudar para a aba de adicionar material
+    document.querySelector('[data-tab="adicionar-material"]').click();
+    
+    // Preencher o formulário
+    document.getElementById('codigo-material').value = material.codigo || '';
+    document.getElementById('nome-material').value = material.nome;
+    document.getElementById('unidade-material').value = material.unidade;
+    document.getElementById('unidade-medida-material').value = material.unidadeMedida;
+    document.getElementById('quantidade-medida-material').value = material.quantidadeMedida;
+    document.getElementById('preco-material').value = material.ultimoPreco;
+    
+    // Modificar o botão de submit
+    const submitBtn = document.querySelector('#form-adicionar-material button[type="submit"]');
+    submitBtn.textContent = 'Atualizar Material';
+    submitBtn.setAttribute('data-edicao', index);
+}
+
+// Função para adicionar um material ao estoque
+function adicionarAoEstoque(materialId) {
+    const material = materiais.find(m => m.id === materialId);
+    if (!material) return;
+    
+    // Mudar para a página de estoque e a aba de adicionar
+    document.querySelector('[data-page="estoque"]').click();
+    document.querySelector('[data-tab="adicionar-estoque"]').click();
+    
+    // Preencher o formulário com os dados do material
+    document.getElementById('codigo-item').value = material.codigo || '';
+    document.getElementById('nome-item').value = material.nome;
+    document.getElementById('quantidade-item').value = 1;
+    document.getElementById('unidade-item').value = material.unidade;
+    document.getElementById('unidade-medida-item').value = material.unidadeMedida;
+    document.getElementById('quantidade-medida-item').value = material.quantidadeMedida;
+    document.getElementById('preco-item').value = material.ultimoPreco;
+}
+
 // Função para calcular o custo de uma receita
 function calcularCustoReceita(receita) {
     let custoTotal = 0;
@@ -666,8 +1008,7 @@ function calcularCustoReceita(receita) {
     
     return custoTotal;
 }
-
-// Função para carregar o estoque na tabela
+        // Função para carregar o estoque na tabela
 function carregarEstoque() {
     const tbody = document.getElementById('itens-estoque');
     tbody.innerHTML = '';
@@ -680,13 +1021,18 @@ function carregarEstoque() {
     }
     
     estoque.forEach((item, index) => {
+        // Calcular a quantidade em unidade de medida (ex: ml restantes)
+        const quantidadeTotalMedida = item.quantidade * item.quantidadeMedida;
+        // Verificar se é um número fracionário
+        const quantidadeFracionada = item.quantidade % 1 !== 0;
+        
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${item.codigo || 'N/A'}</td>
             <td>${item.nome}</td>
-            <td>${item.quantidade}</td>
+            <td>${item.quantidade.toFixed(2)} ${quantidadeFracionada ? `(${Math.floor(item.quantidade)} + ${((item.quantidade % 1) * 100).toFixed(0)}%)` : ''}</td>
             <td>${item.unidade}</td>
-            <td>${item.quantidadeMedida || 0} ${item.unidadeMedida || 'N/A'}</td>
+            <td>${quantidadeTotalMedida.toFixed(0)} ${item.unidadeMedida || 'N/A'}</td>
             <td>${formatarMoeda(item.preco || 0)}</td>
             <td>${formatarData(item.dataAdicao)}</td>
             <td>
@@ -751,8 +1097,15 @@ function carregarReceitas() {
     const container = document.getElementById('lista-receitas');
     container.innerHTML = '';
     
-    const select = document.getElementById('selecionar-receita');
-    select.innerHTML = '<option value="">Selecione uma receita...</option>';
+    // Carregar no select da página de remoção com receita
+    const selectRemocao = document.getElementById('selecionar-receita');
+    selectRemocao.innerHTML = '<option value="">Selecione uma receita...</option>';
+    
+    // Carregar no select do filtro de vendas
+    const selectFiltroVendas = document.getElementById('filtro-receita');
+    if (selectFiltroVendas) {
+        selectFiltroVendas.innerHTML = '<option value="">Todas as receitas</option>';
+    }
     
     if (receitas.length === 0) {
         container.innerHTML = '<p>Nenhuma receita cadastrada.</p>';
@@ -788,8 +1141,8 @@ function carregarReceitas() {
                             if (itemEstoque) {
                                 // Calculamos o custo unitário baseado na unidade de medida
                                 const custoUnitario = itemEstoque.preco / (itemEstoque.quantidade * itemEstoque.quantidadeMedida);
-                                custoExibicao = custoUnitario * ing.quantidade
-                                }
+                                custoExibicao = custoUnitario * ing.quantidade;
+                            }
                             
                             return `
                                 <tr>
@@ -805,15 +1158,24 @@ function carregarReceitas() {
             <div style="margin-top: 15px;">
                 <button class="btn btn-primary btn-editar-receita" data-index="${index}">Editar</button>
                 <button class="btn btn-danger btn-remover-receita" data-index="${index}">Remover</button>
+                <button class="btn btn-success btn-produzir-receita" data-index="${index}">Produzir</button>
             </div>
         `;
         container.appendChild(card);
         
         // Adicionar ao select de remoção de estoque
-        const option = document.createElement('option');
-        option.value = index;
-        option.textContent = receita.nome;
-        select.appendChild(option);
+        const optionRemocao = document.createElement('option');
+        optionRemocao.value = index;
+        optionRemocao.textContent = receita.nome;
+        selectRemocao.appendChild(optionRemocao);
+        
+        // Adicionar ao select de filtro de vendas
+        if (selectFiltroVendas) {
+            const optionFiltro = document.createElement('option');
+            optionFiltro.value = receita.id;
+            optionFiltro.textContent = receita.nome;
+            selectFiltroVendas.appendChild(optionFiltro);
+        }
     });
     
     // Adicionar eventos aos botões
@@ -828,6 +1190,20 @@ function carregarReceitas() {
         btn.addEventListener('click', function() {
             const index = this.getAttribute('data-index');
             removerReceita(index);
+        });
+    });
+    
+    document.querySelectorAll('.btn-produzir-receita').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const index = this.getAttribute('data-index');
+            
+            // Mudar para a página de estoque e aba de remover
+            document.querySelector('[data-page="estoque"]').click();
+            document.querySelector('[data-tab="remover-estoque"]').click();
+            
+            // Selecionar a receita
+            document.getElementById('selecionar-receita').value = index;
+            document.getElementById('selecionar-receita').dispatchEvent(new Event('change'));
         });
     });
 }
@@ -1069,8 +1445,7 @@ function carregarDetalhesReceita(index) {
         if (ingrediente.unidadeMedida === itemEstoque.unidadeMedida) {
             quantidadeTotalNecessaria = quantidadeNecessaria;
         } else {
-            // Precisaria de conversão entre unidades (simplificado)
-            // Por exemplo, converter ml para l ou g para kg
+            // Conversão entre unidades (simplificado)
             if (ingrediente.unidadeMedida === 'ml' && itemEstoque.unidadeMedida === 'l') {
                 quantidadeTotalNecessaria = quantidadeNecessaria / 1000;
             } else if (ingrediente.unidadeMedida === 'l' && itemEstoque.unidadeMedida === 'ml') {
@@ -1089,9 +1464,8 @@ function carregarDetalhesReceita(index) {
         const unidadesUtilizadas = calcularUnidadesUtilizadas(itemEstoque, quantidadeTotalNecessaria);
         
         // Verificar disponibilidade
-        // Se precisamos de unidades inteiras, verificamos se temos essas unidades
-        // Se precisamos de uma fração, verificamos se temos pelo menos uma unidade
-        const unidadesNecessarias = unidadesUtilizadas.unidades + (unidadesUtilizadas.fracao > 0 ? 1 : 0);
+        // Calcular unidades necessárias baseado na fração
+        const unidadesNecessarias = unidadesUtilizadas.unidades + unidadesUtilizadas.fracao;
         const disponivel = itemEstoque.quantidade >= unidadesNecessarias;
         
         if (!disponivel) {
@@ -1107,7 +1481,7 @@ function carregarDetalhesReceita(index) {
         tr.innerHTML = `
             <td>${itemEstoque.nome}</td>
             <td>${quantidadeNecessaria} ${ingrediente.unidadeMedida} (${unidadesUtilizadas.texto})</td>
-            <td>${itemEstoque.quantidade} ${itemEstoque.unidade}</td>
+            <td>${itemEstoque.quantidade.toFixed(2)} ${itemEstoque.unidade} (${(itemEstoque.quantidade * itemEstoque.quantidadeMedida).toFixed(0)} ${itemEstoque.unidadeMedida})</td>
             <td>${formatarMoeda(custoUnitario)}</td>
             <td>${formatarMoeda(custo)}</td>
             <td style="color: ${disponivel ? 'green' : 'red'}">${disponivel ? 'Disponível' : 'Insuficiente'}</td>
@@ -1141,6 +1515,7 @@ function produzirReceita(index, quantidade = 1) {
     // Verificar se todos os ingredientes estão disponíveis na quantidade necessária
     let todosProdutosDisponiveis = true;
     let itensParaRemover = [];
+    let detalhesVenda = []; // Para registrar a venda
     
     receita.ingredientes.forEach(ingrediente => {
         const itemEstoque = estoque.find(item => item.id === ingrediente.id);
@@ -1173,7 +1548,7 @@ function produzirReceita(index, quantidade = 1) {
         
         // Calcular quantas unidades físicas (embalagens) precisaremos usar
         const unidadesUtilizadas = calcularUnidadesUtilizadas(itemEstoque, quantidadeTotalNecessaria);
-        const unidadesNecessarias = unidadesUtilizadas.unidades + (unidadesUtilizadas.fracao > 0 ? 1 : 0);
+        const unidadesNecessarias = unidadesUtilizadas.unidades + unidadesUtilizadas.fracao;
         
         if (itemEstoque.quantidade < unidadesNecessarias) {
             todosProdutosDisponiveis = false;
@@ -1183,12 +1558,34 @@ function produzirReceita(index, quantidade = 1) {
                 id: itemEstoque.id,
                 quantidade: unidadesNecessarias
             });
+            
+            // Adicionar detalhes para o registro de venda
+            detalhesVenda.push({
+                itemId: itemEstoque.id,
+                nome: itemEstoque.nome,
+                quantidadeUsada: unidadesNecessarias,
+                unidade: itemEstoque.unidade,
+                quantidadeMedida: quantidadeTotalNecessaria,
+                unidadeMedida: ingrediente.unidadeMedida,
+                custo: (itemEstoque.preco / itemEstoque.quantidade) * unidadesNecessarias
+            });
         }
     });
     
     if (!todosProdutosDisponiveis) {
         return false;
     }
+    
+    // Criar registro da venda antes de remover os itens (para o caso de reversão)
+    const venda = {
+        id: gerarId(),
+        receitaId: receita.id,
+        receitaNome: receita.nome,
+        quantidade: quantidade,
+        data: new Date().toISOString(),
+        itensUtilizados: detalhesVenda,
+        estoqueAntes: JSON.parse(JSON.stringify(estoque)) // Clone do estoque antes da remoção
+    };
     
     // Remover os ingredientes do estoque
     itensParaRemover.forEach(item => {
@@ -1206,8 +1603,154 @@ function produzirReceita(index, quantidade = 1) {
         }
     });
     
+    // Adicionar a venda ao histórico
+    vendas.push(venda);
+    
     atualizarLocalStorage();
     return true;
+}
+
+// Função para carregar vendas
+function carregarVendas() {
+    const container = document.getElementById('lista-vendas');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (vendas.length === 0) {
+        container.innerHTML = '<p>Nenhuma venda registrada.</p>';
+        return;
+    }
+    
+    // Obter filtros
+    const filtroTexto = document.getElementById('pesquisar-vendas').value.toLowerCase();
+    const filtroDataInicio = document.getElementById('filtro-data-inicio').value ? new Date(document.getElementById('filtro-data-inicio').value) : null;
+    const filtroDataFim = document.getElementById('filtro-data-fim').value ? new Date(document.getElementById('filtro-data-fim').value) : null;
+    const filtroReceita = document.getElementById('filtro-receita').value;
+    
+    // Aplicar filtros
+    const vendasFiltradas = vendas.filter(venda => {
+        const dataVenda = new Date(venda.data);
+        
+        // Filtro de texto
+        if (filtroTexto && !venda.receitaNome.toLowerCase().includes(filtroTexto)) {
+            return false;
+        }
+        
+        // Filtro de data de início
+        if (filtroDataInicio && dataVenda < filtroDataInicio) {
+            return false;
+        }
+        
+        // Filtro de data final
+        if (filtroDataFim) {
+            // Ajustar para o final do dia
+            const dataFimAjustada = new Date(filtroDataFim);
+            dataFimAjustada.setHours(23, 59, 59, 999);
+            
+            if (dataVenda > dataFimAjustada) {
+                return false;
+            }
+        }
+        
+        // Filtro de receita
+        if (filtroReceita && venda.receitaId !== filtroReceita) {
+            return false;
+        }
+        
+        return true;
+    });
+    
+    // Ordenar por data (mais recente primeiro)
+    vendasFiltradas.sort((a, b) => new Date(b.data) - new Date(a.data));
+    
+    // Exibir vendas filtradas
+    vendasFiltradas.forEach(venda => {
+        const card = document.createElement('div');
+        card.className = 'sale-card';
+        
+        // Calcular custo total
+        const custoTotal = venda.itensUtilizados.reduce((total, item) => total + item.custo, 0);
+        
+        card.innerHTML = `
+            <div class="sale-header">
+                <div class="sale-title">${venda.receitaNome}</div>
+                <div class="sale-date">${formatarData(venda.data)}</div>
+            </div>
+            <div>Quantidade: ${venda.quantidade}</div>
+            <div>Custo Total: ${formatarMoeda(custoTotal)}</div>
+            <button class="btn btn-secondary btn-detalhes-venda" data-id="${venda.id}">Ver Detalhes</button>
+            <button class="btn btn-danger btn-cancelar-venda" data-id="${venda.id}">Cancelar Venda</button>
+            <div class="sale-details hidden" id="detalhes-venda-${venda.id}">
+                <h4>Itens Utilizados:</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Quantidade</th>
+                            <th>Unidade de Medida</th>
+                            <th>Custo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${venda.itensUtilizados.map(item => `
+                            <tr>
+                                <td>${item.nome}</td>
+                                <td>${item.quantidadeUsada.toFixed(2)} ${item.unidade}</td>
+                                <td>${item.quantidadeMedida.toFixed(0)} ${item.unidadeMedida}</td>
+                                <td>${formatarMoeda(item.custo)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+    
+    // Adicionar eventos aos botões
+    document.querySelectorAll('.btn-detalhes-venda').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.getAttribute('data-id');
+            const detalhes = document.getElementById(`detalhes-venda-${id}`);
+            detalhes.classList.toggle('hidden');
+        });
+    });
+    
+    document.querySelectorAll('.btn-cancelar-venda').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.getAttribute('data-id');
+            cancelarVenda(id);
+        });
+    });
+}
+
+// Função para cancelar uma venda (reverter o estoque)
+function cancelarVenda(vendaId) {
+    if (!confirm('Tem certeza que deseja cancelar esta venda? Isso restaurará os itens ao estoque.')) {
+        return;
+    }
+    
+    const vendaIndex = vendas.findIndex(v => v.id === vendaId);
+    if (vendaIndex === -1) {
+        mostrarNotificacao('notification-vendas', 'Venda não encontrada!', 'error');
+        return;
+    }
+    
+    const venda = vendas[vendaIndex];
+    
+    // Restaurar o estoque para o estado anterior à venda
+    estoque = JSON.parse(JSON.stringify(venda.estoqueAntes));
+    
+    // Remover a venda do histórico
+    vendas.splice(vendaIndex, 1);
+    
+    // Atualizar localStorage e interfaces
+    atualizarLocalStorage();
+    carregarEstoque();
+    carregarVendas();
+    
+    mostrarNotificacao('notification-vendas', 'Venda cancelada e estoque restaurado com sucesso!', 'success');
 }
 
 // Função para extrair informações de um site via QR code
@@ -1228,15 +1771,16 @@ async function extrairInformacoesDoSite(url) {
         
         // Dados simulados - em um ambiente real, estes dados seriam extraídos do site
         const dadosExtraidos = {
-            nome: "Produto de exemplo",
+            nome: "Red Bull Energy Drink",
             quantidade: 1,
             unidade: "lata",
             unidadeMedida: "ml",
-            quantidadeMedida: 350,
-            preco: 15.99
+            quantidadeMedida: 250,
+            preco: 7.99
         };
         
         // Preencher o formulário com os dados extraídos
+        document.getElementById('codigo-item').value = url;
         document.getElementById('nome-item').value = dadosExtraidos.nome;
         document.getElementById('quantidade-item').value = dadosExtraidos.quantidade;
         document.getElementById('unidade-item').value = dadosExtraidos.unidade;
@@ -1324,7 +1868,7 @@ async function onScanSuccess(decodedText) {
             `<div class="notification notification-success">Código escaneado com sucesso: ${decodedText}</div>`;
         document.getElementById('codigo-item').value = decodedText;
         
-        // Verificar se já existe um produto com esse código
+        // Verificar se já existe um produto com esse código no estoque
         const produtoExistente = estoque.find(item => item.codigo === decodedText);
         
         if (produtoExistente) {
@@ -1341,6 +1885,19 @@ async function onScanSuccess(decodedText) {
             submitBtn.textContent = 'Atualizar Item';
             const index = estoque.findIndex(item => item.codigo === decodedText);
             submitBtn.setAttribute('data-edicao', index);
+        } else {
+            // Verificar se existe um material com esse código no catálogo
+            const materialExistente = encontrarMaterialPorCodigo(decodedText);
+            
+            if (materialExistente) {
+                // Preencher o formulário com os dados do material
+                document.getElementById('nome-item').value = materialExistente.nome;
+                document.getElementById('quantidade-item').value = 1;
+                document.getElementById('unidade-item').value = materialExistente.unidade;
+                document.getElementById('unidade-medida-item').value = materialExistente.unidadeMedida;
+                document.getElementById('quantidade-medida-item').value = materialExistente.quantidadeMedida;
+                document.getElementById('preco-item').value = materialExistente.ultimoPreco;
+            }
         }
     }
 }
@@ -1379,17 +1936,46 @@ document.addEventListener('DOMContentLoaded', function() {
         modalElement.classList.add('hidden');
     }
     
-    // Inicializar IDs para itens de estoque
+    // Inicializar IDs para itens de estoque e materiais
     estoque.forEach((item, index) => {
         if (!item.id) {
-            item.id = 'item_' + Date.now() + '_' + index;
+            item.id = gerarId();
         }
     });
+    
+    materiais.forEach((material, index) => {
+        if (!material.id) {
+            material.id = gerarId();
+        }
+        
+        // Garantir que o histórico de preços existe
+        if (!material.historicoPrecos) {
+            material.historicoPrecos = [{
+                data: material.dataCadastro || new Date().toISOString(),
+                preco: material.ultimoPreco || 0
+            }];
+        }
+    });
+    
+    receitas.forEach(receita => {
+        if (!receita.id) {
+            receita.id = gerarId();
+        }
+    });
+    
+    vendas.forEach(venda => {
+        if (!venda.id) {
+            venda.id = gerarId();
+        }
+    });
+    
     atualizarLocalStorage();
     
-    // Carregar estoque e receitas
+    // Carregar dados nas interfaces
     carregarEstoque();
+    carregarMateriais();
     carregarReceitas();
+    carregarVendas();
     
     // Eventos de navegação
     document.querySelectorAll('.nav-link').forEach(link => {
@@ -1438,6 +2024,21 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
+    // Evento para pesquisar materiais
+    document.getElementById('pesquisar-materiais').addEventListener('input', function() {
+        const termo = this.value.toLowerCase();
+        document.querySelectorAll('#tabela-materiais tbody tr').forEach(tr => {
+            const nome = tr.children[1].textContent.toLowerCase();
+            const codigo = tr.children[0].textContent.toLowerCase();
+            
+            if (nome.includes(termo) || codigo.includes(termo)) {
+                tr.style.display = '';
+            } else {
+                tr.style.display = 'none';
+            }
+        });
+    });
+    
     // Evento para pesquisar receitas
     document.getElementById('pesquisar-receita').addEventListener('input', function() {
         const termo = this.value.toLowerCase();
@@ -1452,6 +2053,31 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
+    // Evento para pesquisar vendas
+    if (document.getElementById('pesquisar-vendas')) {
+        document.getElementById('pesquisar-vendas').addEventListener('input', function() {
+            carregarVendas();
+        });
+    }
+    
+    // Evento para filtrar vendas
+    if (document.getElementById('btn-filtrar-vendas')) {
+        document.getElementById('btn-filtrar-vendas').addEventListener('click', function() {
+            carregarVendas();
+        });
+    }
+    
+    // Evento para limpar filtros de vendas
+    if (document.getElementById('btn-limpar-filtros')) {
+        document.getElementById('btn-limpar-filtros').addEventListener('click', function() {
+            document.getElementById('filtro-data-inicio').value = '';
+            document.getElementById('filtro-data-fim').value = '';
+            document.getElementById('filtro-receita').value = '';
+            document.getElementById('pesquisar-vendas').value = '';
+            carregarVendas();
+        });
+    }
+    
     // Evento para adicionar item ao estoque
     document.getElementById('form-adicionar-estoque').addEventListener('submit', function(e) {
         e.preventDefault();
@@ -1463,6 +2089,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const unidadeMedida = document.getElementById('unidade-medida-item').value;
         const quantidadeMedida = parseFloat(document.getElementById('quantidade-medida-item').value) || 0;
         const preco = parseFloat(document.getElementById('preco-item').value) || 0;
+        
+        // Adicionar ou atualizar o material no catálogo
+        adicionarOuAtualizarMaterial(codigo, nome, unidade, unidadeMedida, quantidadeMedida, preco);
         
         // Verificar se é uma edição
         const submitBtn = document.querySelector('#form-adicionar-estoque button[type="submit"]');
@@ -1486,7 +2115,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             // Novo item
             const novoItem = {
-                id: 'item_' + Date.now(),
+                id: gerarId(),
                 codigo: codigo,
                 nome: nome,
                 quantidade: quantidade,
@@ -1504,12 +2133,42 @@ document.addEventListener('DOMContentLoaded', function() {
         // Atualizar localStorage e interface
         atualizarLocalStorage();
         carregarEstoque();
+        carregarMateriais();
         atualizarSelectsIngredientes();
         
         // Limpar o formulário
         this.reset();
         document.getElementById('codigo-item').value = '';
         document.getElementById('scanner-result').innerHTML = '';
+    });
+    
+    // Evento para adicionar material
+    document.getElementById('form-adicionar-material').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const codigo = document.getElementById('codigo-material').value;
+        const nome = document.getElementById('nome-material').value;
+        const unidade = document.getElementById('unidade-material').value;
+        const unidadeMedida = document.getElementById('unidade-medida-material').value;
+        const quantidadeMedida = parseFloat(document.getElementById('quantidade-medida-material').value) || 0;
+        const preco = parseFloat(document.getElementById('preco-material').value) || 0;
+        
+        // Adicionar ou atualizar o material
+        adicionarOuAtualizarMaterial(codigo, nome, unidade, unidadeMedida, quantidadeMedida, preco);
+        
+        // Atualizar localStorage e interface
+        atualizarLocalStorage();
+        carregarMateriais();
+        
+        // Resetar o botão de submit caso esteja em modo de edição
+        const submitBtn = document.querySelector('#form-adicionar-material button[type="submit"]');
+        submitBtn.textContent = 'Adicionar Material';
+        submitBtn.removeAttribute('data-edicao');
+        
+        // Limpar o formulário
+        this.reset();
+        
+        mostrarNotificacao('notification-materiais', 'Material cadastrado com sucesso!', 'success');
     });
     
     // Evento para adicionar receita
@@ -1560,7 +2219,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             // Nova receita
             const novaReceita = {
-                id: 'receita_' + Date.now(),
+                id: gerarId(),
                 nome: nome,
                 descricao: descricao,
                 ingredientes: ingredientes,
@@ -1627,6 +2286,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Atualizar a interface
                     carregarEstoque();
                     carregarDetalhesReceita(index);
+                    carregarVendas();
                     
                     // Mostrar a aba de listar estoque
                     document.querySelector('[data-tab="listar-estoque"]').click();
@@ -1656,6 +2316,3 @@ document.addEventListener('DOMContentLoaded', function() {
     atualizarDataHora();
     setInterval(atualizarDataHora, 1000);
 });
-    </script>
-</body>
-</html>
