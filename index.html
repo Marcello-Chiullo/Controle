@@ -828,1537 +828,1538 @@
     </div>
 </div>
 </body>
-</html>
-<script>
-// PARTE 5: JAVASCRIPT (PRIMEIRA PARTE)
-
-// Inicialização do localStorage se necessário
-if (!localStorage.getItem('estoque')) {
-    localStorage.setItem('estoque', JSON.stringify([]));
-}
-
-if (!localStorage.getItem('materiais')) {
-    localStorage.setItem('materiais', JSON.stringify([]));
-}
-
-if (!localStorage.getItem('receitas')) {
-    localStorage.setItem('receitas', JSON.stringify([]));
-}
-
-if (!localStorage.getItem('vendas')) {
-    localStorage.setItem('vendas', JSON.stringify([]));
-}
-
-// Variáveis globais
-let estoque = JSON.parse(localStorage.getItem('estoque')) || [];
-let materiais = JSON.parse(localStorage.getItem('materiais')) || [];
-let receitas = JSON.parse(localStorage.getItem('receitas')) || [];
-let vendas = JSON.parse(localStorage.getItem('vendas')) || [];
-let html5QrCode;
-
-// Função para atualizar o localStorage
-function atualizarLocalStorage() {
-    localStorage.setItem('estoque', JSON.stringify(estoque));
-    localStorage.setItem('materiais', JSON.stringify(materiais));
-    localStorage.setItem('receitas', JSON.stringify(receitas));
-    localStorage.setItem('vendas', JSON.stringify(vendas));
-}
-
-// Função para mostrar uma notificação
-function mostrarNotificacao(elemento, mensagem, tipo) {
-    const notificacao = document.getElementById(elemento);
-    notificacao.className = `notification notification-${tipo}`;
-    notificacao.textContent = mensagem;
+    <script>
+    // PARTE 5: JAVASCRIPT (PRIMEIRA PARTE)
     
-    // Esconder a notificação após 5 segundos
-    setTimeout(() => {
-        notificacao.className = 'notification hidden';
-    }, 5000);
-}
-
-// Função para mostrar/esconder o modal de processamento
-function toggleModal(show, title = "Processando...", message = "Aguarde enquanto processamos as informações.") {
-    const modal = document.getElementById('processing-modal');
+    // Inicialização do localStorage se necessário
+    if (!localStorage.getItem('estoque')) {
+        localStorage.setItem('estoque', JSON.stringify([]));
+    }
     
-    document.getElementById('modal-title').textContent = title;
-    document.getElementById('modal-message').textContent = message;
+    if (!localStorage.getItem('materiais')) {
+        localStorage.setItem('materiais', JSON.stringify([]));
+    }
     
-    if (show) {
-        modal.classList.remove('hidden');
+    if (!localStorage.getItem('receitas')) {
+        localStorage.setItem('receitas', JSON.stringify([]));
+    }
+    
+    if (!localStorage.getItem('vendas')) {
+        localStorage.setItem('vendas', JSON.stringify([]));
+    }
+    
+    // Variáveis globais
+    let estoque = JSON.parse(localStorage.getItem('estoque')) || [];
+    let materiais = JSON.parse(localStorage.getItem('materiais')) || [];
+    let receitas = JSON.parse(localStorage.getItem('receitas')) || [];
+    let vendas = JSON.parse(localStorage.getItem('vendas')) || [];
+    let html5QrCode;
+    
+    // Função para atualizar o localStorage
+    function atualizarLocalStorage() {
+        localStorage.setItem('estoque', JSON.stringify(estoque));
+        localStorage.setItem('materiais', JSON.stringify(materiais));
+        localStorage.setItem('receitas', JSON.stringify(receitas));
+        localStorage.setItem('vendas', JSON.stringify(vendas));
+    }
+    
+    // Função para mostrar uma notificação
+    function mostrarNotificacao(elemento, mensagem, tipo) {
+        const notificacao = document.getElementById(elemento);
+        notificacao.className = `notification notification-${tipo}`;
+        notificacao.textContent = mensagem;
         
-        // Adicionar timer de segurança - fechará o modal após 10 segundos
-        window.modalSafetyTimer = setTimeout(() => {
+        // Esconder a notificação após 5 segundos
+        setTimeout(() => {
+            notificacao.className = 'notification hidden';
+        }, 5000);
+    }
+    
+    // Função para mostrar/esconder o modal de processamento
+    function toggleModal(show, title = "Processando...", message = "Aguarde enquanto processamos as informações.") {
+        const modal = document.getElementById('processing-modal');
+        
+        document.getElementById('modal-title').textContent = title;
+        document.getElementById('modal-message').textContent = message;
+        
+        if (show) {
+            modal.classList.remove('hidden');
+            
+            // Adicionar timer de segurança - fechará o modal após 10 segundos
+            window.modalSafetyTimer = setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 10000);
+        } else {
             modal.classList.add('hidden');
-        }, 10000);
-    } else {
-        modal.classList.add('hidden');
-        // Limpar o timer de segurança se o modal for fechado manualmente
-        if (window.modalSafetyTimer) {
-            clearTimeout(window.modalSafetyTimer);
+            // Limpar o timer de segurança se o modal for fechado manualmente
+            if (window.modalSafetyTimer) {
+                clearTimeout(window.modalSafetyTimer);
+            }
         }
     }
-}
-
-// Função para formatar data
-function formatarData(data) {
-    const d = new Date(data);
-    return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
-}
-
-// Função para formatar valor monetário
-function formatarMoeda(valor) {
-    return 'R$ ' + valor.toFixed(2).replace('.', ',');
-}
-
-// Função para gerar ID único
-function gerarId() {
-    return 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-}
-
-// FUNÇÕES PARA ESTOQUE E MATERIAIS
-
-// Função para encontrar um material pelo código
-function encontrarMaterialPorCodigo(codigo) {
-    return materiais.find(m => m.codigo === codigo);
-}
-
-// Função para adicionar ou atualizar um material no catálogo
-function adicionarOuAtualizarMaterial(codigoMaterial, nomeMaterial, unidadeMaterial, unidadeMedidaMaterial, quantidadeMedidaMaterial, precoMaterial, dataCompra = null) {
-    // Verificar se o material já existe
-    const materialExistente = encontrarMaterialPorCodigo(codigoMaterial);
     
-    if (materialExistente) {
-        // Atualizar material existente
-        materialExistente.nome = nomeMaterial;
-        materialExistente.unidade = unidadeMaterial;
-        materialExistente.unidadeMedida = unidadeMedidaMaterial;
-        materialExistente.quantidadeMedida = quantidadeMedidaMaterial;
+    // Função para formatar data
+    function formatarData(data) {
+        const d = new Date(data);
+        return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+    }
+    
+    // Função para formatar valor monetário
+    function formatarMoeda(valor) {
+        return 'R$ ' + valor.toFixed(2).replace('.', ',');
+    }
+    
+    // Função para gerar ID único
+    function gerarId() {
+        return 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+    
+    // FUNÇÕES PARA ESTOQUE E MATERIAIS
+    
+    // Função para encontrar um material pelo código
+    function encontrarMaterialPorCodigo(codigo) {
+        return materiais.find(m => m.codigo === codigo);
+    }
+    
+    // Função para adicionar ou atualizar um material no catálogo
+    function adicionarOuAtualizarMaterial(codigoMaterial, nomeMaterial, unidadeMaterial, unidadeMedidaMaterial, quantidadeMedidaMaterial, precoMaterial, dataCompra = null) {
+        // Verificar se o material já existe
+        const materialExistente = encontrarMaterialPorCodigo(codigoMaterial);
         
-        // Adicionar histórico de preço
-        materialExistente.historicoPrecos.push({
-            data: dataCompra || new Date().toISOString(),
-            preco: precoMaterial
-        });
-        
-        // Atualizar o último preço
-        materialExistente.ultimoPreco = precoMaterial;
-        materialExistente.ultimaCompra = dataCompra || new Date().toISOString();
-        
-        // Recalcular o preço médio
-        const totalPrecos = materialExistente.historicoPrecos.reduce((soma, item) => soma + item.preco, 0);
-        materialExistente.precoMedio = totalPrecos / materialExistente.historicoPrecos.length;
-        
-        return materialExistente.id;
-    } else {
-        // Criar novo material
-        const novoMaterial = {
-            id: gerarId(),
-            codigo: codigoMaterial,
-            nome: nomeMaterial,
-            unidade: unidadeMaterial,
-            unidadeMedida: unidadeMedidaMaterial,
-            quantidadeMedida: quantidadeMedidaMaterial,
-            ultimoPreco: precoMaterial,
-            precoMedio: precoMaterial,
-            ultimaCompra: dataCompra || new Date().toISOString(),
-            dataCadastro: new Date().toISOString(),
-            historicoPrecos: [{
+        if (materialExistente) {
+            // Atualizar material existente
+            materialExistente.nome = nomeMaterial;
+            materialExistente.unidade = unidadeMaterial;
+            materialExistente.unidadeMedida = unidadeMedidaMaterial;
+            materialExistente.quantidadeMedida = quantidadeMedidaMaterial;
+            
+            // Adicionar histórico de preço
+            materialExistente.historicoPrecos.push({
                 data: dataCompra || new Date().toISOString(),
                 preco: precoMaterial
-            }]
-        };
-        
-        materiais.push(novoMaterial);
-        return novoMaterial.id;
-    }
-}
-
-// Função para adicionar item ao estoque
-function adicionarItemEstoque(materialId, quantidade, preco = null) {
-    const material = materiais.find(m => m.id === materialId);
-    if (!material) return false;
-    
-    // Verificar se o item já existe no estoque
-    const itemExistente = estoque.find(i => i.materialId === materialId);
-    
-    if (itemExistente) {
-        // Atualizar item existente
-        itemExistente.quantidade += parseFloat(quantidade);
-        if (preco !== null) {
-            itemExistente.preco = preco;
-        }
-        return true;
-    } else {
-        // Criar novo item
-        const novoItem = {
-            id: gerarId(),
-            materialId: materialId,
-            codigo: material.codigo,
-            nome: material.nome,
-            quantidade: parseFloat(quantidade),
-            unidade: material.unidade,
-            unidadeMedida: material.unidadeMedida,
-            quantidadeMedida: material.quantidadeMedida,
-            preco: preco !== null ? preco : material.ultimoPreco,
-            dataAdicao: new Date().toISOString()
-        };
-        
-        estoque.push(novoItem);
-        return true;
-    }
-}
-
-// Função para remover item do estoque
-function removerItemEstoque(materialId, quantidade) {
-    const item = estoque.find(i => i.materialId === materialId);
-    if (!item) return false;
-    
-    // Verificar se a quantidade disponível é suficiente
-    if (item.quantidade < quantidade) {
-        return false;
-    }
-    
-    // Atualizar a quantidade
-    item.quantidade -= parseFloat(quantidade);
-    
-    // Se a quantidade ficar zero ou negativa, remover o item
-    if (item.quantidade <= 0) {
-        const index = estoque.findIndex(i => i.materialId === materialId);
-        if (index !== -1) {
-            estoque.splice(index, 1);
-        }
-    }
-    
-    return true;
-}
-
-// Função para carregar materiais na tabela
-function carregarMateriais() {
-    const tbody = document.getElementById('itens-materiais');
-    if (!tbody) return;
-    
-    tbody.innerHTML = '';
-    
-    if (materiais.length === 0) {
-        const tr = document.createElement('tr');
-        tr.innerHTML = '<td colspan="9" style="text-align: center;">Nenhum material cadastrado.</td>';
-        tbody.appendChild(tr);
-        return;
-    }
-    
-    materiais.forEach((material, index) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${material.codigo || 'N/A'}</td>
-            <td>${material.nome}</td>
-            <td>${material.unidade}</td>
-            <td>${material.unidadeMedida}</td>
-            <td>${material.quantidadeMedida}</td>
-            <td>${formatarData(material.ultimaCompra)}</td>
-            <td>${formatarMoeda(material.ultimoPreco)}</td>
-            <td>${formatarMoeda(material.precoMedio)}</td>
-            <td>
-                <button class="btn btn-primary btn-editar-material" data-index="${index}">Editar</button>
-                <button class="btn btn-success btn-adicionar-estoque" data-id="${material.id}">+ Estoque</button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
-    
-    // Adicionar eventos aos botões
-    document.querySelectorAll('.btn-editar-material').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const index = this.getAttribute('data-index');
-            editarMaterial(index);
-        });
-    });
-    
-    document.querySelectorAll('.btn-adicionar-estoque').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const id = this.getAttribute('data-id');
-            adicionarAoEstoque(id);
-        });
-    });
-}
-
-// Função para editar um material
-function editarMaterial(index) {
-    const material = materiais[index];
-    
-    // Mudar para a aba de adicionar item
-    const tabButton = document.querySelector('[data-tab="adicionar-item"]');
-    if (tabButton) {
-        tabButton.click();
-    }
-    
-    // Preencher o formulário
-    document.getElementById('codigo-material').value = material.codigo || '';
-    document.getElementById('nome-material').value = material.nome;
-    document.getElementById('unidade-material').value = material.unidade;
-    document.getElementById('unidade-medida-material').value = material.unidadeMedida;
-    document.getElementById('quantidade-medida-material').value = material.quantidadeMedida;
-    document.getElementById('preco-material').value = material.ultimoPreco;
-    
-    // Quantidade para estoque
-    document.getElementById('quantidade-material').value = 1;
-    
-    // Data de compra
-    const dataCompra = document.getElementById('data-compra-material');
-    if (dataCompra) {
-        const data = new Date(material.ultimaCompra);
-        dataCompra.value = data.toISOString().split('T')[0];
-    }
-    
-    // Modificar o botão de submit
-    const submitBtn = document.querySelector('#form-adicionar-material button[type="submit"]');
-    submitBtn.textContent = 'Atualizar Material';
-    submitBtn.setAttribute('data-edicao', index);
-}
-
-// Função para adicionar um material ao estoque
-function adicionarAoEstoque(materialId) {
-    const material = materiais.find(m => m.id === materialId);
-    if (!material) return;
-    
-    // Mudar para a aba de adicionar item
-    const tabButton = document.querySelector('[data-tab="adicionar-item"]');
-    if (tabButton) {
-        tabButton.click();
-    }
-    
-    // Preencher o formulário com os dados do material
-    document.getElementById('codigo-material').value = material.codigo || '';
-    document.getElementById('nome-material').value = material.nome;
-    document.getElementById('quantidade-material').value = 1;
-    document.getElementById('unidade-material').value = material.unidade;
-    document.getElementById('unidade-medida-material').value = material.unidadeMedida;
-    document.getElementById('quantidade-medida-material').value = material.quantidadeMedida;
-    document.getElementById('preco-material').value = material.ultimoPreco;
-    
-    // Data atual para compra
-    const dataCompra = document.getElementById('data-compra-material');
-    if (dataCompra) {
-        const hoje = new Date();
-        dataCompra.value = hoje.toISOString().split('T')[0];
-    }
-}
-
-// Função para carregar o estoque na tabela
-function carregarEstoque() {
-    const tbody = document.getElementById('itens-estoque');
-    if (!tbody) return;
-    
-    tbody.innerHTML = '';
-    
-    if (estoque.length === 0) {
-        const tr = document.createElement('tr');
-        tr.innerHTML = '<td colspan="7" style="text-align: center;">Nenhum item no estoque.</td>';
-        tbody.appendChild(tr);
-        return;
-    }
-    
-    estoque.forEach((item) => {
-        // Calcular a quantidade em unidade de medida (ex: ml restantes)
-        const quantidadeTotalMedida = item.quantidade * (item.quantidadeMedida || 1);
-        // Verificar se é um número fracionário
-        const quantidadeFracionada = item.quantidade % 1 !== 0;
-        
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${item.codigo || 'N/A'}</td>
-            <td>${item.nome}</td>
-            <td>${item.quantidade.toFixed(2)} ${quantidadeFracionada ? `(${Math.floor(item.quantidade)} + ${((item.quantidade % 1) * 100).toFixed(0)}%)` : ''}</td>
-            <td>${item.unidade}</td>
-            <td>${quantidadeTotalMedida.toFixed(0)} ${item.unidadeMedida || 'N/A'}</td>
-            <td>${formatarMoeda(item.preco || 0)}</td>
-            <td>${formatarData(item.dataAdicao)}</td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-// FUNÇÕES PARA SCANNER DE QR CODE/CÓDIGO DE BARRAS
-function iniciarScanner() {
-    const scannerContainer = document.getElementById('scanner-container');
-    if (!scannerContainer) return;
-    
-    scannerContainer.classList.remove('hidden');
-    
-    html5QrCode = new Html5Qrcode("reader");
-    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-    
-    html5QrCode.start(
-        { facingMode: "environment" }, 
-        config, 
-        onScanSuccess, 
-        onScanFailure
-    );
-}
-
-function pararScanner() {
-    if (html5QrCode && html5QrCode.isScanning) {
-        html5QrCode.stop().then(() => {
-            console.log('Scanner parado.');
-            document.getElementById('scanner-container').classList.add('hidden');
-        }).catch(err => {
-            console.error('Erro ao parar o scanner:', err);
-        });
-    }
-}
-
-function onScanSuccess(decodedText, decodedResult) {
-    console.log(`Código escaneado: ${decodedText}`);
-    
-    // Preencher o campo de código
-    document.getElementById('codigo-material').value = decodedText;
-    
-    // Mostrar resultado
-    document.getElementById('scanner-result').innerHTML = `
-        <div class="notification notification-success">
-            Código detectado: ${decodedText}
-        </div>
-    `;
-    
-    // Parar o scanner
-    pararScanner();
-    
-    // Buscar informações do produto (simulação)
-    buscarInformacoesProduto(decodedText);
-}
-
-function onScanFailure(error) {
-    // Silenciar erro para não encher o console
-    // console.warn(`Erro ao escanear: ${error}`);
-}
-
-// Função para buscar informações do produto (simulação)
-function buscarInformacoesProduto(codigo) {
-    // Verificar se o código já existe no catálogo
-    const materialExistente = encontrarMaterialPorCodigo(codigo);
-    
-    if (materialExistente) {
-        // Preencher formulário com dados existentes
-        document.getElementById('nome-material').value = materialExistente.nome;
-        document.getElementById('unidade-material').value = materialExistente.unidade;
-        document.getElementById('unidade-medida-material').value = materialExistente.unidadeMedida;
-        document.getElementById('quantidade-medida-material').value = materialExistente.quantidadeMedida;
-        document.getElementById('preco-material').value = materialExistente.ultimoPreco;
-        
-        mostrarNotificacao('notification-materiais', 'Produto encontrado no catálogo!', 'success');
-    } else {
-        // Mostrar mensagem
-        mostrarNotificacao('notification-materiais', 'Produto não encontrado no catálogo. Preencha os detalhes manualmente.', 'info');
-    }
-}
-        // PARTE 6: JAVASCRIPT (SEGUNDA PARTE)
-
-// FUNÇÕES PARA RECEITAS
-
-// Função para calcular o custo de uma receita
-function calcularCustoReceita(receita) {
-   let custoTotal = 0;
-   
-   receita.ingredientes.forEach(ingrediente => {
-       const itemEstoque = estoque.find(item => item.materialId === ingrediente.materialId);
-       if (itemEstoque && itemEstoque.preco) {
-           // Calculamos o custo com base na quantidade da unidade de medida
-           const precoUnitarioMedida = itemEstoque.preco / (itemEstoque.quantidadeMedida || 1);
-           custoTotal += precoUnitarioMedida * ingrediente.quantidade;
-       }
-   });
-   
-   return custoTotal;
-}
-
-// Função para adicionar campo de ingrediente
-function adicionarCampoIngrediente(ingredienteData = null) {
-   const container = document.getElementById('lista-ingredientes');
-   const div = document.createElement('div');
-   div.className = 'ingrediente-item';
-   div.innerHTML = `
-       <div class="form-row">
-           <div class="form-col">
-               <div class="form-group">
-                   <label>Ingrediente:</label>
-                   <select class="form-control ingrediente-select" required>
-                       <option value="">Selecione um ingrediente...</option>
-                       ${materiais.map(material => `
-                           <option value="${material.id}" 
-                               data-unidade="${material.unidade}" 
-                               data-preco="${material.ultimoPreco || 0}"
-                               data-unidade-medida="${material.unidadeMedida || ''}"
-                               data-quantidade-medida="${material.quantidadeMedida || 0}">
-                               ${material.nome}
-                           </option>
-                       `).join('')}
-                   </select>
-               </div>
-           </div>
-           <div class="form-col">
-               <div class="form-group">
-                   <label>Quantidade:</label>
-                   <input type="number" class="form-control ingrediente-quantidade" min="0.01" step="0.01" required>
-               </div>
-           </div>
-           <div class="form-col">
-               <div class="form-group">
-                   <label>Unidade de Medida:</label>
-                   <select class="form-control ingrediente-unidade-medida" required>
-                       <option value="kg">Quilogramas (kg)</option>
-                       <option value="g">Gramas (g)</option>
-                       <option value="l">Litros (l)</option>
-                       <option value="ml">Mililitros (ml)</option>
-                   </select>
-               </div>
-           </div>
-           <div class="form-col" style="flex: 0.5;">
-               <div class="form-group">
-                   <label>&nbsp;</label>
-                   <button type="button" class="btn btn-danger remover-ingrediente" style="display: block;">X</button>
-               </div>
-           </div>
-       </div>
-   `;
-   container.appendChild(div);
-   
-   // Configurar o novo campo
-   const select = div.querySelector('.ingrediente-select');
-   const quantidadeInput = div.querySelector('.ingrediente-quantidade');
-   const unidadeMedidaSelect = div.querySelector('.ingrediente-unidade-medida');
-   const removerBtn = div.querySelector('.remover-ingrediente');
-   
-   // Preencher com dados se fornecidos
-   if (ingredienteData) {
-       select.value = ingredienteData.materialId;
-       quantidadeInput.value = ingredienteData.quantidade;
-       unidadeMedidaSelect.value = ingredienteData.unidadeMedida || 'g';
-   }
-   
-   // Adicionar eventos
-   select.addEventListener('change', function() {
-       const selectedOption = this.options[this.selectedIndex];
-       if (selectedOption.value) {
-           const unidadeMedida = selectedOption.getAttribute('data-unidade-medida');
-           if (unidadeMedida) {
-               unidadeMedidaSelect.value = unidadeMedida;
-           }
-           
-           // Atualizar cálculos
-           atualizarCalculosReceita();
-       }
-   });
-   
-   quantidadeInput.addEventListener('input', atualizarCalculosReceita);
-   unidadeMedidaSelect.addEventListener('change', atualizarCalculosReceita);
-   
-   removerBtn.addEventListener('click', function() {
-       container.removeChild(div);
-       atualizarCalculosReceita();
-   });
-}
-
-// Função para atualizar os cálculos de preço da receita
-function atualizarCalculosReceita() {
-   let custoTotal = 0;
-   
-   // Coletar dados de ingredientes
-   document.querySelectorAll('.ingrediente-item').forEach(item => {
-       const select = item.querySelector('.ingrediente-select');
-       if (select.value) {
-           const quantidade = parseFloat(item.querySelector('.ingrediente-quantidade').value) || 0;
-           const selectedOption = select.options[select.selectedIndex];
-           const preco = parseFloat(selectedOption.getAttribute('data-preco')) || 0;
-           const quantidadeMedida = parseFloat(selectedOption.getAttribute('data-quantidade-medida')) || 1;
-           
-           // Calcular custo proporcional
-           const precoUnitarioMedida = preco / quantidadeMedida;
-           custoTotal += precoUnitarioMedida * quantidade;
-       }
-   });
-   
-   // Atualizar elementos de preço
-   const custoProducaoEl = document.getElementById('custo-producao');
-   const custosVariadosEl = document.getElementById('custos-variados');
-   const precoEstimadoEl = document.getElementById('preco-estimado');
-   
-   if (custoProducaoEl && custosVariadosEl && precoEstimadoEl) {
-       // Custo de produção
-       custoProducaoEl.textContent = formatarMoeda(custoTotal);
-       
-       // Custos variados (10%)
-       const custosVariados = custoTotal * 0.1;
-       custosVariadosEl.textContent = formatarMoeda(custosVariados);
-       
-       // Preço estimado (custo total + custos variados + 150% markup)
-       const precoEstimado = (custoTotal + custosVariados) * 2.5;
-       precoEstimadoEl.textContent = formatarMoeda(precoEstimado);
-       
-       // Se existe um campo de preço de venda, sugerir o valor estimado
-       const precoVendaInput = document.getElementById('preco-venda');
-       if (precoVendaInput && precoVendaInput.value === '') {
-           precoVendaInput.value = precoEstimado.toFixed(2);
-       }
-   }
-}
-
-// Função para editar receita
-function editarReceita(index) {
-   const receita = receitas[index];
-   
-   // Mudar para a aba de adicionar receita
-   const tabButton = document.querySelector('[data-tab="adicionar-receita"]');
-   if (tabButton) {
-       tabButton.click();
-   }
-   
-   // Preencher o formulário
-   document.getElementById('nome-receita').value = receita.nome;
-   document.getElementById('descricao-receita').value = receita.descricao || '';
-   
-   // Limpar os ingredientes existentes
-   document.getElementById('lista-ingredientes').innerHTML = '';
-   
-   // Adicionar cada ingrediente
-   receita.ingredientes.forEach(ingrediente => {
-       adicionarCampoIngrediente(ingrediente);
-   });
-   
-   // Preencher preço de venda
-   document.getElementById('preco-venda').value = receita.precoVenda.toFixed(2);
-   
-   // Atualizar cálculos
-   atualizarCalculosReceita();
-   
-   // Modificar o botão de submit
-   const submitBtn = document.querySelector('#form-adicionar-receita button[type="submit"]');
-   submitBtn.textContent = 'Atualizar Receita';
-   submitBtn.setAttribute('data-edicao', index);
-}
-
-// Função para remover receita
-function removerReceita(index) {
-   if (confirm('Tem certeza que deseja remover esta receita?')) {
-       receitas.splice(index, 1);
-       atualizarLocalStorage();
-       carregarReceitas();
-       mostrarNotificacao('notification-estoque', 'Receita removida com sucesso!', 'success');
-   }
-}
-
-// Função para carregar receitas
-function carregarReceitas() {
-   const container = document.getElementById('lista-receitas');
-   if (!container) return;
-   
-   container.innerHTML = '';
-   
-   // Carregar no select da página de vendas
-   const selectVenda = document.getElementById('selecionar-receita-venda');
-   if (selectVenda) {
-       selectVenda.innerHTML = '<option value="">Selecione uma receita...</option>';
-   }
-   
-   // Carregar no select do filtro de vendas
-   const selectFiltroVendas = document.getElementById('filtro-receita');
-   if (selectFiltroVendas) {
-       selectFiltroVendas.innerHTML = '<option value="">Todas as receitas</option>';
-   }
-   
-   if (receitas.length === 0) {
-       container.innerHTML = '<p>Nenhuma receita cadastrada.</p>';
-       return;
-   }
-   
-   receitas.forEach((receita, index) => {
-       // Calcular o custo total da receita
-       const custoProducao = calcularCustoReceita(receita);
-       const custosVariados = custoProducao * 0.1;
-       const precoEstimado = (custoProducao + custosVariados) * 2.5;
-       
-       // Adicionar ao container de lista
-       const card = document.createElement('div');
-       card.className = 'recipe-card';
-       card.innerHTML = `
-           <h3>${receita.nome}</h3>
-           <p>${receita.descricao || 'Sem descrição'}</p>
-           
-           <div class="recipe-pricing">
-               <div class="recipe-price-item">
-                   <div class="recipe-price-label">Custo de Produção</div>
-                   <div class="recipe-price-value">${formatarMoeda(custoProducao)}</div>
-               </div>
-               
-               <div class="recipe-price-item">
-                   <div class="recipe-price-label">Custos Variados</div>
-                   <div class="recipe-price-value">${formatarMoeda(custosVariados)}</div>
-               </div>
-               
-               <div class="recipe-price-item">
-                   <div class="recipe-price-label">Preço Estimado</div>
-                   <div class="recipe-price-value">${formatarMoeda(precoEstimado)}</div>
-               </div>
-               
-               <div class="recipe-price-item">
-                   <div class="recipe-price-label">Preço de Venda</div>
-                   <div class="recipe-price-value highlight">${formatarMoeda(receita.precoVenda || 0)}</div>
-               </div>
-           </div>
-           
-           <div style="margin-top: 15px;">
-               <button class="btn btn-primary btn-editar-receita" data-index="${index}">Editar</button>
-               <button class="btn btn-danger btn-remover-receita" data-index="${index}">Remover</button>
-               <button class="btn btn-success btn-produzir-receita" data-index="${index}">Produzir</button>
-           </div>
-       `;
-       container.appendChild(card);
-       
-       // Adicionar ao select de vendas
-       if (selectVenda) {
-           const option = document.createElement('option');
-           option.value = receita.id;
-           option.textContent = receita.nome;
-           selectVenda.appendChild(option);
-       }
-       
-       // Adicionar ao select de filtro de vendas
-       if (selectFiltroVendas) {
-           const optionFiltro = document.createElement('option');
-           optionFiltro.value = receita.id;
-           optionFiltro.textContent = receita.nome;
-           selectFiltroVendas.appendChild(optionFiltro);
-       }
-   });
-   
-   // Adicionar eventos aos botões
-   addRecipeButtonEvents();
-}
-
-// Função para adicionar eventos aos botões das receitas
-function addRecipeButtonEvents() {
-   document.querySelectorAll('.btn-editar-receita').forEach(btn => {
-       btn.addEventListener('click', function() {
-           const index = this.getAttribute('data-index');
-           editarReceita(index);
-       });
-   });
-   
-   document.querySelectorAll('.btn-remover-receita').forEach(btn => {
-       btn.addEventListener('click', function() {
-           const index = this.getAttribute('data-index');
-           removerReceita(index);
-       });
-   });
-   
-   document.querySelectorAll('.btn-produzir-receita').forEach(btn => {
-       btn.addEventListener('click', function() {
-           const index = this.getAttribute('data-index');
-           const receita = receitas[index];
-           
-           // Mudar para a página de vendas e aba de registrar venda
-           const navLink = document.querySelector('[data-page="vendas"]');
-           if (navLink) {
-               navLink.click();
-           }
-           
-           // Pequeno delay para garantir que a página foi carregada
-           setTimeout(() => {
-               const tabButton = document.querySelector('[data-tab="registrar-venda"]');
-               if (tabButton) {
-                   tabButton.click();
-               }
-               
-               // Selecionar a receita
-               const selectReceita = document.getElementById('selecionar-receita-venda');
-               if (selectReceita) {
-                   selectReceita.value = receita.id;
-                   selectReceita.dispatchEvent(new Event('change'));
-               }
-           }, 100);
-       });
-   });
-}
-
-// FUNÇÕES PARA VENDAS
-
-// Função para carregar detalhes da receita na tela de vendas
-function carregarDetalhesReceitaVenda(receitaId) {
-   const receita = receitas.find(r => r.id === receitaId);
-   if (!receita) return;
-   
-   const detalhes = document.getElementById('detalhes-receita-venda');
-   const nomeReceita = document.getElementById('nome-receita-selecionada-venda');
-   const tbodyIngredientes = document.getElementById('ingredientes-venda-selecionada');
-   const avisoEstoque = document.getElementById('aviso-estoque-venda');
-   
-   detalhes.classList.remove('hidden');
-   nomeReceita.textContent = receita.nome;
-   
-   if (tbodyIngredientes) {
-       tbodyIngredientes.innerHTML = '';
-       
-       // Calcular custos da receita
-       const custoProducao = calcularCustoReceita(receita);
-       const custosVariados = custoProducao * 0.1;
-       
-       // Preencher informações de preço
-       document.getElementById('custo-producao-venda').textContent = formatarMoeda(custoProducao);
-       document.getElementById('custos-variados-venda').textContent = formatarMoeda(custosVariados);
-       document.getElementById('preco-venda-venda').textContent = formatarMoeda(receita.precoVenda || 0);
-       
-       // Definir valor total
-       const qtd = parseInt(document.getElementById('quantidade-venda').value) || 1;
-       document.getElementById('valor-total-venda').value = (receita.precoVenda * qtd).toFixed(2);
-       
-       let todosProdutosDisponiveis = true;
-       
-       // Listar ingredientes necessários
-       receita.ingredientes.forEach(ingrediente => {
-           const material = materiais.find(m => m.id === ingrediente.materialId);
-           const itemEstoque = estoque.find(item => item.materialId === ingrediente.materialId);
-           
-           const quantidadeNecessaria = ingrediente.quantidade * qtd;
-           let statusEstoque = 'Não disponível';
-           let disponivel = false;
-           
-           if (itemEstoque) {
-               disponivel = itemEstoque.quantidade >= quantidadeNecessaria;
-               statusEstoque = disponivel ? 'Disponível' : 'Insuficiente';
-           }
-           
-           if (!disponivel) {
-               todosProdutosDisponiveis = false;
-           }
-           
-           const tr = document.createElement('tr');
-           tr.innerHTML = `
-               <td>${material ? material.nome : 'Desconhecido'}</td>
-               <td>${quantidadeNecessaria} ${ingrediente.unidadeMedida}</td>
-               <td>${itemEstoque ? itemEstoque.quantidade.toFixed(2) + ' ' + itemEstoque.unidade : 'N/A'}</td>
-               <td style="color: ${disponivel ? 'green' : 'red'}">${statusEstoque}</td>
-           `;
-           
-           tbodyIngredientes.appendChild(tr);
-       });
-       
-       // Mostrar aviso de estoque
-       avisoEstoque.classList.remove('hidden');
-       if (!todosProdutosDisponiveis) {
-           avisoEstoque.className = 'notification notification-error';
-           avisoEstoque.textContent = 'Atenção: Alguns ingredientes não estão disponíveis em quantidade suficiente!';
-           document.getElementById('confirmar-venda').disabled = true;
-       } else {
-           avisoEstoque.className = 'notification notification-success';
-           avisoEstoque.textContent = 'Todos os ingredientes estão disponíveis. Você pode prosseguir com a venda.';
-           document.getElementById('confirmar-venda').disabled = false;
-       }
-   }
-}
-
-// Função para registrar uma venda
-function registrarVenda(receitaId, quantidade, clienteNome, clienteTelefone, 
-                      clienteEndereco, custoFrete, custoDecoracao, outrosCustos, dataVenda) {
-   
-   const receita = receitas.find(r => r.id === receitaId);
-   if (!receita) return false;
-   
-   // Verificar disponibilidade de ingredientes
-   let todosProdutosDisponiveis = true;
-   
-   for (const ingrediente of receita.ingredientes) {
-       const itemEstoque = estoque.find(item => item.materialId === ingrediente.materialId);
-       
-       if (!itemEstoque || itemEstoque.quantidade < (ingrediente.quantidade * quantidade)) {
-           todosProdutosDisponiveis = false;
-           break;
-       }
-   }
-   
-   if (!todosProdutosDisponiveis) {
-       return false;
-   }
-   
-   // Remover ingredientes do estoque
-   for (const ingrediente of receita.ingredientes) {
-       removerItemEstoque(ingrediente.materialId, ingrediente.quantidade * quantidade);
-   }
-   
-   // Calcular valores
-   const custoProducao = calcularCustoReceita(receita);
-   const custosVariados = custoProducao * 0.1;
-   const custoTotal = custoProducao + custosVariados;
-   const valorTotal = (receita.precoVenda * quantidade) + custoFrete + custoDecoracao + outrosCustos;
-   
-   // Criar registro de venda
-   const novaVenda = {
-       id: gerarId(),
-       receitaId: receitaId,
-       receitaNome: receita.nome,
-       quantidade: quantidade,
-       custoProducao: custoProducao,
-       custosVariados: custosVariados,
-       custoTotal: custoTotal,
-       precoVenda: receita.precoVenda,
-       custoFrete: custoFrete,
-       custoDecoracao: custoDecoracao,
-       outrosCustos: outrosCustos,
-       valorTotal: valorTotal,
-       cliente: {
-           nome: clienteNome,
-           telefone: clienteTelefone,
-           endereco: clienteEndereco
-       },
-       data: dataVenda || new Date().toISOString(),
-       dataCriacao: new Date().toISOString()
-   };
-   
-   vendas.push(novaVenda);
-   atualizarLocalStorage();
-   
-   return true;
-}
-
-// Função para carregar vendas
-function carregarVendas() {
-   const container = document.getElementById('lista-vendas');
-   if (!container) return;
-   
-   container.innerHTML = '';
-   
-   if (vendas.length === 0) {
-       container.innerHTML = '<p>Nenhuma venda registrada.</p>';
-       return;
-   }
-   
-   // Ordenar vendas da mais recente para a mais antiga
-   const vendasOrdenadas = [...vendas].sort((a, b) => new Date(b.data) - new Date(a.data));
-   
-   vendasOrdenadas.forEach((venda) => {
-       const card = document.createElement('div');
-       card.className = 'sale-card';
-       card.innerHTML = `
-           <div class="sale-header">
-               <div class="sale-title">${venda.receitaNome}</div>
-               <div class="sale-date">${formatarData(venda.data)}</div>
-           </div>
-           <div>Cliente: ${venda.cliente.nome}</div>
-           <div>Quantidade: ${venda.quantidade}</div>
-           <div>Valor Total: ${formatarMoeda(venda.valorTotal)}</div>
-           <div>Lucro: ${formatarMoeda(venda.valorTotal - (venda.custoTotal * venda.quantidade))}</div>
-           <button class="btn btn-secondary btn-detalhes-venda" data-id="${venda.id}">Ver Detalhes</button>
-       `;
-       container.appendChild(card);
-   });
-   
-   // Adicionar eventos aos botões de detalhes
-   document.querySelectorAll('.btn-detalhes-venda').forEach(btn => {
-       btn.addEventListener('click', function() {
-           const id = this.getAttribute('data-id');
-           mostrarDetalhesVenda(id);
-       });
-   });
-}
-
-// Função para mostrar detalhes de uma venda
-function mostrarDetalhesVenda(vendaId) {
-   const venda = vendas.find(v => v.id === vendaId);
-   if (!venda) return;
-   
-   const modal = document.getElementById('venda-details-modal');
-   const content = document.getElementById('venda-details-content');
-   
-   content.innerHTML = `
-       <div class="sale-details">
-           <h4>${venda.receitaNome}</h4>
-           <p><strong>Data:</strong> ${formatarData(venda.data)}</p>
-           <p><strong>Cliente:</strong> ${venda.cliente.nome}</p>
-           <p><strong>Telefone:</strong> ${venda.cliente.telefone || 'N/A'}</p>
-           <p><strong>Endereço:</strong> ${venda.cliente.endereco || 'N/A'}</p>
-           
-           <div class="recipe-pricing" style="margin: 15px 0;">
-               <div class="recipe-price-item">
-                   <div class="recipe-price-label">Custo de Produção</div>
-                   <div class="recipe-price-value">${formatarMoeda(venda.custoProducao)}</div>
-               </div>
-               
-               <div class="recipe-price-item">
-                   <div class="recipe-price-label">Custos Variados</div>
-                   <div class="recipe-price-value">${formatarMoeda(venda.custosVariados)}</div>
-               </div>
-               
-               <div class="recipe-price-item">
-                   <div class="recipe-price-label">Preço de Venda Unitário</div>
-                   <div class="recipe-price-value">${formatarMoeda(venda.precoVenda)}</div>
-               </div>
-               
-               <div class="recipe-price-item">
-                   <div class="recipe-price-label">Quantidade</div>
-                   <div class="recipe-price-value">${venda.quantidade}</div>
-               </div>
-           </div>
-           
-           <div class="recipe-pricing" style="margin: 15px 0;">
-               <div class="recipe-price-item">
-                   <div class="recipe-price-label">Frete</div>
-                   <div class="recipe-price-value">${formatarMoeda(venda.custoFrete || 0)}</div>
-               </div>
-               
-               <div class="recipe-price-item">
-                   <div class="recipe-price-label">Decoração</div>
-                   <div class="recipe-price-value">${formatarMoeda(venda.custoDecoracao || 0)}</div>
-               </div>
-               
-               <div class="recipe-price-item">
-                   <div class="recipe-price-label">Outros Custos</div>
-                   <div class="recipe-price-value">${formatarMoeda(venda.outrosCustos || 0)}</div>
-               </div>
-           </div>
-           
-           <p style="font-size: 18px; font-weight: bold; margin-top: 15px;">
-               Valor Total: ${formatarMoeda(venda.valorTotal)}
-           </p>
-           
-           <p style="font-size: 16px; color: #28a745; margin-top: 5px;">
-               Lucro: ${formatarMoeda(venda.valorTotal - (venda.custoTotal * venda.quantidade))}
-           </p>
-       </div>
-   `;
-   
-   modal.classList.remove('hidden');
-}
-
-// Função para atualizar data/hora atual
-function atualizarDataHora() {
-   const agora = new Date();
-   const dataFormatada = agora.toLocaleDateString('pt-BR');
-   const horaFormatada = agora.toLocaleTimeString('pt-BR');
-   document.getElementById('date-time').textContent = `${dataFormatada} ${horaFormatada}`;
-}
-
-// INICIALIZAÇÃO E EVENTOS
-
-// Configurar eventos quando o DOM estiver carregado
-document.addEventListener('DOMContentLoaded', function() {
-   console.log('DOM Carregado!');
-   
-   // Garantir que o modal esteja oculto ao iniciar
-   const modalElement = document.getElementById('processing-modal');
-   if (modalElement) {
-       modalElement.classList.add('hidden');
-   }
-   
-   // Inicializar IDs para itens de estoque e materiais
-   estoque.forEach((item) => {
-       if (!item.id) {
-           item.id = gerarId();
-       }
-       if (!item.materialId && item.codigo) {
-           // Tentar encontrar material correspondente
-           const material = materiais.find(m => m.codigo === item.codigo);
-           if (material) {
-               item.materialId = material.id;
-           }
-       }
-   });
-   
-   materiais.forEach((material) => {
-       if (!material.id) {
-           material.id = gerarId();
-       }
-       
-       // Garantir que o histórico de preços existe
-       if (!material.historicoPrecos) {
-           material.historicoPrecos = [{
-               data: material.dataCadastro || new Date().toISOString(),
-               preco: material.ultimoPreco || 0
-           }];
-       }
-   });
-   
-   receitas.forEach(receita => {
-       if (!receita.id) {
-           receita.id = gerarId();
-       }
-       
-       // Garantir que precoVenda existe
-       if (!receita.precoVenda) {
-           const custoProducao = calcularCustoReceita(receita);
-           const custosVariados = custoProducao * 0.1;
-           receita.precoVenda = (custoProducao + custosVariados) * 2.5;
-       }
-   });
-   
-   vendas.forEach(venda => {
-       if (!venda.id) {
-           venda.id = gerarId();
-       }
-   });
-   
-   atualizarLocalStorage();
-   
-   // Carregar dados nas interfaces
-   carregarEstoque();
-   carregarMateriais();
-   carregarReceitas();
-   carregarVendas();
-   
-   // Eventos de navegação
-   document.querySelectorAll('.nav-link').forEach(link => {
-       link.addEventListener('click', function(e) {
-           e.preventDefault();
-           
-           // Atualizar navegação
-           document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-           this.classList.add('active');
-           
-           // Mostrar página correspondente
-           const pagina = this.getAttribute('data-page');
-           document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
-           document.getElementById(`${pagina}-page`).classList.add('active');
-       });
-   });
-   
-   // Eventos das abas
-   document.querySelectorAll('.tab-button').forEach(button => {
-       button.addEventListener('click', function() {
-           // Obter todos os botões na mesma tab
-           const parent = this.parentElement;
-           parent.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
-           this.classList.add('active');
-           
-           // Obter o ID da aba a ser mostrada
-           const tabId = this.getAttribute('data-tab');
-           
-           // Encontrar o conteúdo da aba
-           const tabContents = parent.parentElement.querySelectorAll('.tab-content');
-           tabContents.forEach(content => {
-               content.classList.remove('active');
-           });
-           
-           const tabContent = document.getElementById(tabId);
-           if (tabContent) {
-               tabContent.classList.add('active');
-           }
-       });
-   });
-   
-   // Eventos de pesquisa
-   ['pesquisar-estoque', 'pesquisar-materiais', 'pesquisar-receita', 'pesquisar-vendas'].forEach(id => {
-       const el = document.getElementById(id);
-       if (el) {
-           el.addEventListener('input', function() {
-               const termo = this.value.toLowerCase();
-               let itens;
-               
-               switch(id) {
-                    case 'pesquisar-estoque':
-                        itens = document.querySelectorAll('#tabela-estoque tbody tr');
-                        itens.forEach(tr => {
-                            const nome = tr.children[1].textContent.toLowerCase();
-                            const codigo = tr.children[0].textContent.toLowerCase();
-                            tr.style.display = (nome.includes(termo) || codigo.includes(termo)) ? '' : 'none';
-                        });
-                        break;
-                    case 'pesquisar-materiais':
-                        itens = document.querySelectorAll('#tabela-materiais tbody tr');
-                        itens.forEach(tr => {
-                            const nome = tr.children[1].textContent.toLowerCase();
-                            const codigo = tr.children[0].textContent.toLowerCase();
-                            tr.style.display = (nome.includes(termo) || codigo.includes(termo)) ? '' : 'none';
-                        });
-                        break;
-                    case 'pesquisar-receita':
-                        itens = document.querySelectorAll('.recipe-card');
-                        itens.forEach(card => {
-                            const nome = card.querySelector('h3').textContent.toLowerCase();
-                            card.style.display = nome.includes(termo) ? '' : 'none';
-                        });
-                        break;
-                    case 'pesquisar-vendas':
-                        itens = document.querySelectorAll('.sale-card');
-                        itens.forEach(card => {
-                            const nome = card.querySelector('.sale-title').textContent.toLowerCase();
-                            const cliente = card.querySelector('div:nth-child(2)').textContent.toLowerCase();
-                            card.style.display = (nome.includes(termo) || cliente.includes(termo)) ? '' : 'none';
-                        });
-                        break;
-                }
-            });
-        }
-    });
-    
-    // Eventos para scanner de QR/código de barras
-    const btnIniciarScanner = document.getElementById('iniciar-scanner');
-    if (btnIniciarScanner) {
-        btnIniciarScanner.addEventListener('click', iniciarScanner);
-    }
-    
-    const btnPararScanner = document.getElementById('parar-scanner');
-    if (btnPararScanner) {
-        btnPararScanner.addEventListener('click', pararScanner);
-    }
-    
-    // Evento para adicionar material/item
-    const formAdicionarMaterial = document.getElementById('form-adicionar-material');
-    if (formAdicionarMaterial) {
-        formAdicionarMaterial.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const codigo = document.getElementById('codigo-material').value;
-            const nome = document.getElementById('nome-material').value;
-            const quantidade = parseFloat(document.getElementById('quantidade-material').value);
-            const unidade = document.getElementById('unidade-material').value;
-            const unidadeMedida = document.getElementById('unidade-medida-material').value;
-            const quantidadeMedida = parseFloat(document.getElementById('quantidade-medida-material').value) || 0;
-            const preco = parseFloat(document.getElementById('preco-material').value) || 0;
-            
-            // Data de compra - se disponível
-            let dataCompra = null;
-            const dataCompraEl = document.getElementById('data-compra-material');
-            if (dataCompraEl && dataCompraEl.value) {
-                dataCompra = new Date(dataCompraEl.value).toISOString();
-            }
-            
-            // Adicionar ou atualizar o material no catálogo
-            const materialId = adicionarOuAtualizarMaterial(codigo, nome, unidade, unidadeMedida, quantidadeMedida, preco, dataCompra);
-            
-            // Adicionar ao estoque
-            adicionarItemEstoque(materialId, quantidade, preco);
-            
-            // Atualizar localStorage e interface
-            atualizarLocalStorage();
-            carregarMateriais();
-            carregarEstoque();
-            
-            // Resetar o botão de submit caso esteja em modo de edição
-            const submitBtn = document.querySelector('#form-adicionar-material button[type="submit"]');
-            submitBtn.textContent = 'Adicionar ao Estoque';
-            submitBtn.removeAttribute('data-edicao');
-            
-            // Limpar o formulário
-            this.reset();
-            
-            mostrarNotificacao('notification-materiais', 'Material adicionado com sucesso!', 'success');
-            
-            // Mudar para a aba de listar materiais
-            const tabButton = document.querySelector('[data-tab="listar-materiais"]');
-            if (tabButton) {
-                tabButton.click();
-            }
-        });
-    }
-    
-    // Evento para adicionar receita
-    const formAdicionarReceita = document.getElementById('form-adicionar-receita');
-    if (formAdicionarReceita) {
-        formAdicionarReceita.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const nome = document.getElementById('nome-receita').value;
-            const descricao = document.getElementById('descricao-receita').value;
-            const precoVenda = parseFloat(document.getElementById('preco-venda').value) || 0;
-            
-            // Coletar ingredientes
-            const ingredientes = [];
-            document.querySelectorAll('.ingrediente-item').forEach(item => {
-                const select = item.querySelector('.ingrediente-select');
-                if (select.value) {
-                    const quantidade = parseFloat(item.querySelector('.ingrediente-quantidade').value);
-                    const unidadeMedidaSelect = item.querySelector('.ingrediente-unidade-medida');
-                    const material = materiais.find(m => m.id === select.value);
-                    
-                    ingredientes.push({
-                        materialId: select.value,
-                        nome: material ? material.nome : select.options[select.selectedIndex].text,
-                        quantidade: quantidade,
-                        unidadeMedida: unidadeMedidaSelect.value
-                    });
-                }
             });
             
-            // Verificar se tem ingredientes
-            if (ingredientes.length === 0) {
-                alert('Adicione pelo menos um ingrediente à receita!');
-                return;
-            }
+            // Atualizar o último preço
+            materialExistente.ultimoPreco = precoMaterial;
+            materialExistente.ultimaCompra = dataCompra || new Date().toISOString();
             
-            // Verificar se é uma edição
-            const submitBtn = document.querySelector('#form-adicionar-receita button[type="submit"]');
-            const indexEdicao = submitBtn.getAttribute('data-edicao');
+            // Recalcular o preço médio
+            const totalPrecos = materialExistente.historicoPrecos.reduce((soma, item) => soma + item.preco, 0);
+            materialExistente.precoMedio = totalPrecos / materialExistente.historicoPrecos.length;
             
-            if (indexEdicao !== null && indexEdicao !== undefined) {
-                // Edição de receita existente
-                receitas[indexEdicao].nome = nome;
-                receitas[indexEdicao].descricao = descricao;
-                receitas[indexEdicao].ingredientes = ingredientes;
-                receitas[indexEdicao].precoVenda = precoVenda;
-                
-                // Resetar o botão
-                submitBtn.textContent = 'Salvar Receita';
-                submitBtn.removeAttribute('data-edicao');
-                
-                mostrarNotificacao('notification-estoque', 'Receita atualizada com sucesso!', 'success');
-            } else {
-                // Nova receita
-                const novaReceita = {
-                    id: gerarId(),
-                    nome: nome,
-                    descricao: descricao,
-                    ingredientes: ingredientes,
-                    precoVenda: precoVenda,
-                    dataCriacao: new Date().toISOString()
-                };
-                
-                receitas.push(novaReceita);
-                mostrarNotificacao('notification-estoque', 'Receita adicionada com sucesso!', 'success');
-            }
+            return materialExistente.id;
+        } else {
+            // Criar novo material
+            const novoMaterial = {
+                id: gerarId(),
+                codigo: codigoMaterial,
+                nome: nomeMaterial,
+                unidade: unidadeMaterial,
+                unidadeMedida: unidadeMedidaMaterial,
+                quantidadeMedida: quantidadeMedidaMaterial,
+                ultimoPreco: precoMaterial,
+                precoMedio: precoMaterial,
+                ultimaCompra: dataCompra || new Date().toISOString(),
+                dataCadastro: new Date().toISOString(),
+                historicoPrecos: [{
+                    data: dataCompra || new Date().toISOString(),
+                    preco: precoMaterial
+                }]
+            };
             
-            // Atualizar localStorage e interface
-            atualizarLocalStorage();
-            carregarReceitas();
-            
-            // Limpar o formulário
-            this.reset();
-            document.getElementById('lista-ingredientes').innerHTML = '';
-            document.getElementById('custo-producao').textContent = formatarMoeda(0);
-            document.getElementById('custos-variados').textContent = formatarMoeda(0);
-            document.getElementById('preco-estimado').textContent = formatarMoeda(0);
-            
-            // Adicionar um campo vazio de ingrediente
-            adicionarCampoIngrediente();
-            
-            // Mudar para a aba de listar receitas
-            const tabButton = document.querySelector('[data-tab="listar-receitas"]');
-            if (tabButton) {
-                tabButton.click();
-            }
-        });
-    }
-    
-    // Evento para adicionar ingrediente à receita
-    const btnAdicionarIngrediente = document.getElementById('adicionar-ingrediente');
-    if (btnAdicionarIngrediente) {
-        btnAdicionarIngrediente.addEventListener('click', function() {
-            adicionarCampoIngrediente();
-        });
-    }
-    
-    // Evento para selecionar receita para venda
-    const selecionarReceitaVenda = document.getElementById('selecionar-receita-venda');
-    if (selecionarReceitaVenda) {
-        selecionarReceitaVenda.addEventListener('change', function() {
-            const receitaId = this.value;
-            if (receitaId) {
-                carregarDetalhesReceitaVenda(receitaId);
-            } else {
-                document.getElementById('detalhes-receita-venda').classList.add('hidden');
-            }
-        });
-    }
-    
-    // Evento para atualizar valor total quando quantidade ou custos adicionais mudam
-    const qtdVenda = document.getElementById('quantidade-venda');
-    const custoFrete = document.getElementById('custo-frete');
-    const custoDecoracao = document.getElementById('custo-decoracao');
-    const outrosCustos = document.getElementById('outros-custos');
-    
-    [qtdVenda, custoFrete, custoDecoracao, outrosCustos].forEach(input => {
-        if (input) {
-            input.addEventListener('input', atualizarValorTotalVenda);
+            materiais.push(novoMaterial);
+            return novoMaterial.id;
         }
-    });
-    
-    function atualizarValorTotalVenda() {
-        const receitaId = document.getElementById('selecionar-receita-venda').value;
-        if (!receitaId) return;
-        
-        const receita = receitas.find(r => r.id === receitaId);
-        if (!receita) return;
-        
-        const qtd = parseInt(document.getElementById('quantidade-venda').value) || 1;
-        const frete = parseFloat(document.getElementById('custo-frete').value) || 0;
-        const decoracao = parseFloat(document.getElementById('custo-decoracao').value) || 0;
-        const outros = parseFloat(document.getElementById('outros-custos').value) || 0;
-        
-        const valorTotal = (receita.precoVenda * qtd) + frete + decoracao + outros;
-        document.getElementById('valor-total-venda').value = valorTotal.toFixed(2);
-        
-        // Atualizar a lista de ingredientes necessários com a nova quantidade
-        carregarDetalhesReceitaVenda(receitaId);
     }
     
-    // Evento para registrar venda
-    const formRegistrarVenda = document.getElementById('form-registrar-venda');
-    if (formRegistrarVenda) {
-        formRegistrarVenda.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const receitaId = document.getElementById('selecionar-receita-venda').value;
-            if (!receitaId) {
-                alert('Selecione uma receita primeiro!');
-                return;
+    // Função para adicionar item ao estoque
+    function adicionarItemEstoque(materialId, quantidade, preco = null) {
+        const material = materiais.find(m => m.id === materialId);
+        if (!material) return false;
+        
+        // Verificar se o item já existe no estoque
+        const itemExistente = estoque.find(i => i.materialId === materialId);
+        
+        if (itemExistente) {
+            // Atualizar item existente
+            itemExistente.quantidade += parseFloat(quantidade);
+            if (preco !== null) {
+                itemExistente.preco = preco;
             }
+            return true;
+        } else {
+            // Criar novo item
+            const novoItem = {
+                id: gerarId(),
+                materialId: materialId,
+                codigo: material.codigo,
+                nome: material.nome,
+                quantidade: parseFloat(quantidade),
+                unidade: material.unidade,
+                unidadeMedida: material.unidadeMedida,
+                quantidadeMedida: material.quantidadeMedida,
+                preco: preco !== null ? preco : material.ultimoPreco,
+                dataAdicao: new Date().toISOString()
+            };
             
-            const quantidade = parseInt(document.getElementById('quantidade-venda').value) || 1;
-            const clienteNome = document.getElementById('cliente-nome').value;
-            const clienteTelefone = document.getElementById('cliente-telefone').value;
-            const clienteEndereco = document.getElementById('cliente-endereco').value;
-            const custoFrete = parseFloat(document.getElementById('custo-frete').value) || 0;
-            const custoDecoracao = parseFloat(document.getElementById('custo-decoracao').value) || 0;
-            const outrosCustos = parseFloat(document.getElementById('outros-custos').value) || 0;
-            
-            // Data da venda
-            let dataVenda = null;
-            const dataVendaEl = document.getElementById('data-venda');
-            if (dataVendaEl && dataVendaEl.value) {
-                dataVenda = new Date(dataVendaEl.value).toISOString();
-            }
-            
-            // Processar venda
-            toggleModal(true, "Processando venda...", "Aguarde enquanto processamos a venda e atualizamos o estoque.");
-            
-            setTimeout(() => {
-                const resultado = registrarVenda(
-                    receitaId, 
-                    quantidade, 
-                    clienteNome, 
-                    clienteTelefone, 
-                    clienteEndereco, 
-                    custoFrete, 
-                    custoDecoracao, 
-                    outrosCustos, 
-                    dataVenda
-                );
-                
-                toggleModal(false);
-                
-                if (resultado) {
-                    mostrarNotificacao('notification-vendas', 'Venda registrada com sucesso!', 'success');
-                    
-                    // Atualizar interfaces
-                    carregarEstoque();
-                    carregarVendas();
-                    
-                    // Limpar formulário
-                    this.reset();
-                    document.getElementById('detalhes-receita-venda').classList.add('hidden');
-                    
-                    // Mudar para a aba de listar vendas
-                    const tabButton = document.querySelector('[data-tab="listar-vendas"]');
-                    if (tabButton) {
-                        tabButton.click();
-                    }
-                } else {
-                    mostrarNotificacao('notification-vendas', 'Erro ao registrar venda. Verifique o estoque de ingredientes.', 'error');
-                }
-            }, 1000);
-        });
+            estoque.push(novoItem);
+            return true;
+        }
     }
     
-    // Evento para filtrar vendas
-    const btnFiltrarVendas = document.getElementById('btn-filtrar-vendas');
-    if (btnFiltrarVendas) {
-        btnFiltrarVendas.addEventListener('click', filtrarVendas);
+    // Função para remover item do estoque
+    function removerItemEstoque(materialId, quantidade) {
+        const item = estoque.find(i => i.materialId === materialId);
+        if (!item) return false;
+        
+        // Verificar se a quantidade disponível é suficiente
+        if (item.quantidade < quantidade) {
+            return false;
+        }
+        
+        // Atualizar a quantidade
+        item.quantidade -= parseFloat(quantidade);
+        
+        // Se a quantidade ficar zero ou negativa, remover o item
+        if (item.quantidade <= 0) {
+            const index = estoque.findIndex(i => i.materialId === materialId);
+            if (index !== -1) {
+                estoque.splice(index, 1);
+            }
+        }
+        
+        return true;
     }
     
-    const btnLimparFiltros = document.getElementById('btn-limpar-filtros');
-    if (btnLimparFiltros) {
-        btnLimparFiltros.addEventListener('click', function() {
-            document.getElementById('filtro-data-inicio').value = '';
-            document.getElementById('filtro-data-fim').value = '';
-            document.getElementById('filtro-receita').value = '';
-            
-            // Recarregar todas as vendas
-            carregarVendas();
-        });
-    }
-    
-    function filtrarVendas() {
-        const dataInicio = document.getElementById('filtro-data-inicio').value;
-        const dataFim = document.getElementById('filtro-data-fim').value;
-        const receitaId = document.getElementById('filtro-receita').value;
+    // Função para carregar materiais na tabela
+    function carregarMateriais() {
+        const tbody = document.getElementById('itens-materiais');
+        if (!tbody) return;
         
-        const vendasFiltradas = vendas.filter(venda => {
-            // Filtrar por data
-            let passaFiltroData = true;
-            if (dataInicio) {
-                const dataVenda = new Date(venda.data);
-                const dataInicioDate = new Date(dataInicio);
-                passaFiltroData = passaFiltroData && dataVenda >= dataInicioDate;
-            }
-            
-            if (dataFim) {
-                const dataVenda = new Date(venda.data);
-                const dataFimDate = new Date(dataFim);
-                // Adicionar 1 dia para incluir o dia final completo
-                dataFimDate.setDate(dataFimDate.getDate() + 1);
-                passaFiltroData = passaFiltroData && dataVenda < dataFimDate;
-            }
-            
-            // Filtrar por receita
-            let passaFiltroReceita = true;
-            if (receitaId) {
-                passaFiltroReceita = venda.receitaId === receitaId;
-            }
-            
-            return passaFiltroData && passaFiltroReceita;
-        });
+        tbody.innerHTML = '';
         
-        // Renderizar vendas filtradas
-        const container = document.getElementById('lista-vendas');
-        if (!container) return;
-        
-        container.innerHTML = '';
-        
-        if (vendasFiltradas.length === 0) {
-            container.innerHTML = '<p>Nenhuma venda encontrada com os filtros selecionados.</p>';
+        if (materiais.length === 0) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td colspan="9" style="text-align: center;">Nenhum material cadastrado.</td>';
+            tbody.appendChild(tr);
             return;
         }
         
-        // Ordenar vendas da mais recente para a mais antiga
-        const vendasOrdenadas = [...vendasFiltradas].sort((a, b) => new Date(b.data) - new Date(a.data));
-        
-        vendasOrdenadas.forEach((venda) => {
-            const card = document.createElement('div');
-            card.className = 'sale-card';
-            card.innerHTML = `
-                <div class="sale-header">
-                    <div class="sale-title">${venda.receitaNome}</div>
-                    <div class="sale-date">${formatarData(venda.data)}</div>
-                </div>
-                <div>Cliente: ${venda.cliente.nome}</div>
-                <div>Quantidade: ${venda.quantidade}</div>
-                <div>Valor Total: ${formatarMoeda(venda.valorTotal)}</div>
-                <div>Lucro: ${formatarMoeda(venda.valorTotal - (venda.custoTotal * venda.quantidade))}</div>
-                <button class="btn btn-secondary btn-detalhes-venda" data-id="${venda.id}">Ver Detalhes</button>
+        materiais.forEach((material, index) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${material.codigo || 'N/A'}</td>
+                <td>${material.nome}</td>
+                <td>${material.unidade}</td>
+                <td>${material.unidadeMedida}</td>
+                <td>${material.quantidadeMedida}</td>
+                <td>${formatarData(material.ultimaCompra)}</td>
+                <td>${formatarMoeda(material.ultimoPreco)}</td>
+                <td>${formatarMoeda(material.precoMedio)}</td>
+                <td>
+                    <button class="btn btn-primary btn-editar-material" data-index="${index}">Editar</button>
+                    <button class="btn btn-success btn-adicionar-estoque" data-id="${material.id}">+ Estoque</button>
+                </td>
             `;
-            container.appendChild(card);
+            tbody.appendChild(tr);
         });
         
-        // Adicionar eventos aos botões de detalhes
-        document.querySelectorAll('.btn-detalhes-venda').forEach(btn => {
+        // Adicionar eventos aos botões
+        document.querySelectorAll('.btn-editar-material').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const index = this.getAttribute('data-index');
+                editarMaterial(index);
+            });
+        });
+        
+        document.querySelectorAll('.btn-adicionar-estoque').forEach(btn => {
             btn.addEventListener('click', function() {
                 const id = this.getAttribute('data-id');
-                mostrarDetalhesVenda(id);
+                adicionarAoEstoque(id);
             });
         });
     }
     
-    // Evento para fechar o modal de detalhes de venda
-    const btnFecharDetalhesVenda = document.getElementById('fechar-detalhes-venda');
-    if (btnFecharDetalhesVenda) {
-        btnFecharDetalhesVenda.addEventListener('click', function() {
-            document.getElementById('venda-details-modal').classList.add('hidden');
+    // Função para editar um material
+    function editarMaterial(index) {
+        const material = materiais[index];
+        
+        // Mudar para a aba de adicionar item
+        const tabButton = document.querySelector('[data-tab="adicionar-item"]');
+        if (tabButton) {
+            tabButton.click();
+        }
+        
+        // Preencher o formulário
+        document.getElementById('codigo-material').value = material.codigo || '';
+        document.getElementById('nome-material').value = material.nome;
+        document.getElementById('unidade-material').value = material.unidade;
+        document.getElementById('unidade-medida-material').value = material.unidadeMedida;
+        document.getElementById('quantidade-medida-material').value = material.quantidadeMedida;
+        document.getElementById('preco-material').value = material.ultimoPreco;
+        
+        // Quantidade para estoque
+        document.getElementById('quantidade-material').value = 1;
+        
+        // Data de compra
+        const dataCompra = document.getElementById('data-compra-material');
+        if (dataCompra) {
+            const data = new Date(material.ultimaCompra);
+            dataCompra.value = data.toISOString().split('T')[0];
+        }
+        
+        // Modificar o botão de submit
+        const submitBtn = document.querySelector('#form-adicionar-material button[type="submit"]');
+        submitBtn.textContent = 'Atualizar Material';
+        submitBtn.setAttribute('data-edicao', index);
+    }
+    
+    // Função para adicionar um material ao estoque
+    function adicionarAoEstoque(materialId) {
+        const material = materiais.find(m => m.id === materialId);
+        if (!material) return;
+        
+        // Mudar para a aba de adicionar item
+        const tabButton = document.querySelector('[data-tab="adicionar-item"]');
+        if (tabButton) {
+            tabButton.click();
+        }
+        
+        // Preencher o formulário com os dados do material
+        document.getElementById('codigo-material').value = material.codigo || '';
+        document.getElementById('nome-material').value = material.nome;
+        document.getElementById('quantidade-material').value = 1;
+        document.getElementById('unidade-material').value = material.unidade;
+        document.getElementById('unidade-medida-material').value = material.unidadeMedida;
+        document.getElementById('quantidade-medida-material').value = material.quantidadeMedida;
+        document.getElementById('preco-material').value = material.ultimoPreco;
+        
+        // Data atual para compra
+        const dataCompra = document.getElementById('data-compra-material');
+        if (dataCompra) {
+            const hoje = new Date();
+            dataCompra.value = hoje.toISOString().split('T')[0];
+        }
+    }
+    
+    // Função para carregar o estoque na tabela
+    function carregarEstoque() {
+        const tbody = document.getElementById('itens-estoque');
+        if (!tbody) return;
+        
+        tbody.innerHTML = '';
+        
+        if (estoque.length === 0) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td colspan="7" style="text-align: center;">Nenhum item no estoque.</td>';
+            tbody.appendChild(tr);
+            return;
+        }
+        
+        estoque.forEach((item) => {
+            // Calcular a quantidade em unidade de medida (ex: ml restantes)
+            const quantidadeTotalMedida = item.quantidade * (item.quantidadeMedida || 1);
+            // Verificar se é um número fracionário
+            const quantidadeFracionada = item.quantidade % 1 !== 0;
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${item.codigo || 'N/A'}</td>
+                <td>${item.nome}</td>
+                <td>${item.quantidade.toFixed(2)} ${quantidadeFracionada ? `(${Math.floor(item.quantidade)} + ${((item.quantidade % 1) * 100).toFixed(0)}%)` : ''}</td>
+                <td>${item.unidade}</td>
+                <td>${quantidadeTotalMedida.toFixed(0)} ${item.unidadeMedida || 'N/A'}</td>
+                <td>${formatarMoeda(item.preco || 0)}</td>
+                <td>${formatarData(item.dataAdicao)}</td>
+            `;
+            tbody.appendChild(tr);
         });
     }
     
-    // Adicionar um campo de ingrediente inicial na tela de receitas
-    if (document.getElementById('lista-ingredientes')) {
-        adicionarCampoIngrediente();
+    // FUNÇÕES PARA SCANNER DE QR CODE/CÓDIGO DE BARRAS
+    function iniciarScanner() {
+        const scannerContainer = document.getElementById('scanner-container');
+        if (!scannerContainer) return;
+        
+        scannerContainer.classList.remove('hidden');
+        
+        html5QrCode = new Html5Qrcode("reader");
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+        
+        html5QrCode.start(
+            { facingMode: "environment" }, 
+            config, 
+            onScanSuccess, 
+            onScanFailure
+        );
     }
     
-    // Iniciar o relógio
-    atualizarDataHora();
-    setInterval(atualizarDataHora, 1000);
-});
-<script>                    
+    function pararScanner() {
+        if (html5QrCode && html5QrCode.isScanning) {
+            html5QrCode.stop().then(() => {
+                console.log('Scanner parado.');
+                document.getElementById('scanner-container').classList.add('hidden');
+            }).catch(err => {
+                console.error('Erro ao parar o scanner:', err);
+            });
+        }
+    }
+    
+    function onScanSuccess(decodedText, decodedResult) {
+        console.log(`Código escaneado: ${decodedText}`);
+        
+        // Preencher o campo de código
+        document.getElementById('codigo-material').value = decodedText;
+        
+        // Mostrar resultado
+        document.getElementById('scanner-result').innerHTML = `
+            <div class="notification notification-success">
+                Código detectado: ${decodedText}
+            </div>
+        `;
+        
+        // Parar o scanner
+        pararScanner();
+        
+        // Buscar informações do produto (simulação)
+        buscarInformacoesProduto(decodedText);
+    }
+    
+    function onScanFailure(error) {
+        // Silenciar erro para não encher o console
+        // console.warn(`Erro ao escanear: ${error}`);
+    }
+    
+    // Função para buscar informações do produto (simulação)
+    function buscarInformacoesProduto(codigo) {
+        // Verificar se o código já existe no catálogo
+        const materialExistente = encontrarMaterialPorCodigo(codigo);
+        
+        if (materialExistente) {
+            // Preencher formulário com dados existentes
+            document.getElementById('nome-material').value = materialExistente.nome;
+            document.getElementById('unidade-material').value = materialExistente.unidade;
+            document.getElementById('unidade-medida-material').value = materialExistente.unidadeMedida;
+            document.getElementById('quantidade-medida-material').value = materialExistente.quantidadeMedida;
+            document.getElementById('preco-material').value = materialExistente.ultimoPreco;
+            
+            mostrarNotificacao('notification-materiais', 'Produto encontrado no catálogo!', 'success');
+        } else {
+            // Mostrar mensagem
+            mostrarNotificacao('notification-materiais', 'Produto não encontrado no catálogo. Preencha os detalhes manualmente.', 'info');
+        }
+    }
+            // PARTE 6: JAVASCRIPT (SEGUNDA PARTE)
+    
+    // FUNÇÕES PARA RECEITAS
+    
+    // Função para calcular o custo de uma receita
+    function calcularCustoReceita(receita) {
+       let custoTotal = 0;
+       
+       receita.ingredientes.forEach(ingrediente => {
+           const itemEstoque = estoque.find(item => item.materialId === ingrediente.materialId);
+           if (itemEstoque && itemEstoque.preco) {
+               // Calculamos o custo com base na quantidade da unidade de medida
+               const precoUnitarioMedida = itemEstoque.preco / (itemEstoque.quantidadeMedida || 1);
+               custoTotal += precoUnitarioMedida * ingrediente.quantidade;
+           }
+       });
+       
+       return custoTotal;
+    }
+    
+    // Função para adicionar campo de ingrediente
+    function adicionarCampoIngrediente(ingredienteData = null) {
+       const container = document.getElementById('lista-ingredientes');
+       const div = document.createElement('div');
+       div.className = 'ingrediente-item';
+       div.innerHTML = `
+           <div class="form-row">
+               <div class="form-col">
+                   <div class="form-group">
+                       <label>Ingrediente:</label>
+                       <select class="form-control ingrediente-select" required>
+                           <option value="">Selecione um ingrediente...</option>
+                           ${materiais.map(material => `
+                               <option value="${material.id}" 
+                                   data-unidade="${material.unidade}" 
+                                   data-preco="${material.ultimoPreco || 0}"
+                                   data-unidade-medida="${material.unidadeMedida || ''}"
+                                   data-quantidade-medida="${material.quantidadeMedida || 0}">
+                                   ${material.nome}
+                               </option>
+                           `).join('')}
+                       </select>
+                   </div>
+               </div>
+               <div class="form-col">
+                   <div class="form-group">
+                       <label>Quantidade:</label>
+                       <input type="number" class="form-control ingrediente-quantidade" min="0.01" step="0.01" required>
+                   </div>
+               </div>
+               <div class="form-col">
+                   <div class="form-group">
+                       <label>Unidade de Medida:</label>
+                       <select class="form-control ingrediente-unidade-medida" required>
+                           <option value="kg">Quilogramas (kg)</option>
+                           <option value="g">Gramas (g)</option>
+                           <option value="l">Litros (l)</option>
+                           <option value="ml">Mililitros (ml)</option>
+                       </select>
+                   </div>
+               </div>
+               <div class="form-col" style="flex: 0.5;">
+                   <div class="form-group">
+                       <label>&nbsp;</label>
+                       <button type="button" class="btn btn-danger remover-ingrediente" style="display: block;">X</button>
+                   </div>
+               </div>
+           </div>
+       `;
+       container.appendChild(div);
+       
+       // Configurar o novo campo
+       const select = div.querySelector('.ingrediente-select');
+       const quantidadeInput = div.querySelector('.ingrediente-quantidade');
+       const unidadeMedidaSelect = div.querySelector('.ingrediente-unidade-medida');
+       const removerBtn = div.querySelector('.remover-ingrediente');
+       
+       // Preencher com dados se fornecidos
+       if (ingredienteData) {
+           select.value = ingredienteData.materialId;
+           quantidadeInput.value = ingredienteData.quantidade;
+           unidadeMedidaSelect.value = ingredienteData.unidadeMedida || 'g';
+       }
+       
+       // Adicionar eventos
+       select.addEventListener('change', function() {
+           const selectedOption = this.options[this.selectedIndex];
+           if (selectedOption.value) {
+               const unidadeMedida = selectedOption.getAttribute('data-unidade-medida');
+               if (unidadeMedida) {
+                   unidadeMedidaSelect.value = unidadeMedida;
+               }
+               
+               // Atualizar cálculos
+               atualizarCalculosReceita();
+           }
+       });
+       
+       quantidadeInput.addEventListener('input', atualizarCalculosReceita);
+       unidadeMedidaSelect.addEventListener('change', atualizarCalculosReceita);
+       
+       removerBtn.addEventListener('click', function() {
+           container.removeChild(div);
+           atualizarCalculosReceita();
+       });
+    }
+    
+    // Função para atualizar os cálculos de preço da receita
+    function atualizarCalculosReceita() {
+       let custoTotal = 0;
+       
+       // Coletar dados de ingredientes
+       document.querySelectorAll('.ingrediente-item').forEach(item => {
+           const select = item.querySelector('.ingrediente-select');
+           if (select.value) {
+               const quantidade = parseFloat(item.querySelector('.ingrediente-quantidade').value) || 0;
+               const selectedOption = select.options[select.selectedIndex];
+               const preco = parseFloat(selectedOption.getAttribute('data-preco')) || 0;
+               const quantidadeMedida = parseFloat(selectedOption.getAttribute('data-quantidade-medida')) || 1;
+               
+               // Calcular custo proporcional
+               const precoUnitarioMedida = preco / quantidadeMedida;
+               custoTotal += precoUnitarioMedida * quantidade;
+           }
+       });
+       
+       // Atualizar elementos de preço
+       const custoProducaoEl = document.getElementById('custo-producao');
+       const custosVariadosEl = document.getElementById('custos-variados');
+       const precoEstimadoEl = document.getElementById('preco-estimado');
+       
+       if (custoProducaoEl && custosVariadosEl && precoEstimadoEl) {
+           // Custo de produção
+           custoProducaoEl.textContent = formatarMoeda(custoTotal);
+           
+           // Custos variados (10%)
+           const custosVariados = custoTotal * 0.1;
+           custosVariadosEl.textContent = formatarMoeda(custosVariados);
+           
+           // Preço estimado (custo total + custos variados + 150% markup)
+           const precoEstimado = (custoTotal + custosVariados) * 2.5;
+           precoEstimadoEl.textContent = formatarMoeda(precoEstimado);
+           
+           // Se existe um campo de preço de venda, sugerir o valor estimado
+           const precoVendaInput = document.getElementById('preco-venda');
+           if (precoVendaInput && precoVendaInput.value === '') {
+               precoVendaInput.value = precoEstimado.toFixed(2);
+           }
+       }
+    }
+    
+    // Função para editar receita
+    function editarReceita(index) {
+       const receita = receitas[index];
+       
+       // Mudar para a aba de adicionar receita
+       const tabButton = document.querySelector('[data-tab="adicionar-receita"]');
+       if (tabButton) {
+           tabButton.click();
+       }
+       
+       // Preencher o formulário
+       document.getElementById('nome-receita').value = receita.nome;
+       document.getElementById('descricao-receita').value = receita.descricao || '';
+       
+       // Limpar os ingredientes existentes
+       document.getElementById('lista-ingredientes').innerHTML = '';
+       
+       // Adicionar cada ingrediente
+       receita.ingredientes.forEach(ingrediente => {
+           adicionarCampoIngrediente(ingrediente);
+       });
+       
+       // Preencher preço de venda
+       document.getElementById('preco-venda').value = receita.precoVenda.toFixed(2);
+       
+       // Atualizar cálculos
+       atualizarCalculosReceita();
+       
+       // Modificar o botão de submit
+       const submitBtn = document.querySelector('#form-adicionar-receita button[type="submit"]');
+       submitBtn.textContent = 'Atualizar Receita';
+       submitBtn.setAttribute('data-edicao', index);
+    }
+    
+    // Função para remover receita
+    function removerReceita(index) {
+       if (confirm('Tem certeza que deseja remover esta receita?')) {
+           receitas.splice(index, 1);
+           atualizarLocalStorage();
+           carregarReceitas();
+           mostrarNotificacao('notification-estoque', 'Receita removida com sucesso!', 'success');
+       }
+    }
+    
+    // Função para carregar receitas
+    function carregarReceitas() {
+       const container = document.getElementById('lista-receitas');
+       if (!container) return;
+       
+       container.innerHTML = '';
+       
+       // Carregar no select da página de vendas
+       const selectVenda = document.getElementById('selecionar-receita-venda');
+       if (selectVenda) {
+           selectVenda.innerHTML = '<option value="">Selecione uma receita...</option>';
+       }
+       
+       // Carregar no select do filtro de vendas
+       const selectFiltroVendas = document.getElementById('filtro-receita');
+       if (selectFiltroVendas) {
+           selectFiltroVendas.innerHTML = '<option value="">Todas as receitas</option>';
+       }
+       
+       if (receitas.length === 0) {
+           container.innerHTML = '<p>Nenhuma receita cadastrada.</p>';
+           return;
+       }
+       
+       receitas.forEach((receita, index) => {
+           // Calcular o custo total da receita
+           const custoProducao = calcularCustoReceita(receita);
+           const custosVariados = custoProducao * 0.1;
+           const precoEstimado = (custoProducao + custosVariados) * 2.5;
+           
+           // Adicionar ao container de lista
+           const card = document.createElement('div');
+           card.className = 'recipe-card';
+           card.innerHTML = `
+               <h3>${receita.nome}</h3>
+               <p>${receita.descricao || 'Sem descrição'}</p>
+               
+               <div class="recipe-pricing">
+                   <div class="recipe-price-item">
+                       <div class="recipe-price-label">Custo de Produção</div>
+                       <div class="recipe-price-value">${formatarMoeda(custoProducao)}</div>
+                   </div>
+                   
+                   <div class="recipe-price-item">
+                       <div class="recipe-price-label">Custos Variados</div>
+                       <div class="recipe-price-value">${formatarMoeda(custosVariados)}</div>
+                   </div>
+                   
+                   <div class="recipe-price-item">
+                       <div class="recipe-price-label">Preço Estimado</div>
+                       <div class="recipe-price-value">${formatarMoeda(precoEstimado)}</div>
+                   </div>
+                   
+                   <div class="recipe-price-item">
+                       <div class="recipe-price-label">Preço de Venda</div>
+                       <div class="recipe-price-value highlight">${formatarMoeda(receita.precoVenda || 0)}</div>
+                   </div>
+               </div>
+               
+               <div style="margin-top: 15px;">
+                   <button class="btn btn-primary btn-editar-receita" data-index="${index}">Editar</button>
+                   <button class="btn btn-danger btn-remover-receita" data-index="${index}">Remover</button>
+                   <button class="btn btn-success btn-produzir-receita" data-index="${index}">Produzir</button>
+               </div>
+           `;
+           container.appendChild(card);
+           
+           // Adicionar ao select de vendas
+           if (selectVenda) {
+               const option = document.createElement('option');
+               option.value = receita.id;
+               option.textContent = receita.nome;
+               selectVenda.appendChild(option);
+           }
+           
+           // Adicionar ao select de filtro de vendas
+           if (selectFiltroVendas) {
+               const optionFiltro = document.createElement('option');
+               optionFiltro.value = receita.id;
+               optionFiltro.textContent = receita.nome;
+               selectFiltroVendas.appendChild(optionFiltro);
+           }
+       });
+       
+       // Adicionar eventos aos botões
+       addRecipeButtonEvents();
+    }
+    
+    // Função para adicionar eventos aos botões das receitas
+    function addRecipeButtonEvents() {
+       document.querySelectorAll('.btn-editar-receita').forEach(btn => {
+           btn.addEventListener('click', function() {
+               const index = this.getAttribute('data-index');
+               editarReceita(index);
+           });
+       });
+       
+       document.querySelectorAll('.btn-remover-receita').forEach(btn => {
+           btn.addEventListener('click', function() {
+               const index = this.getAttribute('data-index');
+               removerReceita(index);
+           });
+       });
+       
+       document.querySelectorAll('.btn-produzir-receita').forEach(btn => {
+           btn.addEventListener('click', function() {
+               const index = this.getAttribute('data-index');
+               const receita = receitas[index];
+               
+               // Mudar para a página de vendas e aba de registrar venda
+               const navLink = document.querySelector('[data-page="vendas"]');
+               if (navLink) {
+                   navLink.click();
+               }
+               
+               // Pequeno delay para garantir que a página foi carregada
+               setTimeout(() => {
+                   const tabButton = document.querySelector('[data-tab="registrar-venda"]');
+                   if (tabButton) {
+                       tabButton.click();
+                   }
+                   
+                   // Selecionar a receita
+                   const selectReceita = document.getElementById('selecionar-receita-venda');
+                   if (selectReceita) {
+                       selectReceita.value = receita.id;
+                       selectReceita.dispatchEvent(new Event('change'));
+                   }
+               }, 100);
+           });
+       });
+    }
+    
+    // FUNÇÕES PARA VENDAS
+    
+    // Função para carregar detalhes da receita na tela de vendas
+    function carregarDetalhesReceitaVenda(receitaId) {
+       const receita = receitas.find(r => r.id === receitaId);
+       if (!receita) return;
+       
+       const detalhes = document.getElementById('detalhes-receita-venda');
+       const nomeReceita = document.getElementById('nome-receita-selecionada-venda');
+       const tbodyIngredientes = document.getElementById('ingredientes-venda-selecionada');
+       const avisoEstoque = document.getElementById('aviso-estoque-venda');
+       
+       detalhes.classList.remove('hidden');
+       nomeReceita.textContent = receita.nome;
+       
+       if (tbodyIngredientes) {
+           tbodyIngredientes.innerHTML = '';
+           
+           // Calcular custos da receita
+           const custoProducao = calcularCustoReceita(receita);
+           const custosVariados = custoProducao * 0.1;
+           
+           // Preencher informações de preço
+           document.getElementById('custo-producao-venda').textContent = formatarMoeda(custoProducao);
+           document.getElementById('custos-variados-venda').textContent = formatarMoeda(custosVariados);
+           document.getElementById('preco-venda-venda').textContent = formatarMoeda(receita.precoVenda || 0);
+           
+           // Definir valor total
+           const qtd = parseInt(document.getElementById('quantidade-venda').value) || 1;
+           document.getElementById('valor-total-venda').value = (receita.precoVenda * qtd).toFixed(2);
+           
+           let todosProdutosDisponiveis = true;
+           
+           // Listar ingredientes necessários
+           receita.ingredientes.forEach(ingrediente => {
+               const material = materiais.find(m => m.id === ingrediente.materialId);
+               const itemEstoque = estoque.find(item => item.materialId === ingrediente.materialId);
+               
+               const quantidadeNecessaria = ingrediente.quantidade * qtd;
+               let statusEstoque = 'Não disponível';
+               let disponivel = false;
+               
+               if (itemEstoque) {
+                   disponivel = itemEstoque.quantidade >= quantidadeNecessaria;
+                   statusEstoque = disponivel ? 'Disponível' : 'Insuficiente';
+               }
+               
+               if (!disponivel) {
+                   todosProdutosDisponiveis = false;
+               }
+               
+               const tr = document.createElement('tr');
+               tr.innerHTML = `
+                   <td>${material ? material.nome : 'Desconhecido'}</td>
+                   <td>${quantidadeNecessaria} ${ingrediente.unidadeMedida}</td>
+                   <td>${itemEstoque ? itemEstoque.quantidade.toFixed(2) + ' ' + itemEstoque.unidade : 'N/A'}</td>
+                   <td style="color: ${disponivel ? 'green' : 'red'}">${statusEstoque}</td>
+               `;
+               
+               tbodyIngredientes.appendChild(tr);
+           });
+           
+           // Mostrar aviso de estoque
+           avisoEstoque.classList.remove('hidden');
+           if (!todosProdutosDisponiveis) {
+               avisoEstoque.className = 'notification notification-error';
+               avisoEstoque.textContent = 'Atenção: Alguns ingredientes não estão disponíveis em quantidade suficiente!';
+               document.getElementById('confirmar-venda').disabled = true;
+           } else {
+               avisoEstoque.className = 'notification notification-success';
+               avisoEstoque.textContent = 'Todos os ingredientes estão disponíveis. Você pode prosseguir com a venda.';
+               document.getElementById('confirmar-venda').disabled = false;
+           }
+       }
+    }
+    
+    // Função para registrar uma venda
+    function registrarVenda(receitaId, quantidade, clienteNome, clienteTelefone, 
+                          clienteEndereco, custoFrete, custoDecoracao, outrosCustos, dataVenda) {
+       
+       const receita = receitas.find(r => r.id === receitaId);
+       if (!receita) return false;
+       
+       // Verificar disponibilidade de ingredientes
+       let todosProdutosDisponiveis = true;
+       
+       for (const ingrediente of receita.ingredientes) {
+           const itemEstoque = estoque.find(item => item.materialId === ingrediente.materialId);
+           
+           if (!itemEstoque || itemEstoque.quantidade < (ingrediente.quantidade * quantidade)) {
+               todosProdutosDisponiveis = false;
+               break;
+           }
+       }
+       
+       if (!todosProdutosDisponiveis) {
+           return false;
+       }
+       
+       // Remover ingredientes do estoque
+       for (const ingrediente of receita.ingredientes) {
+           removerItemEstoque(ingrediente.materialId, ingrediente.quantidade * quantidade);
+       }
+       
+       // Calcular valores
+       const custoProducao = calcularCustoReceita(receita);
+       const custosVariados = custoProducao * 0.1;
+       const custoTotal = custoProducao + custosVariados;
+       const valorTotal = (receita.precoVenda * quantidade) + custoFrete + custoDecoracao + outrosCustos;
+       
+       // Criar registro de venda
+       const novaVenda = {
+           id: gerarId(),
+           receitaId: receitaId,
+           receitaNome: receita.nome,
+           quantidade: quantidade,
+           custoProducao: custoProducao,
+           custosVariados: custosVariados,
+           custoTotal: custoTotal,
+           precoVenda: receita.precoVenda,
+           custoFrete: custoFrete,
+           custoDecoracao: custoDecoracao,
+           outrosCustos: outrosCustos,
+           valorTotal: valorTotal,
+           cliente: {
+               nome: clienteNome,
+               telefone: clienteTelefone,
+               endereco: clienteEndereco
+           },
+           data: dataVenda || new Date().toISOString(),
+           dataCriacao: new Date().toISOString()
+       };
+       
+       vendas.push(novaVenda);
+       atualizarLocalStorage();
+       
+       return true;
+    }
+    
+    // Função para carregar vendas
+    function carregarVendas() {
+       const container = document.getElementById('lista-vendas');
+       if (!container) return;
+       
+       container.innerHTML = '';
+       
+       if (vendas.length === 0) {
+           container.innerHTML = '<p>Nenhuma venda registrada.</p>';
+           return;
+       }
+       
+       // Ordenar vendas da mais recente para a mais antiga
+       const vendasOrdenadas = [...vendas].sort((a, b) => new Date(b.data) - new Date(a.data));
+       
+       vendasOrdenadas.forEach((venda) => {
+           const card = document.createElement('div');
+           card.className = 'sale-card';
+           card.innerHTML = `
+               <div class="sale-header">
+                   <div class="sale-title">${venda.receitaNome}</div>
+                   <div class="sale-date">${formatarData(venda.data)}</div>
+               </div>
+               <div>Cliente: ${venda.cliente.nome}</div>
+               <div>Quantidade: ${venda.quantidade}</div>
+               <div>Valor Total: ${formatarMoeda(venda.valorTotal)}</div>
+               <div>Lucro: ${formatarMoeda(venda.valorTotal - (venda.custoTotal * venda.quantidade))}</div>
+               <button class="btn btn-secondary btn-detalhes-venda" data-id="${venda.id}">Ver Detalhes</button>
+           `;
+           container.appendChild(card);
+       });
+       
+       // Adicionar eventos aos botões de detalhes
+       document.querySelectorAll('.btn-detalhes-venda').forEach(btn => {
+           btn.addEventListener('click', function() {
+               const id = this.getAttribute('data-id');
+               mostrarDetalhesVenda(id);
+           });
+       });
+    }
+    
+    // Função para mostrar detalhes de uma venda
+    function mostrarDetalhesVenda(vendaId) {
+       const venda = vendas.find(v => v.id === vendaId);
+       if (!venda) return;
+       
+       const modal = document.getElementById('venda-details-modal');
+       const content = document.getElementById('venda-details-content');
+       
+       content.innerHTML = `
+           <div class="sale-details">
+               <h4>${venda.receitaNome}</h4>
+               <p><strong>Data:</strong> ${formatarData(venda.data)}</p>
+               <p><strong>Cliente:</strong> ${venda.cliente.nome}</p>
+               <p><strong>Telefone:</strong> ${venda.cliente.telefone || 'N/A'}</p>
+               <p><strong>Endereço:</strong> ${venda.cliente.endereco || 'N/A'}</p>
+               
+               <div class="recipe-pricing" style="margin: 15px 0;">
+                   <div class="recipe-price-item">
+                       <div class="recipe-price-label">Custo de Produção</div>
+                       <div class="recipe-price-value">${formatarMoeda(venda.custoProducao)}</div>
+                   </div>
+                   
+                   <div class="recipe-price-item">
+                       <div class="recipe-price-label">Custos Variados</div>
+                       <div class="recipe-price-value">${formatarMoeda(venda.custosVariados)}</div>
+                   </div>
+                   
+                   <div class="recipe-price-item">
+                       <div class="recipe-price-label">Preço de Venda Unitário</div>
+                       <div class="recipe-price-value">${formatarMoeda(venda.precoVenda)}</div>
+                   </div>
+                   
+                   <div class="recipe-price-item">
+                       <div class="recipe-price-label">Quantidade</div>
+                       <div class="recipe-price-value">${venda.quantidade}</div>
+                   </div>
+               </div>
+               
+               <div class="recipe-pricing" style="margin: 15px 0;">
+                   <div class="recipe-price-item">
+                       <div class="recipe-price-label">Frete</div>
+                       <div class="recipe-price-value">${formatarMoeda(venda.custoFrete || 0)}</div>
+                   </div>
+                   
+                   <div class="recipe-price-item">
+                       <div class="recipe-price-label">Decoração</div>
+                       <div class="recipe-price-value">${formatarMoeda(venda.custoDecoracao || 0)}</div>
+                   </div>
+                   
+                   <div class="recipe-price-item">
+                       <div class="recipe-price-label">Outros Custos</div>
+                       <div class="recipe-price-value">${formatarMoeda(venda.outrosCustos || 0)}</div>
+                   </div>
+               </div>
+               
+               <p style="font-size: 18px; font-weight: bold; margin-top: 15px;">
+                   Valor Total: ${formatarMoeda(venda.valorTotal)}
+               </p>
+               
+               <p style="font-size: 16px; color: #28a745; margin-top: 5px;">
+                   Lucro: ${formatarMoeda(venda.valorTotal - (venda.custoTotal * venda.quantidade))}
+               </p>
+           </div>
+       `;
+       
+       modal.classList.remove('hidden');
+    }
+    
+    // Função para atualizar data/hora atual
+    function atualizarDataHora() {
+       const agora = new Date();
+       const dataFormatada = agora.toLocaleDateString('pt-BR');
+       const horaFormatada = agora.toLocaleTimeString('pt-BR');
+       document.getElementById('date-time').textContent = `${dataFormatada} ${horaFormatada}`;
+    }
+    
+    // INICIALIZAÇÃO E EVENTOS
+    
+    // Configurar eventos quando o DOM estiver carregado
+    document.addEventListener('DOMContentLoaded', function() {
+       console.log('DOM Carregado!');
+       
+       // Garantir que o modal esteja oculto ao iniciar
+       const modalElement = document.getElementById('processing-modal');
+       if (modalElement) {
+           modalElement.classList.add('hidden');
+       }
+       
+       // Inicializar IDs para itens de estoque e materiais
+       estoque.forEach((item) => {
+           if (!item.id) {
+               item.id = gerarId();
+           }
+           if (!item.materialId && item.codigo) {
+               // Tentar encontrar material correspondente
+               const material = materiais.find(m => m.codigo === item.codigo);
+               if (material) {
+                   item.materialId = material.id;
+               }
+           }
+       });
+       
+       materiais.forEach((material) => {
+           if (!material.id) {
+               material.id = gerarId();
+           }
+           
+           // Garantir que o histórico de preços existe
+           if (!material.historicoPrecos) {
+               material.historicoPrecos = [{
+                   data: material.dataCadastro || new Date().toISOString(),
+                   preco: material.ultimoPreco || 0
+               }];
+           }
+       });
+       
+       receitas.forEach(receita => {
+           if (!receita.id) {
+               receita.id = gerarId();
+           }
+           
+           // Garantir que precoVenda existe
+           if (!receita.precoVenda) {
+               const custoProducao = calcularCustoReceita(receita);
+               const custosVariados = custoProducao * 0.1;
+               receita.precoVenda = (custoProducao + custosVariados) * 2.5;
+           }
+       });
+       
+       vendas.forEach(venda => {
+           if (!venda.id) {
+               venda.id = gerarId();
+           }
+       });
+       
+       atualizarLocalStorage();
+       
+       // Carregar dados nas interfaces
+       carregarEstoque();
+       carregarMateriais();
+       carregarReceitas();
+       carregarVendas();
+       
+       // Eventos de navegação
+       document.querySelectorAll('.nav-link').forEach(link => {
+           link.addEventListener('click', function(e) {
+               e.preventDefault();
+               
+               // Atualizar navegação
+               document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+               this.classList.add('active');
+               
+               // Mostrar página correspondente
+               const pagina = this.getAttribute('data-page');
+               document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+               document.getElementById(`${pagina}-page`).classList.add('active');
+           });
+       });
+       
+       // Eventos das abas
+       document.querySelectorAll('.tab-button').forEach(button => {
+           button.addEventListener('click', function() {
+               // Obter todos os botões na mesma tab
+               const parent = this.parentElement;
+               parent.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+               this.classList.add('active');
+               
+               // Obter o ID da aba a ser mostrada
+               const tabId = this.getAttribute('data-tab');
+               
+               // Encontrar o conteúdo da aba
+               const tabContents = parent.parentElement.querySelectorAll('.tab-content');
+               tabContents.forEach(content => {
+                   content.classList.remove('active');
+               });
+               
+               const tabContent = document.getElementById(tabId);
+               if (tabContent) {
+                   tabContent.classList.add('active');
+               }
+           });
+       });
+       
+       // Eventos de pesquisa
+       ['pesquisar-estoque', 'pesquisar-materiais', 'pesquisar-receita', 'pesquisar-vendas'].forEach(id => {
+           const el = document.getElementById(id);
+           if (el) {
+               el.addEventListener('input', function() {
+                   const termo = this.value.toLowerCase();
+                   let itens;
+                   
+                   switch(id) {
+                        case 'pesquisar-estoque':
+                            itens = document.querySelectorAll('#tabela-estoque tbody tr');
+                            itens.forEach(tr => {
+                                const nome = tr.children[1].textContent.toLowerCase();
+                                const codigo = tr.children[0].textContent.toLowerCase();
+                                tr.style.display = (nome.includes(termo) || codigo.includes(termo)) ? '' : 'none';
+                            });
+                            break;
+                        case 'pesquisar-materiais':
+                            itens = document.querySelectorAll('#tabela-materiais tbody tr');
+                            itens.forEach(tr => {
+                                const nome = tr.children[1].textContent.toLowerCase();
+                                const codigo = tr.children[0].textContent.toLowerCase();
+                                tr.style.display = (nome.includes(termo) || codigo.includes(termo)) ? '' : 'none';
+                            });
+                            break;
+                        case 'pesquisar-receita':
+                            itens = document.querySelectorAll('.recipe-card');
+                            itens.forEach(card => {
+                                const nome = card.querySelector('h3').textContent.toLowerCase();
+                                card.style.display = nome.includes(termo) ? '' : 'none';
+                            });
+                            break;
+                        case 'pesquisar-vendas':
+                            itens = document.querySelectorAll('.sale-card');
+                            itens.forEach(card => {
+                                const nome = card.querySelector('.sale-title').textContent.toLowerCase();
+                                const cliente = card.querySelector('div:nth-child(2)').textContent.toLowerCase();
+                                card.style.display = (nome.includes(termo) || cliente.includes(termo)) ? '' : 'none';
+                            });
+                            break;
+                    }
+                });
+            }
+        });
+        
+        // Eventos para scanner de QR/código de barras
+        const btnIniciarScanner = document.getElementById('iniciar-scanner');
+        if (btnIniciarScanner) {
+            btnIniciarScanner.addEventListener('click', iniciarScanner);
+        }
+        
+        const btnPararScanner = document.getElementById('parar-scanner');
+        if (btnPararScanner) {
+            btnPararScanner.addEventListener('click', pararScanner);
+        }
+        
+        // Evento para adicionar material/item
+        const formAdicionarMaterial = document.getElementById('form-adicionar-material');
+        if (formAdicionarMaterial) {
+            formAdicionarMaterial.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const codigo = document.getElementById('codigo-material').value;
+                const nome = document.getElementById('nome-material').value;
+                const quantidade = parseFloat(document.getElementById('quantidade-material').value);
+                const unidade = document.getElementById('unidade-material').value;
+                const unidadeMedida = document.getElementById('unidade-medida-material').value;
+                const quantidadeMedida = parseFloat(document.getElementById('quantidade-medida-material').value) || 0;
+                const preco = parseFloat(document.getElementById('preco-material').value) || 0;
+                
+                // Data de compra - se disponível
+                let dataCompra = null;
+                const dataCompraEl = document.getElementById('data-compra-material');
+                if (dataCompraEl && dataCompraEl.value) {
+                    dataCompra = new Date(dataCompraEl.value).toISOString();
+                }
+                
+                // Adicionar ou atualizar o material no catálogo
+                const materialId = adicionarOuAtualizarMaterial(codigo, nome, unidade, unidadeMedida, quantidadeMedida, preco, dataCompra);
+                
+                // Adicionar ao estoque
+                adicionarItemEstoque(materialId, quantidade, preco);
+                
+                // Atualizar localStorage e interface
+                atualizarLocalStorage();
+                carregarMateriais();
+                carregarEstoque();
+                
+                // Resetar o botão de submit caso esteja em modo de edição
+                const submitBtn = document.querySelector('#form-adicionar-material button[type="submit"]');
+                submitBtn.textContent = 'Adicionar ao Estoque';
+                submitBtn.removeAttribute('data-edicao');
+                
+                // Limpar o formulário
+                this.reset();
+                
+                mostrarNotificacao('notification-materiais', 'Material adicionado com sucesso!', 'success');
+                
+                // Mudar para a aba de listar materiais
+                const tabButton = document.querySelector('[data-tab="listar-materiais"]');
+                if (tabButton) {
+                    tabButton.click();
+                }
+            });
+        }
+        
+        // Evento para adicionar receita
+        const formAdicionarReceita = document.getElementById('form-adicionar-receita');
+        if (formAdicionarReceita) {
+            formAdicionarReceita.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const nome = document.getElementById('nome-receita').value;
+                const descricao = document.getElementById('descricao-receita').value;
+                const precoVenda = parseFloat(document.getElementById('preco-venda').value) || 0;
+                
+                // Coletar ingredientes
+                const ingredientes = [];
+                document.querySelectorAll('.ingrediente-item').forEach(item => {
+                    const select = item.querySelector('.ingrediente-select');
+                    if (select.value) {
+                        const quantidade = parseFloat(item.querySelector('.ingrediente-quantidade').value);
+                        const unidadeMedidaSelect = item.querySelector('.ingrediente-unidade-medida');
+                        const material = materiais.find(m => m.id === select.value);
+                        
+                        ingredientes.push({
+                            materialId: select.value,
+                            nome: material ? material.nome : select.options[select.selectedIndex].text,
+                            quantidade: quantidade,
+                            unidadeMedida: unidadeMedidaSelect.value
+                        });
+                    }
+                });
+                
+                // Verificar se tem ingredientes
+                if (ingredientes.length === 0) {
+                    alert('Adicione pelo menos um ingrediente à receita!');
+                    return;
+                }
+                
+                // Verificar se é uma edição
+                const submitBtn = document.querySelector('#form-adicionar-receita button[type="submit"]');
+                const indexEdicao = submitBtn.getAttribute('data-edicao');
+                
+                if (indexEdicao !== null && indexEdicao !== undefined) {
+                    // Edição de receita existente
+                    receitas[indexEdicao].nome = nome;
+                    receitas[indexEdicao].descricao = descricao;
+                    receitas[indexEdicao].ingredientes = ingredientes;
+                    receitas[indexEdicao].precoVenda = precoVenda;
+                    
+                    // Resetar o botão
+                    submitBtn.textContent = 'Salvar Receita';
+                    submitBtn.removeAttribute('data-edicao');
+                    
+                    mostrarNotificacao('notification-estoque', 'Receita atualizada com sucesso!', 'success');
+                } else {
+                    // Nova receita
+                    const novaReceita = {
+                        id: gerarId(),
+                        nome: nome,
+                        descricao: descricao,
+                        ingredientes: ingredientes,
+                        precoVenda: precoVenda,
+                        dataCriacao: new Date().toISOString()
+                    };
+                    
+                    receitas.push(novaReceita);
+                    mostrarNotificacao('notification-estoque', 'Receita adicionada com sucesso!', 'success');
+                }
+                
+                // Atualizar localStorage e interface
+                atualizarLocalStorage();
+                carregarReceitas();
+                
+                // Limpar o formulário
+                this.reset();
+                document.getElementById('lista-ingredientes').innerHTML = '';
+                document.getElementById('custo-producao').textContent = formatarMoeda(0);
+                document.getElementById('custos-variados').textContent = formatarMoeda(0);
+                document.getElementById('preco-estimado').textContent = formatarMoeda(0);
+                
+                // Adicionar um campo vazio de ingrediente
+                adicionarCampoIngrediente();
+                
+                // Mudar para a aba de listar receitas
+                const tabButton = document.querySelector('[data-tab="listar-receitas"]');
+                if (tabButton) {
+                    tabButton.click();
+                }
+            });
+        }
+        
+        // Evento para adicionar ingrediente à receita
+        const btnAdicionarIngrediente = document.getElementById('adicionar-ingrediente');
+        if (btnAdicionarIngrediente) {
+            btnAdicionarIngrediente.addEventListener('click', function() {
+                adicionarCampoIngrediente();
+            });
+        }
+        
+        // Evento para selecionar receita para venda
+        const selecionarReceitaVenda = document.getElementById('selecionar-receita-venda');
+        if (selecionarReceitaVenda) {
+            selecionarReceitaVenda.addEventListener('change', function() {
+                const receitaId = this.value;
+                if (receitaId) {
+                    carregarDetalhesReceitaVenda(receitaId);
+                } else {
+                    document.getElementById('detalhes-receita-venda').classList.add('hidden');
+                }
+            });
+        }
+        
+        // Evento para atualizar valor total quando quantidade ou custos adicionais mudam
+        const qtdVenda = document.getElementById('quantidade-venda');
+        const custoFrete = document.getElementById('custo-frete');
+        const custoDecoracao = document.getElementById('custo-decoracao');
+        const outrosCustos = document.getElementById('outros-custos');
+        
+        [qtdVenda, custoFrete, custoDecoracao, outrosCustos].forEach(input => {
+            if (input) {
+                input.addEventListener('input', atualizarValorTotalVenda);
+            }
+        });
+        
+        function atualizarValorTotalVenda() {
+            const receitaId = document.getElementById('selecionar-receita-venda').value;
+            if (!receitaId) return;
+            
+            const receita = receitas.find(r => r.id === receitaId);
+            if (!receita) return;
+            
+            const qtd = parseInt(document.getElementById('quantidade-venda').value) || 1;
+            const frete = parseFloat(document.getElementById('custo-frete').value) || 0;
+            const decoracao = parseFloat(document.getElementById('custo-decoracao').value) || 0;
+            const outros = parseFloat(document.getElementById('outros-custos').value) || 0;
+            
+            const valorTotal = (receita.precoVenda * qtd) + frete + decoracao + outros;
+            document.getElementById('valor-total-venda').value = valorTotal.toFixed(2);
+            
+            // Atualizar a lista de ingredientes necessários com a nova quantidade
+            carregarDetalhesReceitaVenda(receitaId);
+        }
+        
+        // Evento para registrar venda
+        const formRegistrarVenda = document.getElementById('form-registrar-venda');
+        if (formRegistrarVenda) {
+            formRegistrarVenda.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const receitaId = document.getElementById('selecionar-receita-venda').value;
+                if (!receitaId) {
+                    alert('Selecione uma receita primeiro!');
+                    return;
+                }
+                
+                const quantidade = parseInt(document.getElementById('quantidade-venda').value) || 1;
+                const clienteNome = document.getElementById('cliente-nome').value;
+                const clienteTelefone = document.getElementById('cliente-telefone').value;
+                const clienteEndereco = document.getElementById('cliente-endereco').value;
+                const custoFrete = parseFloat(document.getElementById('custo-frete').value) || 0;
+                const custoDecoracao = parseFloat(document.getElementById('custo-decoracao').value) || 0;
+                const outrosCustos = parseFloat(document.getElementById('outros-custos').value) || 0;
+                
+                // Data da venda
+                let dataVenda = null;
+                const dataVendaEl = document.getElementById('data-venda');
+                if (dataVendaEl && dataVendaEl.value) {
+                    dataVenda = new Date(dataVendaEl.value).toISOString();
+                }
+                
+                // Processar venda
+                toggleModal(true, "Processando venda...", "Aguarde enquanto processamos a venda e atualizamos o estoque.");
+                
+                setTimeout(() => {
+                    const resultado = registrarVenda(
+                        receitaId, 
+                        quantidade, 
+                        clienteNome, 
+                        clienteTelefone, 
+                        clienteEndereco, 
+                        custoFrete, 
+                        custoDecoracao, 
+                        outrosCustos, 
+                        dataVenda
+                    );
+                    
+                    toggleModal(false);
+                    
+                    if (resultado) {
+                        mostrarNotificacao('notification-vendas', 'Venda registrada com sucesso!', 'success');
+                        
+                        // Atualizar interfaces
+                        carregarEstoque();
+                        carregarVendas();
+                        
+                        // Limpar formulário
+                        this.reset();
+                        document.getElementById('detalhes-receita-venda').classList.add('hidden');
+                        
+                        // Mudar para a aba de listar vendas
+                        const tabButton = document.querySelector('[data-tab="listar-vendas"]');
+                        if (tabButton) {
+                            tabButton.click();
+                        }
+                    } else {
+                        mostrarNotificacao('notification-vendas', 'Erro ao registrar venda. Verifique o estoque de ingredientes.', 'error');
+                    }
+                }, 1000);
+            });
+        }
+        
+        // Evento para filtrar vendas
+        const btnFiltrarVendas = document.getElementById('btn-filtrar-vendas');
+        if (btnFiltrarVendas) {
+            btnFiltrarVendas.addEventListener('click', filtrarVendas);
+        }
+        
+        const btnLimparFiltros = document.getElementById('btn-limpar-filtros');
+        if (btnLimparFiltros) {
+            btnLimparFiltros.addEventListener('click', function() {
+                document.getElementById('filtro-data-inicio').value = '';
+                document.getElementById('filtro-data-fim').value = '';
+                document.getElementById('filtro-receita').value = '';
+                
+                // Recarregar todas as vendas
+                carregarVendas();
+            });
+        }
+        
+        function filtrarVendas() {
+            const dataInicio = document.getElementById('filtro-data-inicio').value;
+            const dataFim = document.getElementById('filtro-data-fim').value;
+            const receitaId = document.getElementById('filtro-receita').value;
+            
+            const vendasFiltradas = vendas.filter(venda => {
+                // Filtrar por data
+                let passaFiltroData = true;
+                if (dataInicio) {
+                    const dataVenda = new Date(venda.data);
+                    const dataInicioDate = new Date(dataInicio);
+                    passaFiltroData = passaFiltroData && dataVenda >= dataInicioDate;
+                }
+                
+                if (dataFim) {
+                    const dataVenda = new Date(venda.data);
+                    const dataFimDate = new Date(dataFim);
+                    // Adicionar 1 dia para incluir o dia final completo
+                    dataFimDate.setDate(dataFimDate.getDate() + 1);
+                    passaFiltroData = passaFiltroData && dataVenda < dataFimDate;
+                }
+                
+                // Filtrar por receita
+                let passaFiltroReceita = true;
+                if (receitaId) {
+                    passaFiltroReceita = venda.receitaId === receitaId;
+                }
+                
+                return passaFiltroData && passaFiltroReceita;
+            });
+            
+            // Renderizar vendas filtradas
+            const container = document.getElementById('lista-vendas');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            if (vendasFiltradas.length === 0) {
+                container.innerHTML = '<p>Nenhuma venda encontrada com os filtros selecionados.</p>';
+                return;
+            }
+            
+            // Ordenar vendas da mais recente para a mais antiga
+            const vendasOrdenadas = [...vendasFiltradas].sort((a, b) => new Date(b.data) - new Date(a.data));
+            
+            vendasOrdenadas.forEach((venda) => {
+                const card = document.createElement('div');
+                card.className = 'sale-card';
+                card.innerHTML = `
+                    <div class="sale-header">
+                        <div class="sale-title">${venda.receitaNome}</div>
+                        <div class="sale-date">${formatarData(venda.data)}</div>
+                    </div>
+                    <div>Cliente: ${venda.cliente.nome}</div>
+                    <div>Quantidade: ${venda.quantidade}</div>
+                    <div>Valor Total: ${formatarMoeda(venda.valorTotal)}</div>
+                    <div>Lucro: ${formatarMoeda(venda.valorTotal - (venda.custoTotal * venda.quantidade))}</div>
+                    <button class="btn btn-secondary btn-detalhes-venda" data-id="${venda.id}">Ver Detalhes</button>
+                `;
+                container.appendChild(card);
+            });
+            
+            // Adicionar eventos aos botões de detalhes
+            document.querySelectorAll('.btn-detalhes-venda').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const id = this.getAttribute('data-id');
+                    mostrarDetalhesVenda(id);
+                });
+            });
+        }
+        
+        // Evento para fechar o modal de detalhes de venda
+        const btnFecharDetalhesVenda = document.getElementById('fechar-detalhes-venda');
+        if (btnFecharDetalhesVenda) {
+            btnFecharDetalhesVenda.addEventListener('click', function() {
+                document.getElementById('venda-details-modal').classList.add('hidden');
+            });
+        }
+        
+        // Adicionar um campo de ingrediente inicial na tela de receitas
+        if (document.getElementById('lista-ingredientes')) {
+            adicionarCampoIngrediente();
+        }
+        
+        // Iniciar o relógio
+        atualizarDataHora();
+        setInterval(atualizarDataHora, 1000);
+    });
+    <script>    
+</body>
+</html>  
         
