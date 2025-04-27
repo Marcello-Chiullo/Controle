@@ -954,7 +954,10 @@ function editarMaterial(index) {
     const material = materiais[index];
     
     // Mudar para a aba de adicionar material
-    document.querySelector('[data-tab="adicionar-material"]').click();
+    const tabButton = document.querySelector('[data-tab="adicionar-material"]');
+    if (tabButton) {
+        tabButton.click();
+    }
     
     // Preencher o formulário
     document.getElementById('codigo-material').value = material.codigo || '';
@@ -976,17 +979,27 @@ function adicionarAoEstoque(materialId) {
     if (!material) return;
     
     // Mudar para a página de estoque e a aba de adicionar
-    document.querySelector('[data-page="estoque"]').click();
-    document.querySelector('[data-tab="adicionar-estoque"]').click();
+    const navLink = document.querySelector('[data-page="estoque"]');
+    if (navLink) {
+        navLink.click();
+    }
     
-    // Preencher o formulário com os dados do material
-    document.getElementById('codigo-item').value = material.codigo || '';
-    document.getElementById('nome-item').value = material.nome;
-    document.getElementById('quantidade-item').value = 1;
-    document.getElementById('unidade-item').value = material.unidade;
-    document.getElementById('unidade-medida-item').value = material.unidadeMedida;
-    document.getElementById('quantidade-medida-item').value = material.quantidadeMedida;
-    document.getElementById('preco-item').value = material.ultimoPreco;
+    // Pequeno delay para garantir que a página foi carregada
+    setTimeout(() => {
+        const tabButton = document.querySelector('[data-tab="adicionar-estoque"]');
+        if (tabButton) {
+            tabButton.click();
+        }
+        
+        // Preencher o formulário com os dados do material
+        document.getElementById('codigo-item').value = material.codigo || '';
+        document.getElementById('nome-item').value = material.nome;
+        document.getElementById('quantidade-item').value = 1;
+        document.getElementById('unidade-item').value = material.unidade;
+        document.getElementById('unidade-medida-item').value = material.unidadeMedida;
+        document.getElementById('quantidade-medida-item').value = material.quantidadeMedida;
+        document.getElementById('preco-item').value = material.ultimoPreco;
+    }, 100);
 }
 
 // Função para calcular o custo de uma receita
@@ -1019,7 +1032,7 @@ function carregarEstoque() {
     
     estoque.forEach((item, index) => {
         // Calcular a quantidade em unidade de medida (ex: ml restantes)
-        const quantidadeTotalMedida = item.quantidade * item.quantidadeMedida;
+        const quantidadeTotalMedida = item.quantidade * (item.quantidadeMedida || 1);
         // Verificar se é um número fracionário
         const quantidadeFracionada = item.quantidade % 1 !== 0;
         
@@ -1070,7 +1083,10 @@ function editarItemEstoque(index) {
     const item = estoque[index];
     
     // Mudar para a aba de adicionar
-    document.querySelector('[data-tab="adicionar-estoque"]').click();
+    const tabButton = document.querySelector('[data-tab="adicionar-estoque"]');
+    if (tabButton) {
+        tabButton.click();
+    }
     
     // Preencher o formulário
     document.getElementById('codigo-item').value = item.codigo || '';
@@ -1096,6 +1112,264 @@ function removerItemEstoque(index) {
         atualizarSelectsIngredientes();
         mostrarNotificacao('notification-estoque', 'Item removido com sucesso!', 'success');
     }
+}
+
+// Função para atualizar selects de ingredientes
+function atualizarSelectsIngredientes() {
+    document.querySelectorAll('.ingrediente-select').forEach(select => {
+        const valorAtual = select.value;
+        
+        // Limpar as opções atuais
+        select.innerHTML = '<option value="">Selecione um ingrediente...</option>';
+        
+        // Adicionar as novas opções
+        estoque.forEach(item => {
+            const option = document.createElement('option');
+            option.value = item.id;
+            option.textContent = item.nome;
+            option.setAttribute('data-unidade', item.unidade);
+            option.setAttribute('data-preco', item.preco || 0);
+            option.setAttribute('data-unidade-medida', item.unidadeMedida || '');
+            option.setAttribute('data-quantidade-medida', item.quantidadeMedida || 0);
+            select.appendChild(option);
+        });
+        
+        // Tentar restaurar o valor anterior
+        if (valorAtual) {
+            select.value = valorAtual;
+        }
+    });
+}
+
+// Função para adicionar campo de ingrediente
+function adicionarCampoIngrediente(ingredienteData = null) {
+    const container = document.getElementById('lista-ingredientes');
+    const div = document.createElement('div');
+    div.className = 'ingrediente-item';
+    div.innerHTML = `
+        <div class="form-row">
+            <div class="form-col">
+                <div class="form-group">
+                    <label>Ingrediente:</label>
+                    <select class="form-control ingrediente-select" required>
+                        <option value="">Selecione um ingrediente...</option>
+                        ${estoque.map(item => `
+                            <option value="${item.id}" 
+                                data-unidade="${item.unidade}" 
+                                data-preco="${item.preco || 0}"
+                                data-unidade-medida="${item.unidadeMedida || ''}"
+                                data-quantidade-medida="${item.quantidadeMedida || 0}">
+                                ${item.nome}
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+            </div>
+            <div class="form-col">
+                <div class="form-group">
+                    <label>Quantidade:</label>
+                    <input type="number" class="form-control ingrediente-quantidade" min="0.01" step="0.01" required>
+                </div>
+            </div>
+            <div class="form-col">
+                <div class="form-group">
+                    <label>Unidade de Medida:</label>
+                    <select class="form-control ingrediente-unidade-medida" required>
+                        <option value="kg">Quilogramas (kg)</option>
+                        <option value="g">Gramas (g)</option>
+                        <option value="l">Litros (l)</option>
+                        <option value="ml">Mililitros (ml)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-col" style="flex: 0.5;">
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button type="button" class="btn btn-danger remover-ingrediente" style="display: block;">X</button>
+                </div>
+            </div>
+        </div>
+    `;
+    container.appendChild(div);
+    
+    // Configurar o novo campo
+    const select = div.querySelector('.ingrediente-select');
+    const quantidadeInput = div.querySelector('.ingrediente-quantidade');
+    const unidadeMedidaSelect = div.querySelector('.ingrediente-unidade-medida');
+    const removerBtn = div.querySelector('.remover-ingrediente');
+    
+    // Preencher com dados se fornecidos
+    if (ingredienteData) {
+        // Encontrar o ingrediente no estoque
+        const ingredienteEstoque = estoque.find(item => item.id === ingredienteData.id);
+        if (ingredienteEstoque) {
+            select.value = ingredienteEstoque.id;
+            quantidadeInput.value = ingredienteData.quantidade;
+            unidadeMedidaSelect.value = ingredienteData.unidadeMedida || 'ml';
+        }
+    }
+    
+    // Adicionar eventos
+    select.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        if (selectedOption.value) {
+            const unidadeMedida = selectedOption.getAttribute('data-unidade-medida');
+            if (unidadeMedida) {
+                unidadeMedidaSelect.value = unidadeMedida;
+            }
+        }
+    });
+    
+    removerBtn.addEventListener('click', function() {
+        container.removeChild(div);
+    });
+}
+
+// Função para editar receita
+function editarReceita(index) {
+    const receita = receitas[index];
+    
+    // Mudar para a aba de adicionar receita
+    const tabButton = document.querySelector('[data-tab="adicionar-receita"]');
+    if (tabButton) {
+        tabButton.click();
+    }
+    
+    // Preencher o formulário
+    document.getElementById('nome-receita').value = receita.nome;
+    document.getElementById('descricao-receita').value = receita.descricao || '';
+    
+    // Limpar os ingredientes existentes
+    document.getElementById('lista-ingredientes').innerHTML = '';
+    
+    // Adicionar cada ingrediente
+    receita.ingredientes.forEach(ingrediente => {
+        adicionarCampoIngrediente(ingrediente);
+    });
+    
+    // Modificar o botão de submit
+    const submitBtn = document.querySelector('#form-adicionar-receita button[type="submit"]');
+    submitBtn.textContent = 'Atualizar Receita';
+    submitBtn.setAttribute('data-edicao', index);
+}
+
+// Função para remover receita
+function removerReceita(index) {
+    if (confirm('Tem certeza que deseja remover esta receita?')) {
+        receitas.splice(index, 1);
+        atualizarLocalStorage();
+        carregarReceitas();
+        mostrarNotificacao('notification-estoque', 'Receita removida com sucesso!', 'success');
+    }
+}
+        // Função para carregar detalhes da receita
+function carregarDetalhesReceita(index) {
+    const receita = receitas[index];
+    if (!receita) return;
+    
+    const detalhes = document.getElementById('detalhes-receita');
+    const nomeReceita = document.getElementById('nome-receita-selecionada');
+    const tbodyIngredientes = document.getElementById('ingredientes-receita-selecionada');
+    const avisoEstoque = document.getElementById('aviso-estoque');
+    const custoTotalElement = document.getElementById('custo-total-receita');
+    
+    detalhes.classList.remove('hidden');
+    nomeReceita.textContent = receita.nome;
+    tbodyIngredientes.innerHTML = '';
+    
+    let todosProdutosDisponiveis = true;
+    let custoTotal = 0;
+    
+    // Obter a quantidade desejada
+    const quantidade = parseInt(document.getElementById('quantidade-receitas').value) || 1;
+    
+    receita.ingredientes.forEach(ingrediente => {
+        const itemEstoque = estoque.find(item => item.id === ingrediente.id);
+        const quantidadeNecessaria = ingrediente.quantidade * quantidade;
+        
+        if (!itemEstoque) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${ingrediente.nome} (não encontrado)</td>
+                <td>${quantidadeNecessaria} ${ingrediente.unidadeMedida || 'N/A'}</td>
+                <td>N/A</td>
+                <td>N/A</td>
+                <td>N/A</td>
+                <td style="color: red">Não disponível</td>
+            `;
+            tbodyIngredientes.appendChild(tr);
+            todosProdutosDisponiveis = false;
+            return;
+        }
+        
+        // Converter a quantidade necessária para a unidade de medida do item no estoque
+        let quantidadeTotalNecessaria = quantidadeNecessaria;
+        
+        // Cálculo do custo
+        const custoUnitario = itemEstoque.preco / (itemEstoque.quantidade || 1);
+        const custo = custoUnitario * quantidadeNecessaria;
+        custoTotal += custo;
+        
+        const disponivel = itemEstoque.quantidade >= quantidadeNecessaria;
+        if (!disponivel) {
+            todosProdutosDisponiveis = false;
+        }
+        
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${itemEstoque.nome}</td>
+            <td>${quantidadeNecessaria} ${ingrediente.unidadeMedida}</td>
+            <td>${itemEstoque.quantidade.toFixed(2)} ${itemEstoque.unidade}</td>
+            <td>${formatarMoeda(custoUnitario)}</td>
+            <td>${formatarMoeda(custo)}</td>
+            <td style="color: ${disponivel ? 'green' : 'red'}">${disponivel ? 'Disponível' : 'Insuficiente'}</td>
+        `;
+        
+        tbodyIngredientes.appendChild(tr);
+    });
+    
+    // Mostrar custo total
+    custoTotalElement.textContent = formatarMoeda(custoTotal);
+    
+    // Mostrar aviso de estoque
+    avisoEstoque.classList.remove('hidden');
+    if (!todosProdutosDisponiveis) {
+        avisoEstoque.className = 'notification notification-error';
+        avisoEstoque.textContent = 'Atenção: Alguns ingredientes não estão disponíveis em quantidade suficiente!';
+        document.getElementById('confirmar-remocao').disabled = true;
+    } else {
+        avisoEstoque.className = 'notification notification-success';
+        avisoEstoque.textContent = 'Todos os ingredientes estão disponíveis. Você pode prosseguir com a produção.';
+        document.getElementById('confirmar-remocao').disabled = false;
+    }
+}
+
+// Função para carregar vendas (implementação simplificada)
+function carregarVendas() {
+    const container = document.getElementById('lista-vendas');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (vendas.length === 0) {
+        container.innerHTML = '<p>Nenhuma venda registrada.</p>';
+        return;
+    }
+    
+    // Implementação simplificada - apenas mostrar as vendas existentes
+    vendas.forEach((venda) => {
+        const card = document.createElement('div');
+        card.className = 'sale-card';
+        card.innerHTML = `
+            <div class="sale-header">
+                <div class="sale-title">${venda.receitaNome}</div>
+                <div class="sale-date">${formatarData(venda.data)}</div>
+            </div>
+            <div>Quantidade: ${venda.quantidade}</div>
+            <button class="btn btn-secondary btn-detalhes-venda" data-id="${venda.id}">Ver Detalhes</button>
+        `;
+        container.appendChild(card);
+    });
 }
 
 // Função para carregar receitas
@@ -1209,17 +1483,30 @@ function addRecipeButtonEvents() {
             const index = this.getAttribute('data-index');
             
             // Mudar para a página de estoque e aba de remover
-            document.querySelector('[data-page="estoque"]').click();
-            document.querySelector('[data-tab="remover-estoque"]').click();
+            const navLink = document.querySelector('[data-page="estoque"]');
+            if (navLink) {
+                navLink.click();
+            }
             
-            // Selecionar a receita
-            document.getElementById('selecionar-receita').value = index;
-            document.getElementById('selecionar-receita').dispatchEvent(new Event('change'));
+            // Pequeno delay para garantir que a página foi carregada
+            setTimeout(() => {
+                const tabButton = document.querySelector('[data-tab="remover-estoque"]');
+                if (tabButton) {
+                    tabButton.click();
+                }
+                
+                // Selecionar a receita
+                const selectReceita = document.getElementById('selecionar-receita');
+                if (selectReceita) {
+                    selectReceita.value = index;
+                    selectReceita.dispatchEvent(new Event('change'));
+                }
+            }, 100);
         });
     });
 }
 
-// Evento para mostrar a data/hora atual
+// Função para atualizar data/hora atual
 function atualizarDataHora() {
     const agora = new Date();
     const dataFormatada = agora.toLocaleDateString('pt-BR');
@@ -1229,6 +1516,8 @@ function atualizarDataHora() {
 
 // Configurar eventos quando o DOM estiver carregado
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM Carregado!');
+    
     // Garantir que o modal esteja oculto ao iniciar
     const modalElement = document.getElementById('processing-modal');
     if (modalElement) {
@@ -1280,6 +1569,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.nav-link').forEach(link => {
         link.addEventListener('click', function(e) {
             e.preventDefault();
+            console.log('Nav link clicado:', this.getAttribute('data-page'));
             
             // Atualizar navegação
             document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
@@ -1292,21 +1582,318 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Eventos das abas
+    // Eventos das abas - CORRIGIDO
     document.querySelectorAll('.tab-button').forEach(button => {
         button.addEventListener('click', function() {
-            // Atualizar botões
+            console.log('Tab button clicado:', this.getAttribute('data-tab'));
+            
+            // Obter todos os botões na mesma tab
             const parent = this.parentElement;
             parent.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
             
-            // Mostrar conteúdo correspondente
-            const tab = this.getAttribute('data-tab');
-            const container = parent.parentElement;
-            container.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            document.getElementById(tab).classList.add('active');
+            // Obter o ID da aba a ser mostrada
+            const tabId = this.getAttribute('data-tab');
+            
+            // Encontrar o conteúdo da aba
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            const tabContent = document.getElementById(tabId);
+            if (tabContent) {
+                tabContent.classList.add('active');
+            } else {
+                console.error('Conteúdo da aba não encontrado:', tabId);
+            }
         });
     });
+    
+    // Evento para pesquisar no estoque
+    const pesquisarEstoque = document.getElementById('pesquisar-estoque');
+    if (pesquisarEstoque) {
+        pesquisarEstoque.addEventListener('input', function() {
+            const termo = this.value.toLowerCase();document.querySelectorAll('#tabela-estoque tbody tr').forEach(tr => {
+                const nome = tr.children[1].textContent.toLowerCase();
+                const codigo = tr.children[0].textContent.toLowerCase();
+                
+                if (nome.includes(termo) || codigo.includes(termo)) {
+                    tr.style.display = '';
+                } else {
+                    tr.style.display = 'none';
+                }
+            });
+        });
+    }
+    
+    // Evento para pesquisar materiais
+    const pesquisarMateriais = document.getElementById('pesquisar-materiais');
+    if (pesquisarMateriais) {
+        pesquisarMateriais.addEventListener('input', function() {
+            const termo = this.value.toLowerCase();
+            document.querySelectorAll('#tabela-materiais tbody tr').forEach(tr => {
+                const nome = tr.children[1].textContent.toLowerCase();
+                const codigo = tr.children[0].textContent.toLowerCase();
+                
+                if (nome.includes(termo) || codigo.includes(termo)) {
+                    tr.style.display = '';
+                } else {
+                    tr.style.display = 'none';
+                }
+            });
+        });
+    }
+    
+    // Evento para pesquisar receitas
+    const pesquisarReceita = document.getElementById('pesquisar-receita');
+    if (pesquisarReceita) {
+        pesquisarReceita.addEventListener('input', function() {
+            const termo = this.value.toLowerCase();
+            document.querySelectorAll('.recipe-card').forEach(card => {
+                const nome = card.querySelector('h3').textContent.toLowerCase();
+                
+                if (nome.includes(termo)) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+    }
+    
+    // Evento para adicionar item ao estoque
+    const formAdicionarEstoque = document.getElementById('form-adicionar-estoque');
+    if (formAdicionarEstoque) {
+        formAdicionarEstoque.addEventListener('submit', function(e) {
+            e.preventDefault();
+            console.log('Formulário de adicionar estoque enviado');
+            
+            const codigo = document.getElementById('codigo-item').value;
+            const nome = document.getElementById('nome-item').value;
+            const quantidade = parseFloat(document.getElementById('quantidade-item').value);
+            const unidade = document.getElementById('unidade-item').value;
+            const unidadeMedida = document.getElementById('unidade-medida-item').value;
+            const quantidadeMedida = parseFloat(document.getElementById('quantidade-medida-item').value) || 0;
+            const preco = parseFloat(document.getElementById('preco-item').value) || 0;
+            
+            // Adicionar ou atualizar o material no catálogo
+            adicionarOuAtualizarMaterial(codigo, nome, unidade, unidadeMedida, quantidadeMedida, preco);
+            
+            // Verificar se é uma edição
+            const submitBtn = document.querySelector('#form-adicionar-estoque button[type="submit"]');
+            const indexEdicao = submitBtn.getAttribute('data-edicao');
+            
+            if (indexEdicao !== null && indexEdicao !== undefined) {
+                // Edição de item existente
+                estoque[indexEdicao].codigo = codigo;
+                estoque[indexEdicao].nome = nome;
+                estoque[indexEdicao].quantidade = quantidade;
+                estoque[indexEdicao].unidade = unidade;
+                estoque[indexEdicao].unidadeMedida = unidadeMedida;
+                estoque[indexEdicao].quantidadeMedida = quantidadeMedida;
+                estoque[indexEdicao].preco = preco;
+                
+                // Resetar o botão
+                submitBtn.textContent = 'Adicionar ao Estoque';
+                submitBtn.removeAttribute('data-edicao');
+                
+                mostrarNotificacao('notification-estoque', 'Item atualizado com sucesso!', 'success');
+            } else {
+                // Novo item
+                const novoItem = {
+                    id: gerarId(),
+                    codigo: codigo,
+                    nome: nome,
+                    quantidade: quantidade,
+                    unidade: unidade,
+                    unidadeMedida: unidadeMedida,
+                    quantidadeMedida: quantidadeMedida,
+                    preco: preco,
+                    dataAdicao: new Date().toISOString()
+                };
+                
+                estoque.push(novoItem);
+                mostrarNotificacao('notification-estoque', 'Item adicionado com sucesso!', 'success');
+            }
+            
+            // Atualizar localStorage e interface
+            atualizarLocalStorage();
+            carregarEstoque();
+            carregarMateriais();
+            
+            if (document.getElementById('lista-ingredientes')) {
+                atualizarSelectsIngredientes();
+            }
+            
+            // Limpar o formulário
+            this.reset();
+            document.getElementById('codigo-item').value = '';
+            if (document.getElementById('scanner-result')) {
+                document.getElementById('scanner-result').innerHTML = '';
+            }
+        });
+    }
+    
+    // Evento para adicionar material
+    const formAdicionarMaterial = document.getElementById('form-adicionar-material');
+    if (formAdicionarMaterial) {
+        formAdicionarMaterial.addEventListener('submit', function(e) {
+            e.preventDefault();
+            console.log('Formulário de adicionar material enviado');
+            
+            const codigo = document.getElementById('codigo-material').value;
+            const nome = document.getElementById('nome-material').value;
+            const unidade = document.getElementById('unidade-material').value;
+            const unidadeMedida = document.getElementById('unidade-medida-material').value;
+            const quantidadeMedida = parseFloat(document.getElementById('quantidade-medida-material').value) || 0;
+            const preco = parseFloat(document.getElementById('preco-material').value) || 0;
+            
+            // Adicionar ou atualizar o material
+            adicionarOuAtualizarMaterial(codigo, nome, unidade, unidadeMedida, quantidadeMedida, preco);
+            
+            // Atualizar localStorage e interface
+            atualizarLocalStorage();
+            carregarMateriais();
+            
+            // Resetar o botão de submit caso esteja em modo de edição
+            const submitBtn = document.querySelector('#form-adicionar-material button[type="submit"]');
+            submitBtn.textContent = 'Adicionar Material';
+            submitBtn.removeAttribute('data-edicao');
+            
+            // Limpar o formulário
+            this.reset();
+            
+            mostrarNotificacao('notification-materiais', 'Material cadastrado com sucesso!', 'success');
+        });
+    }
+    
+    // Evento para adicionar receita
+    const formAdicionarReceita = document.getElementById('form-adicionar-receita');
+    if (formAdicionarReceita) {
+        formAdicionarReceita.addEventListener('submit', function(e) {
+            e.preventDefault();
+            console.log('Formulário de adicionar receita enviado');
+            
+            const nome = document.getElementById('nome-receita').value;
+            const descricao = document.getElementById('descricao-receita').value;
+            
+            // Coletar ingredientes
+            const ingredientes = [];
+            document.querySelectorAll('.ingrediente-item').forEach(item => {
+                const select = item.querySelector('.ingrediente-select');
+                if (select.value) {
+                    const quantidade = parseFloat(item.querySelector('.ingrediente-quantidade').value);
+                    const unidadeMedidaSelect = item.querySelector('.ingrediente-unidade-medida');
+                    
+                    ingredientes.push({
+                        id: select.value,
+                        nome: select.options[select.selectedIndex].text,
+                        quantidade: quantidade,
+                        unidadeMedida: unidadeMedidaSelect.value
+                    });
+                }
+            });
+            
+            // Verificar se tem ingredientes
+            if (ingredientes.length === 0) {
+                alert('Adicione pelo menos um ingrediente à receita!');
+                return;
+            }
+            
+            // Verificar se é uma edição
+            const submitBtn = document.querySelector('#form-adicionar-receita button[type="submit"]');
+            const indexEdicao = submitBtn.getAttribute('data-edicao');
+            
+            if (indexEdicao !== null && indexEdicao !== undefined) {
+                // Edição de receita existente
+                receitas[indexEdicao].nome = nome;
+                receitas[indexEdicao].descricao = descricao;
+                receitas[indexEdicao].ingredientes = ingredientes;
+                
+                // Resetar o botão
+                submitBtn.textContent = 'Salvar Receita';
+                submitBtn.removeAttribute('data-edicao');
+                
+                mostrarNotificacao('notification-estoque', 'Receita atualizada com sucesso!', 'success');
+            } else {
+                // Nova receita
+                const novaReceita = {
+                    id: gerarId(),
+                    nome: nome,
+                    descricao: descricao,
+                    ingredientes: ingredientes,
+                    dataCriacao: new Date().toISOString()
+                };
+                
+                receitas.push(novaReceita);
+                mostrarNotificacao('notification-estoque', 'Receita adicionada com sucesso!', 'success');
+            }
+            
+            // Atualizar localStorage e interface
+            atualizarLocalStorage();
+            carregarReceitas();
+            
+            // Limpar o formulário
+            this.reset();
+            document.getElementById('lista-ingredientes').innerHTML = '';
+            adicionarCampoIngrediente();  // Adicionar um campo vazio de ingrediente
+            
+            // Mudar para a aba de listar receitas
+            const tabButton = document.querySelector('[data-tab="listar-receitas"]');
+            if (tabButton) {
+                tabButton.click();
+            }
+        });
+    }
+    
+    // Evento para adicionar ingrediente à receita
+    const btnAdicionarIngrediente = document.getElementById('adicionar-ingrediente');
+    if (btnAdicionarIngrediente) {
+        btnAdicionarIngrediente.addEventListener('click', function() {
+            adicionarCampoIngrediente();
+        });
+    }
+    
+    // Evento para selecionar receita para remoção de estoque
+    const selecionarReceita = document.getElementById('selecionar-receita');
+    if (selecionarReceita) {
+        selecionarReceita.addEventListener('change', function() {
+            const index = this.value;
+            if (index) {
+                carregarDetalhesReceita(index);
+            } else {
+                document.getElementById('detalhes-receita').classList.add('hidden');
+            }
+        });
+    }
+    
+    // Evento para o botão confirmar produção
+    const btnConfirmarRemocao = document.getElementById('confirmar-remocao');
+    if (btnConfirmarRemocao) {
+        btnConfirmarRemocao.addEventListener('click', function() {
+            const index = document.getElementById('selecionar-receita').value;
+            if (!index) {
+                alert('Selecione uma receita primeiro!');
+                return;
+            }
+            
+            const quantidade = parseInt(document.getElementById('quantidade-receitas').value) || 1;
+            
+            // Implementação simplificada de produção
+            alert(`Produção de ${quantidade}x ${receitas[index].nome} registrada com sucesso!`);
+            
+            // Voltar para a lista de estoque
+            const tabButton = document.querySelector('[data-tab="listar-estoque"]');
+            if (tabButton) {
+                tabButton.click();
+            }
+        });
+    }
+    
+    // Adicionar um campo de ingrediente inicial
+    if (document.getElementById('lista-ingredientes')) {
+        adicionarCampoIngrediente();
+    }
     
     // Iniciar o relógio
     atualizarDataHora();
