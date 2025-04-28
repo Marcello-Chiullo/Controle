@@ -1046,18 +1046,40 @@ function adicionarItemEstoque(materialId, quantidade, preco = null) {
     }
 }
 
-// Função para remover item do estoque
-function removerItemEstoque(materialId, quantidade) {
+// Função para remover item do estoque - FUNÇÃO MODIFICADA
+function removerItemEstoque(materialId, quantidade, unidadeMedida) {
     const item = estoque.find(i => i.materialId === materialId);
     if (!item) return false;
     
+    // Normalizar unidades para a menor unidade (g ou ml)
+    let quantidadeNormalizada = quantidade;
+    
+    // Se a unidade de medida for passada, converter conforme necessário
+    if (unidadeMedida) {
+        // Converter KG para g, L para ml
+        if (unidadeMedida.toLowerCase() === 'kg' && item.unidadeMedida.toLowerCase() === 'g') {
+            quantidadeNormalizada *= 1000;
+        } else if (unidadeMedida.toLowerCase() === 'l' && item.unidadeMedida.toLowerCase() === 'ml') {
+            quantidadeNormalizada *= 1000;
+        }
+        // Converter g para kg, ml para l se necessário
+        else if (unidadeMedida.toLowerCase() === 'g' && item.unidadeMedida.toLowerCase() === 'kg') {
+            quantidadeNormalizada /= 1000;
+        } else if (unidadeMedida.toLowerCase() === 'ml' && item.unidadeMedida.toLowerCase() === 'l') {
+            quantidadeNormalizada /= 1000;
+        }
+    }
+    
+    // Converter a quantidade solicitada para unidades do estoque
+    const quantidadeEmUnidades = quantidadeNormalizada / item.quantidadeMedida;
+    
     // Verificar se a quantidade disponível é suficiente
-    if (item.quantidade < quantidade) {
+    if (item.quantidade < quantidadeEmUnidades) {
         return false;
     }
     
     // Atualizar a quantidade
-    item.quantidade -= parseFloat(quantidade);
+    item.quantidade -= quantidadeEmUnidades;
     
     // Se a quantidade ficar zero ou negativa, remover o item
     if (item.quantidade <= 0) {
@@ -1898,7 +1920,7 @@ function addRecipeButtonEvents() {
 
 // FUNÇÕES PARA VENDAS
 
-// Função para carregar detalhes da receita na tela de vendas
+// Função para carregar detalhes da receita na tela de vendas - MODIFICADA
 function carregarDetalhesReceitaVenda(receitaId) {
    const receita = receitas.find(r => r.id === receitaId);
    if (!receita) return;
@@ -1947,7 +1969,23 @@ function carregarDetalhesReceitaVenda(receitaId) {
        let disponivel = false;
        
        if (itemEstoque) {
-           disponivel = itemEstoque.quantidade >= quantidadeNecessaria;
+           // Converter unidades para checagem de disponibilidade
+           let quantidadeNormalizada = quantidadeNecessaria;
+           
+           // Normalizar unidades
+           if (ingrediente.unidadeMedida.toLowerCase() === 'kg' && itemEstoque.unidadeMedida.toLowerCase() === 'g') {
+               quantidadeNormalizada *= 1000;
+           } else if (ingrediente.unidadeMedida.toLowerCase() === 'l' && itemEstoque.unidadeMedida.toLowerCase() === 'ml') {
+               quantidadeNormalizada *= 1000;
+           } else if (ingrediente.unidadeMedida.toLowerCase() === 'g' && itemEstoque.unidadeMedida.toLowerCase() === 'kg') {
+               quantidadeNormalizada /= 1000;
+           } else if (ingrediente.unidadeMedida.toLowerCase() === 'ml' && itemEstoque.unidadeMedida.toLowerCase() === 'l') {
+               quantidadeNormalizada /= 1000;
+           }
+           
+           // Calcular quantidade em unidades
+           const quantidadeEmUnidades = quantidadeNormalizada / itemEstoque.quantidadeMedida;
+           disponivel = itemEstoque.quantidade >= quantidadeEmUnidades;
            statusEstoque = disponivel ? 'Disponível' : 'Insuficiente';
        }
        
@@ -1979,7 +2017,7 @@ function carregarDetalhesReceitaVenda(receitaId) {
    }
 }
 
-// Função para registrar uma venda
+// Função para registrar uma venda - MODIFICADA
 function registrarVenda(receitaId, quantidade, clienteNome, clienteTelefone, 
                       clienteEndereco, custoFrete, custoDecoracao, outrosCustos, dataVenda) {
    
@@ -1998,7 +2036,30 @@ function registrarVenda(receitaId, quantidade, clienteNome, clienteTelefone,
    for (const ingrediente of receita.ingredientes) {
        const itemEstoque = estoque.find(item => item.materialId === ingrediente.materialId);
        
-       if (!itemEstoque || itemEstoque.quantidade < (ingrediente.quantidade * quantidade)) {
+       if (!itemEstoque) {
+           todosProdutosDisponiveis = false;
+           break;
+       }
+       
+       // Converter unidades para checagem de disponibilidade
+       let quantidadeNecessaria = ingrediente.quantidade * quantidade;
+       let quantidadeNormalizada = quantidadeNecessaria;
+       
+       // Normalizar unidades
+       if (ingrediente.unidadeMedida.toLowerCase() === 'kg' && itemEstoque.unidadeMedida.toLowerCase() === 'g') {
+           quantidadeNormalizada *= 1000;
+       } else if (ingrediente.unidadeMedida.toLowerCase() === 'l' && itemEstoque.unidadeMedida.toLowerCase() === 'ml') {
+           quantidadeNormalizada *= 1000;
+       } else if (ingrediente.unidadeMedida.toLowerCase() === 'g' && itemEstoque.unidadeMedida.toLowerCase() === 'kg') {
+           quantidadeNormalizada /= 1000;
+       } else if (ingrediente.unidadeMedida.toLowerCase() === 'ml' && itemEstoque.unidadeMedida.toLowerCase() === 'l') {
+           quantidadeNormalizada /= 1000;
+       }
+       
+       // Calcular quantidade em unidades
+       const quantidadeEmUnidades = quantidadeNormalizada / itemEstoque.quantidadeMedida;
+       
+       if (itemEstoque.quantidade < quantidadeEmUnidades) {
            todosProdutosDisponiveis = false;
            break;
        }
@@ -2010,7 +2071,7 @@ function registrarVenda(receitaId, quantidade, clienteNome, clienteTelefone,
    
    // Remover ingredientes do estoque
    for (const ingrediente of receita.ingredientes) {
-       removerItemEstoque(ingrediente.materialId, ingrediente.quantidade * quantidade);
+       removerItemEstoque(ingrediente.materialId, ingrediente.quantidade * quantidade, ingrediente.unidadeMedida);
    }
    
    // Calcular valores
@@ -2158,7 +2219,7 @@ function mostrarDetalhesVenda(vendaId) {
    
    modal.classList.remove('hidden');
 }
-    // PARTE 4: JAVASCRIPT (TERCEIRA PARTE)
+    // PARTE 6: JAVASCRIPT (TERCEIRA PARTE)
     // Configurar eventos adicionais para esta parte do código
 function setupAdditionalEvents() {
     // Evento para adicionar receita
