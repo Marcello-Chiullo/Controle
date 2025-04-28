@@ -2244,26 +2244,25 @@ function registrarVenda(receitaId, quantidade, clienteNome, clienteTelefone,
        removerItemEstoque(ingrediente.materialId, ingrediente.quantidade * quantidade, ingrediente.unidadeMedida);
    }
    
-   // Calcular valores
+   // CÁLCULOS FINANCEIROS CORRIGIDOS
+   // 1. Custo Produção e Variados
    const custoProducao = calcularCustoReceita(receita);
    const custosVariados = custoProducao * 0.1;
    
-   // MODIFICAÇÃO: Calcular despesas adicionais com acréscimo de 10%
-   const despesasAdicionaisComAcrescimo = despesasAdicionais * 1.1;
-   
-   // MODIFICAÇÃO: Total de despesas adicionais (despesas + frete + decoração)
-   const totalDespesasAdicionais = despesasAdicionaisComAcrescimo + custoFrete + custoDecoracao;
-   
-   // Valor da despesa (custo produção + custo variado)
+   // 2. Despesa (Custo Produção + Custo Variado)
    const despesa = custoProducao + custosVariados;
    
-   // Valor para reinvestir (igual à despesa)
+   // 3. Reinvestir (igual à Despesa)
    const valorReinvestir = despesa;
    
-   // Valor total da venda (preço da receita * quantidade + frete + decoração)
+   // 4. Despesas Adicionais
+   const despesasAdicionaisComAcrescimo = despesasAdicionais * 1.1;
+   const totalDespesasAdicionais = despesasAdicionaisComAcrescimo + custoFrete + custoDecoracao;
+   
+   // 5. Valor total da venda (preço da receita * quantidade + frete + decoração)
    const valorTotal = (receita.precoVenda * quantidade) + custoFrete + custoDecoracao;
    
-   // MODIFICAÇÃO: Novo cálculo do lucro
+   // 6. Lucro (Valor Total - Despesa - Reinvestir - Despesas Adicionais)
    const lucro = valorTotal - despesa - valorReinvestir - totalDespesasAdicionais;
    
    // Criar registro de venda
@@ -2412,15 +2411,16 @@ function editarVenda(vendaId, quantidade, clienteNome, clienteTelefone,
         venda.data = new Date(dataVenda).toISOString();
     }
     
-    // MODIFICAÇÃO: Atualizar valor total e lucro
+    // MODIFICAÇÃO: Atualizar valor total e recalcular lucro corretamente
     venda.valorTotal = valorTotal;
+    // Lucro = Valor Total - Despesa - Reinvestir - Despesas Adicionais Total
     venda.lucro = valorTotal - venda.despesa - venda.valorReinvestir - venda.totalDespesasAdicionais;
     
     atualizarLocalStorage();
     return true;
 }
 
-// Função para excluir uma venda - MODIFICADA
+// Função para excluir uma venda
 function excluirVenda(vendaId) {
     const index = vendas.findIndex(v => v.id === vendaId);
     if (index === -1) return false;
@@ -2467,7 +2467,7 @@ function mostrarDetalhesVenda(vendaId) {
     const totalDespesasAdicionais = venda.totalDespesasAdicionais || 
                                    (despesasAdicionaisComAcrescimo + (venda.custoFrete || 0) + (venda.custoDecoracao || 0));
     
-    // Recalcular lucro
+    // Recalcular lucro (Valor Total - Despesa - Reinvestir - Despesas Adicionais)
     const lucro = venda.valorTotal - despesa - valorReinvestir - totalDespesasAdicionais;
     
     content.innerHTML = `
@@ -2547,7 +2547,7 @@ function mostrarDetalhesVenda(vendaId) {
                 
                 <div class="recipe-price-item">
                     <div class="recipe-price-label">Lucro</div>
-                    <div class="recipe-price-value" style="color: #28a745; font-size: 18px;">${formatarMoeda(lucro)}</div>
+                    <div class="recipe-price-value" style="color: ${lucro >= 0 ? '#28a745' : '#dc3545'}; font-size: 18px;">${formatarMoeda(lucro)}</div>
                 </div>
             </div>
         </div>
@@ -2987,7 +2987,7 @@ function setupAdditionalEvents() {
             const totalDespesasAdicionais = venda.totalDespesasAdicionais || 
                                          (despesasAdicionaisComAcrescimo + (venda.custoFrete || 0) + (venda.custoDecoracao || 0));
             
-            // Recalcular lucro
+            // CORRIGIDO: Recalcular lucro corretamente
             const lucro = venda.valorTotal - despesa - valorReinvestir - totalDespesasAdicionais;
             
             const card = document.createElement('div');
@@ -3132,31 +3132,37 @@ function inicializarDados() {
         }
     });
     
+    // MODIFICADO: Atualizar vendas antigas para o novo modelo de cálculo
     vendas.forEach(venda => {
         if (!venda.id) {
             venda.id = gerarId();
         }
         
-        // MODIFICADO: Atualizar campos para nova lógica de cálculos
         // Para compatibilidade com vendas antigas
         const custoProducao = venda.custoProducao || 0;
         const custosVariados = venda.custosVariados || 0;
+        
+        // Despesa = custo produção + custo variado
         const despesa = custoProducao + custosVariados;
         
         // Renomear campo de despesas adicionais para compatibilidade
         if (venda.despesasAdicionais !== undefined && venda.despesasAdicionaisOriginal === undefined) {
             venda.despesasAdicionaisOriginal = venda.despesasAdicionais;
+            delete venda.despesasAdicionais; // Remover campo antigo
         }
         
-        // Calcular despesas adicionais com acréscimo
+        // Calcular despesas adicionais com acréscimo de 10%
         venda.despesasAdicionaisComAcrescimo = (venda.despesasAdicionaisOriginal || 0) * 1.1;
         
-        // Total de despesas adicionais (despesas + frete + decoração)
+        // Total despesas adicionais (despesa adicional com acréscimo + frete + decoração)
         venda.totalDespesasAdicionais = venda.despesasAdicionaisComAcrescimo + (venda.custoFrete || 0) + (venda.custoDecoracao || 0);
         
         // Atualizar campos de cálculo financeiro
         venda.despesa = despesa;
         venda.valorReinvestir = despesa;
+        
+        // CORRIGIDO: Novo cálculo de lucro
+        // Lucro = Valor Total - Despesa - Reinvestir - Despesas Adicionais Total
         venda.lucro = venda.valorTotal - despesa - despesa - venda.totalDespesasAdicionais;
     });
     
