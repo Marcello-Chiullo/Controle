@@ -2113,7 +2113,11 @@ function carregarDetalhesReceitaVenda(receitaId) {
    
    // Definir valor total
    const qtd = parseInt(document.getElementById('quantidade-venda').value) || 1;
-   document.getElementById('valor-total-venda').value = (receita.precoVenda * qtd).toFixed(2);
+   const frete = parseFloat(document.getElementById('custo-frete').value) || 0;
+   const decoracao = parseFloat(document.getElementById('custo-decoracao').value) || 0;
+   
+   // Novo cálculo do valor total incluindo frete e decoração
+   document.getElementById('valor-total-venda').value = (receita.precoVenda * qtd + frete + decoracao).toFixed(2);
    
    // Definir a data atual para o campo de data
    const dataVendaEl = document.getElementById('data-venda');
@@ -2243,10 +2247,24 @@ function registrarVenda(receitaId, quantidade, clienteNome, clienteTelefone,
    // Calcular valores
    const custoProducao = calcularCustoReceita(receita);
    const custosVariados = custoProducao * 0.1;
-   const custoTotal = custoProducao + custosVariados + despesasAdicionais;
+   
+   // MODIFICAÇÃO: Calcular despesas adicionais com acréscimo de 10%
+   const despesasAdicionaisComAcrescimo = despesasAdicionais * 1.1;
+   
+   // MODIFICAÇÃO: Total de despesas adicionais (despesas + frete + decoração)
+   const totalDespesasAdicionais = despesasAdicionaisComAcrescimo + custoFrete + custoDecoracao;
+   
+   // Valor da despesa (custo produção + custo variado)
+   const despesa = custoProducao + custosVariados;
+   
+   // Valor para reinvestir (igual à despesa)
+   const valorReinvestir = despesa;
+   
+   // Valor total da venda (preço da receita * quantidade + frete + decoração)
    const valorTotal = (receita.precoVenda * quantidade) + custoFrete + custoDecoracao;
-   const valorReinvestir = custoProducao + custosVariados;
-   const lucro = valorTotal - valorReinvestir - despesasAdicionais;
+   
+   // MODIFICAÇÃO: Novo cálculo do lucro
+   const lucro = valorTotal - despesa - valorReinvestir - totalDespesasAdicionais;
    
    // Criar registro de venda
    const novaVenda = {
@@ -2256,13 +2274,15 @@ function registrarVenda(receitaId, quantidade, clienteNome, clienteTelefone,
        quantidade: quantidade,
        custoProducao: custoProducao,
        custosVariados: custosVariados,
-       custoTotal: custoTotal,
-       despesasAdicionais: despesasAdicionais,
-       valorReinvestir: valorReinvestir,
-       lucro: lucro,
-       precoVenda: receita.precoVenda,
+       despesasAdicionaisOriginal: despesasAdicionais,
+       despesasAdicionaisComAcrescimo: despesasAdicionaisComAcrescimo,
        custoFrete: custoFrete,
        custoDecoracao: custoDecoracao,
+       totalDespesasAdicionais: totalDespesasAdicionais,
+       valorReinvestir: valorReinvestir,
+       despesa: despesa,
+       lucro: lucro,
+       precoVenda: receita.precoVenda,
        valorTotal: valorTotal,
        observacoes: observacoes || "",
        cliente: {
@@ -2280,7 +2300,7 @@ function registrarVenda(receitaId, quantidade, clienteNome, clienteTelefone,
    return true;
 }
 
-// Função para editar uma venda - NOVA
+// Função para editar uma venda - MODIFICADA
 function editarVenda(vendaId, quantidade, clienteNome, clienteTelefone, 
                     clienteEndereco, custoFrete, custoDecoracao, despesasAdicionais, 
                     observacoes, dataVenda, valorTotal) {
@@ -2365,6 +2385,14 @@ function editarVenda(vendaId, quantidade, clienteNome, clienteTelefone,
                     ingrediente.unidadeMedida
                 );
             }
+            
+            // Recalcular custos baseados na nova quantidade
+            const custoProducao = calcularCustoReceita(receita);
+            const custosVariados = custoProducao * 0.1;
+            venda.custoProducao = custoProducao;
+            venda.custosVariados = custosVariados;
+            venda.despesa = custoProducao + custosVariados;
+            venda.valorReinvestir = venda.despesa;
         }
     }
     
@@ -2375,21 +2403,24 @@ function editarVenda(vendaId, quantidade, clienteNome, clienteTelefone,
     venda.cliente.endereco = clienteEndereco;
     venda.custoFrete = custoFrete;
     venda.custoDecoracao = custoDecoracao;
-    venda.despesasAdicionais = despesasAdicionais;
+    venda.despesasAdicionaisOriginal = despesasAdicionais;
+    venda.despesasAdicionaisComAcrescimo = despesasAdicionais * 1.1;
+    venda.totalDespesasAdicionais = venda.despesasAdicionaisComAcrescimo + custoFrete + custoDecoracao;
     venda.observacoes = observacoes;
+    
     if (dataVenda) {
         venda.data = new Date(dataVenda).toISOString();
     }
     
-    // Recalcular valores financeiros
+    // MODIFICAÇÃO: Atualizar valor total e lucro
     venda.valorTotal = valorTotal;
-    venda.lucro = valorTotal - venda.valorReinvestir - venda.despesasAdicionais;
+    venda.lucro = valorTotal - venda.despesa - venda.valorReinvestir - venda.totalDespesasAdicionais;
     
     atualizarLocalStorage();
     return true;
 }
 
-// Função para excluir uma venda - NOVA
+// Função para excluir uma venda - MODIFICADA
 function excluirVenda(vendaId) {
     const index = vendas.findIndex(v => v.id === vendaId);
     if (index === -1) return false;
@@ -2415,113 +2446,6 @@ function excluirVenda(vendaId) {
     return true;
 }
 
-// Função para carregar vendas - MODIFICADA
-function carregarVendas() {
-    const container = document.getElementById('lista-vendas');
-    if (!container) return;
-    
-    container.innerHTML = '';
-    
-    if (vendas.length === 0) {
-        container.innerHTML = '<p>Nenhuma venda registrada.</p>';
-        return;
-    }
-    
-    // Ordenar vendas da mais recente para a mais antiga
-    const vendasOrdenadas = [...vendas].sort((a, b) => new Date(b.data) - new Date(a.data));
-    
-    vendasOrdenadas.forEach((venda) => {
-        // Calcular valores financeiros (caso ainda não existam no objeto)
-        const despesa = (venda.custoProducao || 0) + (venda.custosVariados || 0);
-        const valorReinvestir = despesa;
-        const despesasAdicionais = venda.despesasAdicionais || 0;
-        const lucro = venda.valorTotal - despesa - despesasAdicionais;
-        
-        const card = document.createElement('div');
-        card.className = 'sale-card';
-        card.innerHTML = `
-            <div class="sale-header">
-                <div class="sale-title">${venda.receitaNome}</div>
-                <div class="sale-date">${formatarData(venda.data)}</div>
-            </div>
-            <div>Cliente: ${venda.cliente.nome}</div>
-            <div>Quantidade: ${venda.quantidade}</div>
-            <div>Valor Total: ${formatarMoeda(venda.valorTotal)}</div>
-            <div>Despesa: ${formatarMoeda(despesa)}</div>
-            <div>Reinvestir: ${formatarMoeda(valorReinvestir)}</div>
-            <div>Lucro: ${formatarMoeda(lucro)}</div>
-            <div style="margin-top: 10px;">
-                <button class="btn btn-secondary btn-detalhes-venda" data-id="${venda.id}">Ver Detalhes</button>
-                <button class="btn btn-primary btn-editar-venda" data-id="${venda.id}">Editar</button>
-                <button class="btn btn-danger btn-excluir-venda" data-id="${venda.id}">Excluir</button>
-            </div>
-        `;
-        container.appendChild(card);
-    });
-    
-    // Adicionar eventos aos botões
-    document.querySelectorAll('.btn-detalhes-venda').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const id = this.getAttribute('data-id');
-            mostrarDetalhesVenda(id);
-        });
-    });
-    
-    document.querySelectorAll('.btn-editar-venda').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const id = this.getAttribute('data-id');
-            mostrarFormEditarVenda(id);
-        });
-    });
-    
-    document.querySelectorAll('.btn-excluir-venda').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const id = this.getAttribute('data-id');
-            confirmarExclusaoVenda(id);
-        });
-    });
-}
-
-// Função para mostrar o modal de confirmação de exclusão - NOVA
-function confirmarExclusaoVenda(vendaId) {
-    const modal = document.getElementById('confirmar-exclusao-modal');
-    const vendaIdInput = document.getElementById('excluir-venda-id');
-    
-    if (modal && vendaIdInput) {
-        vendaIdInput.value = vendaId;
-        modal.classList.remove('hidden');
-    }
-}
-
-// Função para mostrar o formulário de edição de venda - NOVA
-function mostrarFormEditarVenda(vendaId) {
-    const venda = vendas.find(v => v.id === vendaId);
-    if (!venda) return;
-    
-    const modal = document.getElementById('editar-venda-modal');
-    if (!modal) return;
-    
-    // Preencher o formulário
-    document.getElementById('editar-venda-id').value = venda.id;
-    document.getElementById('editar-cliente-nome').value = venda.cliente.nome;
-    document.getElementById('editar-cliente-telefone').value = venda.cliente.telefone || '';
-    document.getElementById('editar-cliente-endereco').value = venda.cliente.endereco || '';
-    document.getElementById('editar-observacoes-venda').value = venda.observacoes || '';
-    document.getElementById('editar-custo-frete').value = venda.custoFrete || 0;
-    document.getElementById('editar-custo-decoracao').value = venda.custoDecoracao || 0;
-    document.getElementById('editar-despesas-adicionais').value = venda.despesasAdicionais || 0;
-    document.getElementById('editar-quantidade-venda').value = venda.quantidade;
-    
-    // Formatar data
-    const dataVenda = new Date(venda.data);
-    document.getElementById('editar-data-venda').value = dataVenda.toISOString().split('T')[0];
-    
-    document.getElementById('editar-valor-total-venda').value = venda.valorTotal.toFixed(2);
-    
-    // Mostrar o modal
-    modal.classList.remove('hidden');
-}
-
 // Função para mostrar detalhes de uma venda - MODIFICADA
 function mostrarDetalhesVenda(vendaId) {
     const venda = vendas.find(v => v.id === vendaId);
@@ -2532,11 +2456,19 @@ function mostrarDetalhesVenda(vendaId) {
     
     if (!modal || !content) return;
     
-    // Calcular valores financeiros
-    const despesa = (venda.custoProducao || 0) + (venda.custosVariados || 0);
+    // MODIFICAÇÃO: Cálculos financeiros corrigidos
+    const despesa = venda.despesa || (venda.custoProducao + venda.custosVariados);
     const valorReinvestir = despesa;
-    const despesasAdicionais = venda.despesasAdicionais || 0;
-    const lucro = venda.valorTotal - despesa - despesasAdicionais;
+    
+    // Verificar se despesasAdicionaisComAcrescimo existe
+    // Para compatibilidade com vendas antigas
+    const despesasAdicionaisComAcrescimo = venda.despesasAdicionaisComAcrescimo || 
+                                          (venda.despesasAdicionaisOriginal || venda.despesasAdicionais || 0) * 1.1;
+    const totalDespesasAdicionais = venda.totalDespesasAdicionais || 
+                                   (despesasAdicionaisComAcrescimo + (venda.custoFrete || 0) + (venda.custoDecoracao || 0));
+    
+    // Recalcular lucro
+    const lucro = venda.valorTotal - despesa - valorReinvestir - totalDespesasAdicionais;
     
     content.innerHTML = `
         <div class="sale-details">
@@ -2583,7 +2515,12 @@ function mostrarDetalhesVenda(vendaId) {
                 
                 <div class="recipe-price-item">
                     <div class="recipe-price-label">Despesas Adicionais</div>
-                    <div class="recipe-price-value">${formatarMoeda(despesasAdicionais)}</div>
+                    <div class="recipe-price-value">${formatarMoeda(venda.despesasAdicionaisOriginal || venda.despesasAdicionais || 0)}</div>
+                </div>
+                
+                <div class="recipe-price-item">
+                    <div class="recipe-price-label">Desp. Adic. + 10%</div>
+                    <div class="recipe-price-value">${formatarMoeda(despesasAdicionaisComAcrescimo)}</div>
                 </div>
             </div>
             
@@ -2601,6 +2538,11 @@ function mostrarDetalhesVenda(vendaId) {
                 <div class="recipe-price-item">
                     <div class="recipe-price-label">Reinvestir</div>
                     <div class="recipe-price-value">${formatarMoeda(valorReinvestir)}</div>
+                </div>
+                
+                <div class="recipe-price-item">
+                    <div class="recipe-price-label">Total Desp. Adic.</div>
+                    <div class="recipe-price-value">${formatarMoeda(totalDespesasAdicionais)}</div>
                 </div>
                 
                 <div class="recipe-price-item">
@@ -2743,7 +2685,7 @@ function setupAdditionalEvents() {
         });
     }
 
-    // Evento para atualizar valor total quando quantidade ou custos adicionais mudam
+    // Evento para atualizar valor total quando quantidade ou custos adicionais mudam - MODIFICADO
     const qtdVenda = document.getElementById('quantidade-venda');
     const custoFrete = document.getElementById('custo-frete');
     const custoDecoracao = document.getElementById('custo-decoracao');
@@ -2755,6 +2697,7 @@ function setupAdditionalEvents() {
         }
     });
     
+    // MODIFICADO: Novo cálculo do valor total
     function atualizarValorTotalVenda() {
         const receitaId = document.getElementById('selecionar-receita-venda').value;
         if (!receitaId) return;
@@ -2766,7 +2709,7 @@ function setupAdditionalEvents() {
         const frete = parseFloat(document.getElementById('custo-frete').value) || 0;
         const decoracao = parseFloat(document.getElementById('custo-decoracao').value) || 0;
         
-        // Note que despesas adicionais não afetam o valor total da venda
+        // Novo cálculo do valor total - incluindo frete e decoração
         const valorTotal = (receita.precoVenda * qtd) + frete + decoracao;
         document.getElementById('valor-total-venda').value = valorTotal.toFixed(2);
         
@@ -2987,6 +2930,7 @@ function setupAdditionalEvents() {
         });
     }
     
+    // MODIFICADO: Função de filtrar vendas com novos cálculos
     function filtrarVendas() {
         const dataInicio = document.getElementById('filtro-data-inicio').value;
         const dataFim = document.getElementById('filtro-data-fim').value;
@@ -3033,11 +2977,18 @@ function setupAdditionalEvents() {
         const vendasOrdenadas = [...vendasFiltradas].sort((a, b) => new Date(b.data) - new Date(a.data));
         
         vendasOrdenadas.forEach((venda) => {
-            // Calcular valores financeiros
-            const despesa = (venda.custoProducao || 0) + (venda.custosVariados || 0);
+            // MODIFICADO: Calcular valores financeiros com nova lógica
+            const despesa = venda.despesa || (venda.custoProducao + venda.custosVariados);
             const valorReinvestir = despesa;
-            const despesasAdicionais = venda.despesasAdicionais || 0;
-            const lucro = venda.valorTotal - despesa - despesasAdicionais;
+            
+            // Compatibilidade com vendas antigas
+            const despesasAdicionaisComAcrescimo = venda.despesasAdicionaisComAcrescimo || 
+                                            ((venda.despesasAdicionaisOriginal || venda.despesasAdicionais || 0) * 1.1);
+            const totalDespesasAdicionais = venda.totalDespesasAdicionais || 
+                                         (despesasAdicionaisComAcrescimo + (venda.custoFrete || 0) + (venda.custoDecoracao || 0));
+            
+            // Recalcular lucro
+            const lucro = venda.valorTotal - despesa - valorReinvestir - totalDespesasAdicionais;
             
             const card = document.createElement('div');
             card.className = 'sale-card';
@@ -3051,6 +3002,7 @@ function setupAdditionalEvents() {
                 <div>Valor Total: ${formatarMoeda(venda.valorTotal)}</div>
                 <div>Despesa: ${formatarMoeda(despesa)}</div>
                 <div>Reinvestir: ${formatarMoeda(valorReinvestir)}</div>
+                <div>Despesas Adicionais: ${formatarMoeda(totalDespesasAdicionais)}</div>
                 <div>Lucro: ${formatarMoeda(lucro)}</div>
                 <div style="margin-top: 10px;">
                     <button class="btn btn-secondary btn-detalhes-venda" data-id="${venda.id}">Ver Detalhes</button>
@@ -3122,7 +3074,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(atualizarDataHora, 1000);
 });
 
-// Inicializar dados
+// MODIFICADO: Inicializar dados com nova lógica de cálculos
 function inicializarDados() {
     // Garantir que o modal esteja oculto ao iniciar
     const modalElement = document.getElementById('processing-modal');
@@ -3185,19 +3137,27 @@ function inicializarDados() {
             venda.id = gerarId();
         }
         
-        // Garantir que os novos campos existam
-        if (venda.despesasAdicionais === undefined) {
-            venda.despesasAdicionais = 0;
+        // MODIFICADO: Atualizar campos para nova lógica de cálculos
+        // Para compatibilidade com vendas antigas
+        const custoProducao = venda.custoProducao || 0;
+        const custosVariados = venda.custosVariados || 0;
+        const despesa = custoProducao + custosVariados;
+        
+        // Renomear campo de despesas adicionais para compatibilidade
+        if (venda.despesasAdicionais !== undefined && venda.despesasAdicionaisOriginal === undefined) {
+            venda.despesasAdicionaisOriginal = venda.despesasAdicionais;
         }
         
-        if (venda.observacoes === undefined) {
-            venda.observacoes = "";
-        }
+        // Calcular despesas adicionais com acréscimo
+        venda.despesasAdicionaisComAcrescimo = (venda.despesasAdicionaisOriginal || 0) * 1.1;
+        
+        // Total de despesas adicionais (despesas + frete + decoração)
+        venda.totalDespesasAdicionais = venda.despesasAdicionaisComAcrescimo + (venda.custoFrete || 0) + (venda.custoDecoracao || 0);
         
         // Atualizar campos de cálculo financeiro
-        const despesa = (venda.custoProducao || 0) + (venda.custosVariados || 0);
+        venda.despesa = despesa;
         venda.valorReinvestir = despesa;
-        venda.lucro = venda.valorTotal - despesa - venda.despesasAdicionais;
+        venda.lucro = venda.valorTotal - despesa - despesa - venda.totalDespesasAdicionais;
     });
     
     atualizarLocalStorage();
