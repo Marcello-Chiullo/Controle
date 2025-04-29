@@ -5,6 +5,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Deia Cakes Controle Gerencial</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <!-- Bibliotecas originais -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.4/html5-qrcode.min.js"></script>
     <style>
@@ -379,12 +384,96 @@
         .recipe-price-value.highlight {
             color: #ff85a2;
         }
+        
+        /* Estilos para tela de login */
+        #user-info {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            color: white;
+            font-size: 14px;
+        }
+        
+        #btn-logout {
+            margin-left: 10px;
+            background: transparent;
+            border: 1px solid white;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        
+        #login-form {
+            max-width: 400px;
+            margin: 50px auto;
+        }
+        
+        /* Novo estilo para resumo de vendas */
+        .venda-resumo-financeiro {
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            border: 1px solid #ddd;
+        }
+        
+        .venda-resumo-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .venda-resumo-item {
+            text-align: center;
+        }
+        
+        .venda-resumo-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .venda-resumo-valor {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .venda-resumo-valor.lucro-positivo {
+            color: #28a745;
+        }
+        
+        .venda-resumo-valor.lucro-negativo {
+            color: #dc3545;
+        }
+        
+        /* Estilos para histórico de materiais */
+        .material-historico-toggle {
+            margin-left: 10px;
+            font-size: 12px;
+            cursor: pointer;
+            color: #6c757d;
+            text-decoration: underline;
+        }
+        
+        .material-historico-container {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
     </style>
 </head>
 <body>
     <header>
        <div class="header-content">
            <h1>Deia Cakes Controle Gerencial</h1>
+           <div id="user-info" class="hidden">
+               <span id="user-email"></span>
+               <button id="btn-logout">Sair</button>
+           </div>
            <div>
                <span id="date-time"></span>
            </div>
@@ -452,9 +541,8 @@
                                 <th>Unidade</th>
                                 <th>Unidade de Medida</th>
                                 <th>Quantidade por Unidade</th>
-                                <th>Última Compra</th>
-                                <th>Último Preço (R$)</th>
-                                <th>Preço Médio (R$)</th>
+                                <th>Data da Compra</th>
+                                <th>Preço (R$)</th>
                                 <th>Ações</th>
                             </tr>
                         </thead>
@@ -632,7 +720,6 @@
         </div>
     </div>
 </div>
-
 <!-- PARTE 3: PÁGINA DE VENDAS E MODAL (MODIFICADA) -->
 
 <!-- Página de Vendas -->
@@ -802,6 +889,33 @@
                     
                     <div id="aviso-estoque-venda" class="notification hidden"></div>
                     
+                    <!-- Adicionado: Resumo financeiro da venda -->
+                    <div class="venda-resumo-financeiro">
+                        <h4>Resumo Financeiro</h4>
+                        <div class="venda-resumo-grid">
+                            <div class="venda-resumo-item">
+                                <div class="venda-resumo-label">Valor Total</div>
+                                <div id="resumo-valor-total" class="venda-resumo-valor">R$ 0,00</div>
+                            </div>
+                            <div class="venda-resumo-item">
+                                <div class="venda-resumo-label">Despesa</div>
+                                <div id="resumo-despesa" class="venda-resumo-valor">R$ 0,00</div>
+                            </div>
+                            <div class="venda-resumo-item">
+                                <div class="venda-resumo-label">Reinvestir</div>
+                                <div id="resumo-reinvestir" class="venda-resumo-valor">R$ 0,00</div>
+                            </div>
+                            <div class="venda-resumo-item">
+                                <div class="venda-resumo-label">Total Desp. Adic.</div>
+                                <div id="resumo-desp-adic" class="venda-resumo-valor">R$ 0,00</div>
+                            </div>
+                            <div class="venda-resumo-item">
+                                <div class="venda-resumo-label">Lucro</div>
+                                <div id="resumo-lucro" class="venda-resumo-valor">R$ 0,00</div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div style="margin-top: 20px; text-align: right;">
                         <button type="submit" id="confirmar-venda" class="btn btn-success">Confirmar Venda</button>
                     </div>
@@ -910,6 +1024,33 @@
                 </div>
             </div>
             
+            <!-- Adicionado: Resumo financeiro da venda para edição -->
+            <div class="venda-resumo-financeiro">
+                <h4>Resumo Financeiro</h4>
+                <div class="venda-resumo-grid">
+                    <div class="venda-resumo-item">
+                        <div class="venda-resumo-label">Valor Total</div>
+                        <div id="editar-resumo-valor-total" class="venda-resumo-valor">R$ 0,00</div>
+                    </div>
+                    <div class="venda-resumo-item">
+                        <div class="venda-resumo-label">Despesa</div>
+                        <div id="editar-resumo-despesa" class="venda-resumo-valor">R$ 0,00</div>
+                    </div>
+                    <div class="venda-resumo-item">
+                        <div class="venda-resumo-label">Reinvestir</div>
+                        <div id="editar-resumo-reinvestir" class="venda-resumo-valor">R$ 0,00</div>
+                    </div>
+                    <div class="venda-resumo-item">
+                        <div class="venda-resumo-label">Total Desp. Adic.</div>
+                        <div id="editar-resumo-desp-adic" class="venda-resumo-valor">R$ 0,00</div>
+                    </div>
+                    <div class="venda-resumo-item">
+                        <div class="venda-resumo-label">Lucro</div>
+                        <div id="editar-resumo-lucro" class="venda-resumo-valor">R$ 0,00</div>
+                    </div>
+                </div>
+            </div>
+            
             <div style="margin-top: 20px; text-align: right;">
                 <button type="submit" class="btn btn-primary">Salvar Alterações</button>
             </div>
@@ -929,8 +1070,31 @@
         </div>
     </div>
 </div>
+
+<!-- Modal de login -->
+<div id="login-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <h3>Login</h3>
+        <div id="login-notification" class="notification hidden"></div>
+        
+        <div class="form-group">
+            <label for="login-email">Email:</label>
+            <input type="email" id="login-email" class="form-control" placeholder="email@exemplo.com" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="login-senha">Senha:</label>
+            <input type="password" id="login-senha" class="form-control" placeholder="Sua senha" required>
+        </div>
+        
+        <div style="margin-top: 20px; display: flex; justify-content: space-between;">
+            <button id="btn-login" class="btn btn-primary">Entrar</button>
+            <button id="btn-cadastrar" class="btn btn-secondary">Cadastrar</button>
+        </div>
+    </div>
+</div>
 <script>
-// PARTE 4: JAVASCRIPT (PRIMEIRA PARTE - CORRIGIDA)
+// PARTE 4: JAVASCRIPT (PRIMEIRA PARTE - FIREBASE E FUNÇÕES GLOBAIS)
 
 // Funções utilitárias para seleção de elementos
 function $(selector) {
@@ -941,12 +1105,29 @@ function $$(selector) {
     return document.querySelectorAll(selector);
 }
 
+// Configuração do Firebase
+const firebaseConfig = {
+    apiKey: "AIzaSyABzQdTgR9-Al-drNRMBcEb1dN76wUjqvY",
+    authDomain: "deiacontrole-faabc.firebaseapp.com",
+    databaseURL: "https://deiacontrole-faabc-default-rtdb.firebaseio.com",
+    projectId: "deiacontrole-faabc",
+    storageBucket: "deiacontrole-faabc.firebasestorage.app",
+    messagingSenderId: "216368622292",
+    appId: "1:216368622292:web:20522a4725c30907c92941",
+};
+
+// Inicializar Firebase
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+let currentUser = null;
+
 // Variáveis globais
 let estoque = JSON.parse(localStorage.getItem('estoque')) || [];
 let materiais = JSON.parse(localStorage.getItem('materiais')) || [];
 let receitas = JSON.parse(localStorage.getItem('receitas')) || [];
 let vendas = JSON.parse(localStorage.getItem('vendas')) || [];
 let html5QrCode;
+let sincronizacaoAtiva = false;
 
 // Função para atualizar o localStorage
 function atualizarLocalStorage() {
@@ -954,10 +1135,24 @@ function atualizarLocalStorage() {
     localStorage.setItem('materiais', JSON.stringify(materiais));
     localStorage.setItem('receitas', JSON.stringify(receitas));
     localStorage.setItem('vendas', JSON.stringify(vendas));
+    localStorage.setItem('ultimaAtualizacao', new Date().toISOString());
     
-    // Hook para sincronização entre dispositivos
-    // Aqui poderia chamar uma função para sincronizar com Firebase ou outro serviço
-    // sincronizarComNuvem();
+    // Sincronizar com nuvem
+    sincronizarComNuvem();
+}
+
+// Função para sincronizar com o Firebase
+function sincronizarComNuvem() {
+    if (currentUser && !sincronizacaoAtiva) {
+        const userId = currentUser.uid;
+        database.ref('usuarios/' + userId).set({
+            estoque: estoque,
+            materiais: materiais,
+            receitas: receitas,
+            vendas: vendas,
+            ultimaAtualizacao: new Date().toISOString()
+        });
+    }
 }
 
 // Função para mostrar uma notificação
@@ -1018,10 +1213,18 @@ function gerarId() {
 
 // Função para encontrar um material pelo código
 function encontrarMaterialPorCodigo(codigo) {
-    return materiais.find(m => m.codigo === codigo);
+    // Encontra o material mais recente com o código informado
+    const materiaisComCodigo = materiais.filter(m => m.codigo === codigo);
+    if (materiaisComCodigo.length === 0) return null;
+    
+    // Ordena por data de cadastro decrescente (mais recente primeiro)
+    materiaisComCodigo.sort((a, b) => new Date(b.dataCadastro) - new Date(a.dataCadastro));
+    
+    // Retorna o material mais recente
+    return materiaisComCodigo[0];
 }
 
-// Função para adicionar ou atualizar um material no catálogo
+// Função para adicionar ou atualizar um material no catálogo - MODIFICADA
 function adicionarOuAtualizarMaterial(codigoMaterial, nomeMaterial, unidadeMaterial, unidadeMedidaMaterial, quantidadeMedidaMaterial, precoMaterial, dataCompra = null) {
     // Converter valores para números
     quantidadeMedidaMaterial = parseFloat(quantidadeMedidaMaterial);
@@ -1038,53 +1241,32 @@ function adicionarOuAtualizarMaterial(codigoMaterial, nomeMaterial, unidadeMater
         return null;
     }
     
-    // Verificar se o material já existe
+    // MODIFICADO: Criar sempre um novo registro, mas manter referência do material existente
     const materialExistente = encontrarMaterialPorCodigo(codigoMaterial);
     
-    if (materialExistente) {
-        // Atualizar material existente
-        materialExistente.nome = nomeMaterial;
-        materialExistente.unidade = unidadeMaterial;
-        materialExistente.unidadeMedida = unidadeMedidaMaterial;
-        materialExistente.quantidadeMedida = quantidadeMedidaMaterial;
-        
-        // Adicionar histórico de preço
-        materialExistente.historicoPrecos.push({
+    // Criar novo material (sempre, mesmo que exista um com o mesmo código)
+    const novoMaterial = {
+        id: gerarId(),
+        codigo: codigoMaterial,
+        nome: nomeMaterial,
+        unidade: unidadeMaterial,
+        unidadeMedida: unidadeMedidaMaterial,
+        quantidadeMedida: quantidadeMedidaMaterial,
+        ultimoPreco: precoMaterial,
+        precoMedio: materialExistente ? 
+            ((materialExistente.precoMedio * materialExistente.historicoPrecos.length) + precoMaterial) / 
+            (materialExistente.historicoPrecos.length + 1) : 
+            precoMaterial,
+        ultimaCompra: dataCompra || new Date().toISOString(),
+        dataCadastro: new Date().toISOString(),
+        historicoPrecos: [{
             data: dataCompra || new Date().toISOString(),
             preco: precoMaterial
-        });
-        
-        // Atualizar o último preço
-        materialExistente.ultimoPreco = precoMaterial;
-        materialExistente.ultimaCompra = dataCompra || new Date().toISOString();
-        
-        // Recalcular o preço médio
-        const totalPrecos = materialExistente.historicoPrecos.reduce((soma, item) => soma + parseFloat(item.preco), 0);
-        materialExistente.precoMedio = totalPrecos / materialExistente.historicoPrecos.length;
-        
-        return materialExistente.id;
-    } else {
-        // Criar novo material
-        const novoMaterial = {
-            id: gerarId(),
-            codigo: codigoMaterial,
-            nome: nomeMaterial,
-            unidade: unidadeMaterial,
-            unidadeMedida: unidadeMedidaMaterial,
-            quantidadeMedida: quantidadeMedidaMaterial,
-            ultimoPreco: precoMaterial,
-            precoMedio: precoMaterial,
-            ultimaCompra: dataCompra || new Date().toISOString(),
-            dataCadastro: new Date().toISOString(),
-            historicoPrecos: [{
-                data: dataCompra || new Date().toISOString(),
-                preco: precoMaterial
-            }]
-        };
-        
-        materiais.push(novoMaterial);
-        return novoMaterial.id;
-    }
+        }]
+    };
+    
+    materiais.push(novoMaterial);
+    return novoMaterial.id;
 }
 
 // Função para adicionar item ao estoque
@@ -1255,7 +1437,7 @@ function removerMaterial(id) {
     mostrarNotificacao('notification-materiais', 'Material removido com sucesso!', 'success');
 }
 
-// Função para carregar materiais na tabela
+// Função para carregar materiais na tabela - MODIFICADA
 function carregarMateriais() {
     const tbody = document.getElementById('itens-materiais');
     if (!tbody) return;
@@ -1264,12 +1446,15 @@ function carregarMateriais() {
     
     if (materiais.length === 0) {
         const tr = document.createElement('tr');
-        tr.innerHTML = '<td colspan="9" style="text-align: center;">Nenhum material cadastrado.</td>';
+        tr.innerHTML = '<td colspan="8" style="text-align: center;">Nenhum material cadastrado.</td>';
         tbody.appendChild(tr);
         return;
     }
     
-    materiais.forEach((material, index) => {
+    // MODIFICADO: Exibir cada material como uma entrada separada, ordenado por data decrescente
+    const materiaisOrdenados = [...materiais].sort((a, b) => new Date(b.dataCadastro) - new Date(a.dataCadastro));
+    
+    materiaisOrdenados.forEach((material, index) => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${material.codigo || 'N/A'}</td>
@@ -1279,9 +1464,8 @@ function carregarMateriais() {
             <td>${material.quantidadeMedida}</td>
             <td>${formatarData(material.ultimaCompra)}</td>
             <td>${formatarMoeda(material.ultimoPreco)}</td>
-            <td>${formatarMoeda(material.precoMedio)}</td>
             <td>
-                <button class="btn btn-primary btn-editar-material" data-index="${index}">Editar</button>
+                <button class="btn btn-primary btn-editar-material" data-id="${material.id}">Editar</button>
                 <button class="btn btn-success btn-adicionar-estoque" data-id="${material.id}">+ Estoque</button>
                 <button class="btn btn-danger btn-remover-material" data-id="${material.id}">Excluir</button>
             </td>
@@ -1292,8 +1476,12 @@ function carregarMateriais() {
     // Adicionar eventos aos botões
     document.querySelectorAll('.btn-editar-material').forEach(btn => {
         btn.addEventListener('click', function() {
-            const index = this.getAttribute('data-index');
-            editarMaterial(index);
+            const id = this.getAttribute('data-id');
+            const material = materiais.find(m => m.id === id);
+            const index = materiais.indexOf(material);
+            if (index !== -1) {
+                editarMaterial(index);
+            }
         });
     });
     
@@ -1456,7 +1644,7 @@ function onScanSuccess(decodedText, decodedResult) {
     // Parar o scanner
     pararScanner();
     
-    // Buscar informações do produto (simulação)
+    // Buscar informações do produto
     buscarInformacoesProduto(decodedText);
 }
 
@@ -1465,7 +1653,7 @@ function onScanFailure(error) {
     // console.warn(`Erro ao escanear: ${error}`);
 }
 
-// Função para buscar informações do produto (simulação)
+// Função para buscar informações do produto - MODIFICADA
 function buscarInformacoesProduto(codigo) {
     // Verificar se o código já existe no catálogo
     const materialExistente = encontrarMaterialPorCodigo(codigo);
@@ -1494,6 +1682,131 @@ function atualizarDataHora() {
     const dataFormatada = agora.toLocaleDateString('pt-BR');
     const horaFormatada = agora.toLocaleTimeString('pt-BR');
     elemento.textContent = `${dataFormatada} ${horaFormatada}`;
+}
+
+// Funções de Autenticação e Login - NOVA
+function mostrarTelaLogin() {
+    document.getElementById('login-modal').classList.remove('hidden');
+}
+
+function esconderTelaLogin() {
+    document.getElementById('login-modal').classList.add('hidden');
+}
+
+function fazerLogin() {
+    const email = document.getElementById('login-email').value;
+    const senha = document.getElementById('login-senha').value;
+    
+    if (!email || !senha) {
+        mostrarNotificacao('login-notification', 'Preencha email e senha', 'error');
+        return;
+    }
+    
+    toggleModal(true, "Fazendo login...", "Por favor aguarde...");
+    
+    firebase.auth().signInWithEmailAndPassword(email, senha)
+        .then((userCredential) => {
+            // Login bem-sucedido
+            currentUser = userCredential.user;
+            
+            // Mostrar email do usuário logado
+            const userInfoEl = document.getElementById('user-info');
+            if (userInfoEl) {
+                userInfoEl.classList.remove('hidden');
+                document.getElementById('user-email').textContent = currentUser.email;
+            }
+            
+            // Esconder a tela de login
+            esconderTelaLogin();
+            
+            // Verificar se há dados na nuvem
+            iniciarSincronizacao();
+            
+            toggleModal(false);
+        })
+        .catch((error) => {
+            toggleModal(false);
+            mostrarNotificacao('login-notification', 'Erro ao fazer login: ' + error.message, 'error');
+        });
+}
+
+function fazerCadastro() {
+    const email = document.getElementById('login-email').value;
+    const senha = document.getElementById('login-senha').value;
+    
+    if (!email || !senha || senha.length < 6) {
+        mostrarNotificacao('login-notification', 'Email válido e senha com pelo menos 6 caracteres são necessários', 'error');
+        return;
+    }
+    
+    toggleModal(true, "Criando conta...", "Por favor aguarde...");
+    
+    firebase.auth().createUserWithEmailAndPassword(email, senha)
+        .then((userCredential) => {
+            currentUser = userCredential.user;
+            
+            // Mostrar email do usuário logado
+            const userInfoEl = document.getElementById('user-info');
+            if (userInfoEl) {
+                userInfoEl.classList.remove('hidden');
+                document.getElementById('user-email').textContent = currentUser.email;
+            }
+            
+            // Esconder a tela de login
+            esconderTelaLogin();
+            
+            // Salvar dados locais na nuvem
+            sincronizarComNuvem();
+            
+            toggleModal(false);
+            mostrarNotificacao('notification-estoque', 'Conta criada com sucesso!', 'success');
+        })
+        .catch((error) => {
+            toggleModal(false);
+            mostrarNotificacao('login-notification', 'Erro ao criar conta: ' + error.message, 'error');
+        });
+}
+
+function iniciarSincronizacao() {
+    if (!currentUser) return;
+    
+    const userId = currentUser.uid;
+    sincronizacaoAtiva = true;
+    
+    // Escutar por mudanças nos dados
+    database.ref('usuarios/' + userId).on('value', (snapshot) => {
+        const dados = snapshot.val();
+        if (dados) {
+            const ultimaAtualizacaoLocal = localStorage.getItem('ultimaAtualizacao');
+            
+            // Verificar se os dados da nuvem são mais recentes
+            if (!ultimaAtualizacaoLocal || new Date(dados.ultimaAtualizacao) > new Date(ultimaAtualizacaoLocal)) {
+                console.log('Sincronizando dados da nuvem...');
+                
+                // Atualizar dados locais
+                estoque = dados.estoque || [];
+                materiais = dados.materiais || [];
+                receitas = dados.receitas || [];
+                vendas = dados.vendas || [];
+                
+                // Salvar no localStorage
+                localStorage.setItem('estoque', JSON.stringify(estoque));
+                localStorage.setItem('materiais', JSON.stringify(materiais));
+                localStorage.setItem('receitas', JSON.stringify(receitas));
+                localStorage.setItem('vendas', JSON.stringify(vendas));
+                localStorage.setItem('ultimaAtualizacao', dados.ultimaAtualizacao);
+                
+                // Recarregar interfaces
+                carregarEstoque();
+                carregarMateriais();
+                carregarReceitas();
+                carregarVendas();
+                
+                mostrarNotificacao('notification-estoque', 'Dados sincronizados com sucesso!', 'success');
+            }
+        }
+        sincronizacaoAtiva = false;
+    });
 }
 
 // Configurar eventos
@@ -1666,8 +1979,35 @@ function setupEventListeners() {
             }
         });
     }
+    
+    // Evento de logout
+    const btnLogout = document.getElementById('btn-logout');
+    if (btnLogout) {
+        btnLogout.addEventListener('click', function() {
+            firebase.auth().signOut().then(() => {
+                // Sign-out successful.
+                currentUser = null;
+                localStorage.clear();
+                location.reload();
+            }).catch((error) => {
+                // An error happened.
+                console.error('Erro ao fazer logout:', error);
+            });
+        });
+    }
+    
+    // Eventos de login
+    const btnLogin = document.getElementById('btn-login');
+    if (btnLogin) {
+        btnLogin.addEventListener('click', fazerLogin);
+    }
+    
+    const btnCadastrar = document.getElementById('btn-cadastrar');
+    if (btnCadastrar) {
+        btnCadastrar.addEventListener('click', fazerCadastro);
+    }
 }
-// PARTE 5: JAVASCRIPT (SEGUNDA PARTE - MODIFICADA)
+// PARTE 5: JAVASCRIPT (SEGUNDA PARTE - MATERIAIS E RECEITAS)
 
 // FUNÇÕES PARA RECEITAS
 
@@ -1678,6 +2018,7 @@ function calcularCustoReceita(receita) {
    if (!receita || !receita.ingredientes) return 0;
    
    receita.ingredientes.forEach(ingrediente => {
+       // Encontrar o item do estoque com base no materialId do ingrediente
        const itemEstoque = estoque.find(item => item.materialId === ingrediente.materialId);
        if (itemEstoque && itemEstoque.preco) {
            // Calculamos o custo com base na quantidade da unidade de medida
@@ -1713,15 +2054,7 @@ function adicionarCampoIngrediente(ingredienteData = null) {
                    <label>Ingrediente:</label>
                    <select class="form-control ingrediente-select" required>
                        <option value="">Selecione um ingrediente...</option>
-                       ${materiais.map(material => `
-                           <option value="${material.id}" 
-                               data-unidade="${material.unidade}" 
-                               data-preco="${material.ultimoPreco || 0}"
-                               data-unidade-medida="${material.unidadeMedida || ''}"
-                               data-quantidade-medida="${material.quantidadeMedida || 0}">
-                               ${material.nome}
-                           </option>
-                       `).join('')}
+                       ${obterOpcoesIngredientes()}
                    </select>
                </div>
            </div>
@@ -1786,6 +2119,38 @@ function adicionarCampoIngrediente(ingredienteData = null) {
        container.removeChild(div);
        atualizarCalculosReceita();
    });
+}
+
+// NOVA função para obter opções de ingredientes
+function obterOpcoesIngredientes() {
+    // Agrupar materiais por código
+    const materiaisPorCodigo = {};
+    
+    materiais.forEach(material => {
+        if (!materiaisPorCodigo[material.codigo]) {
+            materiaisPorCodigo[material.codigo] = [];
+        }
+        materiaisPorCodigo[material.codigo].push(material);
+    });
+    
+    // Para cada código, pegar apenas o material mais recente
+    const materiaisUnicos = [];
+    Object.values(materiaisPorCodigo).forEach(grupo => {
+        // Ordenar por data decrescente e pegar o primeiro (mais recente)
+        grupo.sort((a, b) => new Date(b.dataCadastro) - new Date(a.dataCadastro));
+        materiaisUnicos.push(grupo[0]);
+    });
+    
+    // Gerar as opções HTML
+    return materiaisUnicos.map(material => `
+        <option value="${material.id}" 
+            data-unidade="${material.unidade}" 
+            data-preco="${material.ultimoPreco || 0}"
+            data-unidade-medida="${material.unidadeMedida || ''}"
+            data-quantidade-medida="${material.quantidadeMedida || 0}">
+            ${material.nome}
+        </option>
+    `).join('');
 }
 
 // Função para atualizar os cálculos de preço da receita
@@ -2044,9 +2409,14 @@ function carregarDetalhesReceitaVenda(receitaId) {
    const qtd = parseInt(document.getElementById('quantidade-venda').value) || 1;
    const frete = parseFloat(document.getElementById('custo-frete').value) || 0;
    const decoracao = parseFloat(document.getElementById('custo-decoracao').value) || 0;
+   const despesasAdicionais = parseFloat(document.getElementById('despesas-adicionais').value) || 0;
    
    // Novo cálculo do valor total incluindo frete e decoração
-   document.getElementById('valor-total-venda').value = (receita.precoVenda * qtd + frete + decoracao).toFixed(2);
+   const valorTotal = (receita.precoVenda * qtd) + frete + decoracao;
+   document.getElementById('valor-total-venda').value = valorTotal.toFixed(2);
+   
+   // NOVA SEÇÃO: Atualizar o resumo financeiro na tela de registro de venda
+   atualizarResumoFinanceiroVenda(receita, qtd, custoProducao, custosVariados, frete, decoracao, despesasAdicionais, valorTotal);
    
    // Definir a data atual para o campo de data
    const dataVendaEl = document.getElementById('data-venda');
@@ -2115,1010 +2485,827 @@ function carregarDetalhesReceitaVenda(receitaId) {
    }
 }
 
+// NOVA função para atualizar o resumo financeiro na tela de registro de venda
+function atualizarResumoFinanceiroVenda(receita, quantidade, custoProducao, custosVariados, frete, decoracao, despesasAdicionais, valorTotal) {
+    if (!receita) return;
+    
+    // 1. Cálculos financeiros
+    // Despesa (Custo Produção + Custo Variado)
+    const despesa = custoProducao + custosVariados;
+    
+    // Reinvestir (igual à Despesa)
+    const valorReinvestir = despesa;
+    
+    // Despesas Adicionais com acréscimo de 10%
+    const despesasAdicionaisComAcrescimo = despesasAdicionais * 1.1;
+    const totalDespesasAdicionais = despesasAdicionaisComAcrescimo + frete + decoracao;
+    
+    // Lucro (Valor Total - Despesa - Reinvestir - Despesas Adicionais)
+    const lucro = valorTotal - despesa - valorReinvestir - totalDespesasAdicionais;
+    
+    // 2. Atualizar os elementos na interface
+    document.getElementById('resumo-valor-total').textContent = formatarMoeda(valorTotal);
+    document.getElementById('resumo-despesa').textContent = formatarMoeda(despesa);
+    document.getElementById('resumo-reinvestir').textContent = formatarMoeda(valorReinvestir);
+    document.getElementById('resumo-desp-adic').textContent = formatarMoeda(totalDespesasAdicionais);
+    
+    const resumoLucro = document.getElementById('resumo-lucro');
+    resumoLucro.textContent = formatarMoeda(lucro);
+    
+    // Adicionar classe para colorir o lucro
+    if (lucro >= 0) {
+        resumoLucro.className = 'venda-resumo-valor lucro-positivo';
+    } else {
+        resumoLucro.className = 'venda-resumo-valor lucro-negativo';
+    }
+}
+    // PARTE 6: JAVASCRIPT (TERCEIRA PARTE - VENDAS E INICIALIZAÇÃO)
+
 // Função para registrar uma venda - MODIFICADA
 function registrarVenda(receitaId, quantidade, clienteNome, clienteTelefone, 
-                       clienteEndereco, custoFrete, custoDecoracao, despesasAdicionais, 
-                       observacoes, dataVenda) {
-   
-   const receita = receitas.find(r => r.id === receitaId);
-   if (!receita) return false;
-   
-   // Converter para números
-   quantidade = parseInt(quantidade);
-   custoFrete = parseFloat(custoFrete) || 0;
-   custoDecoracao = parseFloat(custoDecoracao) || 0;
-   despesasAdicionais = parseFloat(despesasAdicionais) || 0;
-   
-   // Verificar disponibilidade de ingredientes
-   let todosProdutosDisponiveis = true;
-   
-   for (const ingrediente of receita.ingredientes) {
-       const itemEstoque = estoque.find(item => item.materialId === ingrediente.materialId);
-       
-       if (!itemEstoque) {
-           todosProdutosDisponiveis = false;
-           break;
-       }
-       
-       // Converter unidades para checagem de disponibilidade
-       let quantidadeNecessaria = ingrediente.quantidade * quantidade;
-       let quantidadeNormalizada = quantidadeNecessaria;
-       
-       // Normalizar unidades
-       if (ingrediente.unidadeMedida.toLowerCase() === 'kg' && itemEstoque.unidadeMedida.toLowerCase() === 'g') {
-           quantidadeNormalizada *= 1000;
-       } else if (ingrediente.unidadeMedida.toLowerCase() === 'l' && itemEstoque.unidadeMedida.toLowerCase() === 'ml') {
-           quantidadeNormalizada *= 1000;
-       } else if (ingrediente.unidadeMedida.toLowerCase() === 'g' && itemEstoque.unidadeMedida.toLowerCase() === 'kg') {
-           quantidadeNormalizada /= 1000;
-       } else if (ingrediente.unidadeMedida.toLowerCase() === 'ml' && itemEstoque.unidadeMedida.toLowerCase() === 'l') {
-           quantidadeNormalizada /= 1000;
-       }
-       
-       // Calcular quantidade em unidades
-       const quantidadeEmUnidades = quantidadeNormalizada / itemEstoque.quantidadeMedida;
-       
-       if (itemEstoque.quantidade < quantidadeEmUnidades) {
-           todosProdutosDisponiveis = false;
-           break;
-       }
-   }
-   
-   if (!todosProdutosDisponiveis) {
-       return false;
-   }
-   
-   // Remover ingredientes do estoque
-   for (const ingrediente of receita.ingredientes) {
-       removerItemEstoque(ingrediente.materialId, ingrediente.quantidade * quantidade, ingrediente.unidadeMedida);
-   }
-   
-   // CÁLCULOS FINANCEIROS CORRIGIDOS
-   // 1. Custo Produção e Variados
-   const custoProducao = calcularCustoReceita(receita);
-   const custosVariados = custoProducao * 0.1;
-   
-   // 2. Despesa (Custo Produção + Custo Variado)
-   const despesa = custoProducao + custosVariados;
-   
-   // 3. Reinvestir (igual à Despesa)
-   const valorReinvestir = despesa;
-   
-   // 4. Despesas Adicionais
-   const despesasAdicionaisComAcrescimo = despesasAdicionais * 1.1;
-   const totalDespesasAdicionais = despesasAdicionaisComAcrescimo + custoFrete + custoDecoracao;
-   
-   // 5. Valor total da venda (preço da receita * quantidade + frete + decoração)
-   const valorTotal = (receita.precoVenda * quantidade) + custoFrete + custoDecoracao;
-   
-   // 6. Lucro (Valor Total - Despesa - Reinvestir - Despesas Adicionais)
-   const lucro = valorTotal - despesa - valorReinvestir - totalDespesasAdicionais;
-   
-   // Criar registro de venda
-   const novaVenda = {
-       id: gerarId(),
-       receitaId: receitaId,
-       receitaNome: receita.nome,
-       quantidade: quantidade,
-       custoProducao: custoProducao,
-       custosVariados: custosVariados,
-       despesasAdicionaisOriginal: despesasAdicionais,
-       despesasAdicionaisComAcrescimo: despesasAdicionaisComAcrescimo,
-       custoFrete: custoFrete,
-       custoDecoracao: custoDecoracao,
-       totalDespesasAdicionais: totalDespesasAdicionais,
-       valorReinvestir: valorReinvestir,
-       despesa: despesa,
-       lucro: lucro,
-       precoVenda: receita.precoVenda,
-       valorTotal: valorTotal,
-       observacoes: observacoes || "",
-       cliente: {
-           nome: clienteNome,
-           telefone: clienteTelefone,
-           endereco: clienteEndereco
-       },
-       data: dataVenda || new Date().toISOString(),
-       dataCriacao: new Date().toISOString()
-   };
-   
-   vendas.push(novaVenda);
-   atualizarLocalStorage();
-   
-   return true;
+                      clienteEndereco, custoFrete, custoDecoracao, despesasAdicionais, 
+                      observacoes, dataVenda) {
+  
+  const receita = receitas.find(r => r.id === receitaId);
+  if (!receita) return false;
+  
+  // Converter para números
+  quantidade = parseInt(quantidade);
+  custoFrete = parseFloat(custoFrete) || 0;
+  custoDecoracao = parseFloat(custoDecoracao) || 0;
+  despesasAdicionais = parseFloat(despesasAdicionais) || 0;
+  
+  // Verificar disponibilidade de ingredientes
+  let todosProdutosDisponiveis = true;
+  
+  for (const ingrediente of receita.ingredientes) {
+    const itemEstoque = estoque.find(item => item.materialId === ingrediente.materialId);
+    
+    if (!itemEstoque) {
+      todosProdutosDisponiveis = false;
+      break;
+    }
+    
+    // Converter unidades para checagem de disponibilidade
+    let quantidadeNecessaria = ingrediente.quantidade * quantidade;
+    let quantidadeNormalizada = quantidadeNecessaria;
+    
+    // Normalizar unidades
+    if (ingrediente.unidadeMedida.toLowerCase() === 'kg' && itemEstoque.unidadeMedida.toLowerCase() === 'g') {
+      quantidadeNormalizada *= 1000;
+    } else if (ingrediente.unidadeMedida.toLowerCase() === 'l' && itemEstoque.unidadeMedida.toLowerCase() === 'ml') {
+      quantidadeNormalizada *= 1000;
+    } else if (ingrediente.unidadeMedida.toLowerCase() === 'g' && itemEstoque.unidadeMedida.toLowerCase() === 'kg') {
+      quantidadeNormalizada /= 1000;
+    } else if (ingrediente.unidadeMedida.toLowerCase() === 'ml' && itemEstoque.unidadeMedida.toLowerCase() === 'l') {
+      quantidadeNormalizada /= 1000;
+    }
+    
+    // Calcular quantidade em unidades
+    const quantidadeEmUnidades = quantidadeNormalizada / itemEstoque.quantidadeMedida;
+    
+    if (itemEstoque.quantidade < quantidadeEmUnidades) {
+      todosProdutosDisponiveis = false;
+      break;
+    }
+  }
+  
+  if (!todosProdutosDisponiveis) {
+    return false;
+  }
+  
+  // Remover ingredientes do estoque
+  for (const ingrediente of receita.ingredientes) {
+    removerItemEstoque(ingrediente.materialId, ingrediente.quantidade * quantidade, ingrediente.unidadeMedida);
+  }
+  
+  // CÁLCULOS FINANCEIROS CORRIGIDOS
+  // 1. Custo Produção e Variados
+  const custoProducao = calcularCustoReceita(receita);
+  const custosVariados = custoProducao * 0.1;
+  
+  // 2. Despesa (Custo Produção + Custo Variado)
+  const despesa = custoProducao + custosVariados;
+  
+  // 3. Reinvestir (igual à Despesa)
+  const valorReinvestir = despesa;
+  
+  // 4. Despesas Adicionais
+  const despesasAdicionaisComAcrescimo = despesasAdicionais * 1.1;
+  const totalDespesasAdicionais = despesasAdicionaisComAcrescimo + custoFrete + custoDecoracao;
+  
+  // 5. Valor total da venda (preço da receita * quantidade + frete + decoração)
+  const valorTotal = (receita.precoVenda * quantidade) + custoFrete + custoDecoracao;
+  
+  // 6. Lucro (Valor Total - Despesa - Reinvestir - Despesas Adicionais)
+  const lucro = valorTotal - despesa - valorReinvestir - totalDespesasAdicionais;
+  
+  // Criar registro de venda
+  const novaVenda = {
+    id: gerarId(),
+    receitaId: receitaId,
+    receitaNome: receita.nome,
+    quantidade: quantidade,
+    custoProducao: custoProducao,
+    custosVariados: custosVariados,
+    despesasAdicionaisOriginal: despesasAdicionais,
+    despesasAdicionaisComAcrescimo: despesasAdicionaisComAcrescimo,
+    custoFrete: custoFrete,
+    custoDecoracao: custoDecoracao,
+    totalDespesasAdicionais: totalDespesasAdicionais,
+    valorReinvestir: valorReinvestir,
+    despesa: despesa,
+    lucro: lucro,
+    precoVenda: receita.precoVenda,
+    valorTotal: valorTotal,
+    observacoes: observacoes || "",
+    cliente: {
+      nome: clienteNome,
+      telefone: clienteTelefone,
+      endereco: clienteEndereco
+    },
+    data: dataVenda || new Date().toISOString(),
+    dataCriacao: new Date().toISOString()
+  };
+  
+  vendas.push(novaVenda);
+  atualizarLocalStorage();
+  
+  return true;
 }
 
 // Função para editar uma venda - MODIFICADA
 function editarVenda(vendaId, quantidade, clienteNome, clienteTelefone, 
-                    clienteEndereco, custoFrete, custoDecoracao, despesasAdicionais, 
-                    observacoes, dataVenda, valorTotal) {
-    
-    const venda = vendas.find(v => v.id === vendaId);
-    if (!venda) return false;
-    
-    // Salvar os dados originais para restaurar o estoque
-    const vendaOriginal = JSON.parse(JSON.stringify(venda));
-    
-    // Converter valores
-    quantidade = parseInt(quantidade) || venda.quantidade;
-    custoFrete = parseFloat(custoFrete);
-    custoDecoracao = parseFloat(custoDecoracao);
-    despesasAdicionais = parseFloat(despesasAdicionais);
-    valorTotal = parseFloat(valorTotal);
-    
-    // Checar se a quantidade mudou para atualizar o estoque
-    if (quantidade !== venda.quantidade) {
-        // Primeiro devolvemos os itens ao estoque
-        const receita = receitas.find(r => r.id === venda.receitaId);
-        if (receita) {
-            // Devolver ao estoque a quantidade original
-            receita.ingredientes.forEach(ingrediente => {
-                adicionarEstoqueDeVolta(
-                    ingrediente.materialId, 
-                    ingrediente.quantidade * vendaOriginal.quantidade, 
-                    ingrediente.unidadeMedida
-                );
-            });
-            
-            // Agora removemos a nova quantidade
-            let todosProdutosDisponiveis = true;
-            
-            // Verificar disponibilidade
-            for (const ingrediente of receita.ingredientes) {
-                const itemEstoque = estoque.find(item => item.materialId === ingrediente.materialId);
-                if (!itemEstoque) {
-                    todosProdutosDisponiveis = false;
-                    break;
-                }
-                
-                let quantidadeNecessaria = ingrediente.quantidade * quantidade;
-                let quantidadeNormalizada = quantidadeNecessaria;
-                
-                // Normalizar unidades
-                if (ingrediente.unidadeMedida.toLowerCase() === 'kg' && itemEstoque.unidadeMedida.toLowerCase() === 'g') {
-                    quantidadeNormalizada *= 1000;
-                } else if (ingrediente.unidadeMedida.toLowerCase() === 'l' && itemEstoque.unidadeMedida.toLowerCase() === 'ml') {
-                    quantidadeNormalizada *= 1000;
-                } else if (ingrediente.unidadeMedida.toLowerCase() === 'g' && itemEstoque.unidadeMedida.toLowerCase() === 'kg') {
-                    quantidadeNormalizada /= 1000;
-                } else if (ingrediente.unidadeMedida.toLowerCase() === 'ml' && itemEstoque.unidadeMedida.toLowerCase() === 'l') {
-                    quantidadeNormalizada /= 1000;
-                }
-                
-                const quantidadeEmUnidades = quantidadeNormalizada / itemEstoque.quantidadeMedida;
-                
-                if (itemEstoque.quantidade < quantidadeEmUnidades) {
-                    todosProdutosDisponiveis = false;
-                    break;
-                }
-            }
-            
-            if (!todosProdutosDisponiveis) {
-                // Se não há produtos suficientes, restaurar estoque original e abortar
-                receita.ingredientes.forEach(ingrediente => {
-                    removerItemEstoque(
-                        ingrediente.materialId, 
-                        ingrediente.quantidade * vendaOriginal.quantidade, 
-                        ingrediente.unidadeMedida
-                    );
-                });
-                return false;
-            }
-            
-            // Se temos estoque suficiente, removemos a nova quantidade
-            for (const ingrediente of receita.ingredientes) {
-                removerItemEstoque(
-                    ingrediente.materialId, 
-                    ingrediente.quantidade * quantidade, 
-                    ingrediente.unidadeMedida
-                );
-            }
-            
-            // Recalcular custos baseados na nova quantidade
-            const custoProducao = calcularCustoReceita(receita);
-            const custosVariados = custoProducao * 0.1;
-            venda.custoProducao = custoProducao;
-            venda.custosVariados = custosVariados;
-            venda.despesa = custoProducao + custosVariados;
-            venda.valorReinvestir = venda.despesa;
+                   clienteEndereco, custoFrete, custoDecoracao, despesasAdicionais, 
+                   observacoes, dataVenda, valorTotal) {
+  
+  const venda = vendas.find(v => v.id === vendaId);
+  if (!venda) return false;
+  
+  // Salvar os dados originais para restaurar o estoque
+  const vendaOriginal = JSON.parse(JSON.stringify(venda));
+  
+  // Converter valores
+  quantidade = parseInt(quantidade) || venda.quantidade;
+  custoFrete = parseFloat(custoFrete);
+  custoDecoracao = parseFloat(custoDecoracao);
+  despesasAdicionais = parseFloat(despesasAdicionais);
+  valorTotal = parseFloat(valorTotal);
+  
+  // Checar se a quantidade mudou para atualizar o estoque
+  if (quantidade !== venda.quantidade) {
+    // Primeiro devolvemos os itens ao estoque
+    const receita = receitas.find(r => r.id === venda.receitaId);
+    if (receita) {
+      // Devolver ao estoque a quantidade original
+      receita.ingredientes.forEach(ingrediente => {
+        adicionarEstoqueDeVolta(
+          ingrediente.materialId, 
+          ingrediente.quantidade * vendaOriginal.quantidade, 
+          ingrediente.unidadeMedida
+        );
+      });
+      
+      // Agora removemos a nova quantidade
+      let todosProdutosDisponiveis = true;
+      
+      // Verificar disponibilidade
+      for (const ingrediente of receita.ingredientes) {
+        const itemEstoque = estoque.find(item => item.materialId === ingrediente.materialId);
+        if (!itemEstoque) {
+          todosProdutosDisponiveis = false;
+          break;
         }
+        
+        let quantidadeNecessaria = ingrediente.quantidade * quantidade;
+        let quantidadeNormalizada = quantidadeNecessaria;
+        
+        // Normalizar unidades
+        if (ingrediente.unidadeMedida.toLowerCase() === 'kg' && itemEstoque.unidadeMedida.toLowerCase() === 'g') {
+          quantidadeNormalizada *= 1000;
+        } else if (ingrediente.unidadeMedida.toLowerCase() === 'l' && itemEstoque.unidadeMedida.toLowerCase() === 'ml') {
+          quantidadeNormalizada *= 1000;
+        } else if (ingrediente.unidadeMedida.toLowerCase() === 'g' && itemEstoque.unidadeMedida.toLowerCase() === 'kg') {
+          quantidadeNormalizada /= 1000;
+        } else if (ingrediente.unidadeMedida.toLowerCase() === 'ml' && itemEstoque.unidadeMedida.toLowerCase() === 'l') {
+          quantidadeNormalizada /= 1000;
+        }
+        
+        const quantidadeEmUnidades = quantidadeNormalizada / itemEstoque.quantidadeMedida;
+        
+        if (itemEstoque.quantidade < quantidadeEmUnidades) {
+          todosProdutosDisponiveis = false;
+          break;
+        }
+      }
+      
+      if (!todosProdutosDisponiveis) {
+        // Se não há produtos suficientes, restaurar estoque original e abortar
+        receita.ingredientes.forEach(ingrediente => {
+          removerItemEstoque(
+            ingrediente.materialId, 
+            ingrediente.quantidade * vendaOriginal.quantidade, 
+            ingrediente.unidadeMedida
+          );
+        });
+        return false;
+      }
+      
+      // Se temos estoque suficiente, removemos a nova quantidade
+      for (const ingrediente of receita.ingredientes) {
+        removerItemEstoque(
+          ingrediente.materialId, 
+          ingrediente.quantidade * quantidade, 
+          ingrediente.unidadeMedida
+        );
+      }
+      
+      // Recalcular custos baseados na nova quantidade
+      const custoProducao = calcularCustoReceita(receita);
+      const custosVariados = custoProducao * 0.1;
+      venda.custoProducao = custoProducao;
+      venda.custosVariados = custosVariados;
+      venda.despesa = custoProducao + custosVariados;
+      venda.valorReinvestir = venda.despesa;
     }
-    
-    // Atualizar os dados da venda
-    venda.quantidade = quantidade;
-    venda.cliente.nome = clienteNome;
-    venda.cliente.telefone = clienteTelefone;
-    venda.cliente.endereco = clienteEndereco;
-    venda.custoFrete = custoFrete;
-    venda.custoDecoracao = custoDecoracao;
-    venda.despesasAdicionaisOriginal = despesasAdicionais;
-    venda.despesasAdicionaisComAcrescimo = despesasAdicionais * 1.1;
-    venda.totalDespesasAdicionais = venda.despesasAdicionaisComAcrescimo + custoFrete + custoDecoracao;
-    venda.observacoes = observacoes;
-    
-    if (dataVenda) {
-        venda.data = new Date(dataVenda).toISOString();
-    }
-    
-    // MODIFICAÇÃO: Atualizar valor total e recalcular lucro corretamente
-    venda.valorTotal = valorTotal;
-    // Lucro = Valor Total - Despesa - Reinvestir - Despesas Adicionais Total
-    venda.lucro = valorTotal - venda.despesa - venda.valorReinvestir - venda.totalDespesasAdicionais;
-    
-    atualizarLocalStorage();
-    return true;
+  }
+  
+  // Atualizar os dados da venda
+  venda.quantidade = quantidade;
+  venda.cliente.nome = clienteNome;
+  venda.cliente.telefone = clienteTelefone;
+  venda.cliente.endereco = clienteEndereco;
+  venda.custoFrete = custoFrete;
+  venda.custoDecoracao = custoDecoracao;
+  venda.despesasAdicionaisOriginal = despesasAdicionais;
+  venda.despesasAdicionaisComAcrescimo = despesasAdicionais * 1.1;
+  venda.totalDespesasAdicionais = venda.despesasAdicionaisComAcrescimo + custoFrete + custoDecoracao;
+  venda.observacoes = observacoes;
+  
+  if (dataVenda) {
+    venda.data = new Date(dataVenda).toISOString();
+  }
+  
+  // MODIFICAÇÃO: Atualizar valor total e recalcular lucro corretamente
+  venda.valorTotal = valorTotal;
+  // Lucro = Valor Total - Despesa - Reinvestir - Despesas Adicionais Total
+  venda.lucro = valorTotal - venda.despesa - venda.valorReinvestir - venda.totalDespesasAdicionais;
+  
+  atualizarLocalStorage();
+  return true;
 }
 
 // Função para excluir uma venda
 function excluirVenda(vendaId) {
-    const index = vendas.findIndex(v => v.id === vendaId);
-    if (index === -1) return false;
-    
-    const venda = vendas[index];
-    
-    // Devolver itens ao estoque
-    const receita = receitas.find(r => r.id === venda.receitaId);
-    if (receita) {
-        receita.ingredientes.forEach(ingrediente => {
-            adicionarEstoqueDeVolta(
-                ingrediente.materialId, 
-                ingrediente.quantidade * venda.quantidade, 
-                ingrediente.unidadeMedida
-            );
-        });
-    }
-    
-    // Remover a venda
-    vendas.splice(index, 1);
-    atualizarLocalStorage();
-    
-    return true;
+  const index = vendas.findIndex(v => v.id === vendaId);
+  if (index === -1) return false;
+  
+  const venda = vendas[index];
+  
+  // Devolver itens ao estoque
+  const receita = receitas.find(r => r.id === venda.receitaId);
+  if (receita) {
+    receita.ingredientes.forEach(ingrediente => {
+      adicionarEstoqueDeVolta(
+        ingrediente.materialId, 
+        ingrediente.quantidade * venda.quantidade, 
+        ingrediente.unidadeMedida
+      );
+    });
+  }
+  
+  // Remover a venda
+  vendas.splice(index, 1);
+  atualizarLocalStorage();
+  
+  return true;
 }
 
 // Função para mostrar detalhes de uma venda - MODIFICADA
 function mostrarDetalhesVenda(vendaId) {
-    const venda = vendas.find(v => v.id === vendaId);
-    if (!venda) return;
-    
-    const modal = document.getElementById('venda-details-modal');
-    const content = document.getElementById('venda-details-content');
-    
-    if (!modal || !content) return;
-    
-    // MODIFICAÇÃO: Cálculos financeiros corrigidos
-    const despesa = venda.despesa || (venda.custoProducao + venda.custosVariados);
-    const valorReinvestir = despesa;
-    
-    // Verificar se despesasAdicionaisComAcrescimo existe
-    // Para compatibilidade com vendas antigas
-    const despesasAdicionaisComAcrescimo = venda.despesasAdicionaisComAcrescimo || 
-                                          (venda.despesasAdicionaisOriginal || venda.despesasAdicionais || 0) * 1.1;
-    const totalDespesasAdicionais = venda.totalDespesasAdicionais || 
-                                   (despesasAdicionaisComAcrescimo + (venda.custoFrete || 0) + (venda.custoDecoracao || 0));
-    
-    // Recalcular lucro (Valor Total - Despesa - Reinvestir - Despesas Adicionais)
-    const lucro = venda.valorTotal - despesa - valorReinvestir - totalDespesasAdicionais;
-    
-    content.innerHTML = `
-        <div class="sale-details">
-            <h4>${venda.receitaNome}</h4>
-            <p><strong>Data:</strong> ${formatarData(venda.data)}</p>
-            <p><strong>Cliente:</strong> ${venda.cliente.nome}</p>
-            <p><strong>Telefone:</strong> ${venda.cliente.telefone || 'N/A'}</p>
-            <p><strong>Endereço:</strong> ${venda.cliente.endereco || 'N/A'}</p>
-            
-            ${venda.observacoes ? `<p><strong>Observações:</strong> ${venda.observacoes}</p>` : ''}
-            
-            <div class="recipe-pricing" style="margin: 15px 0;">
-                <div class="recipe-price-item">
-                    <div class="recipe-price-label">Custo de Produção</div>
-                    <div class="recipe-price-value">${formatarMoeda(venda.custoProducao)}</div>
-                </div>
-                
-                <div class="recipe-price-item">
-                    <div class="recipe-price-label">Custos Variados</div>
-                    <div class="recipe-price-value">${formatarMoeda(venda.custosVariados)}</div>
-                </div>
-                
-                <div class="recipe-price-item">
-                    <div class="recipe-price-label">Preço Unitário</div>
-                    <div class="recipe-price-value">${formatarMoeda(venda.precoVenda)}</div>
-                </div>
-                
-                <div class="recipe-price-item">
-                    <div class="recipe-price-label">Quantidade</div>
-                    <div class="recipe-price-value">${venda.quantidade}</div>
-                </div>
-            </div>
-            
-            <div class="recipe-pricing" style="margin: 15px 0;">
-                <div class="recipe-price-item">
-                    <div class="recipe-price-label">Frete</div>
-                    <div class="recipe-price-value">${formatarMoeda(venda.custoFrete || 0)}</div>
-                </div>
-                
-                <div class="recipe-price-item">
-                    <div class="recipe-price-label">Decoração</div>
-                    <div class="recipe-price-value">${formatarMoeda(venda.custoDecoracao || 0)}</div>
-                </div>
-                
-                <div class="recipe-price-item">
-                    <div class="recipe-price-label">Despesas Adicionais</div>
-                    <div class="recipe-price-value">${formatarMoeda(venda.despesasAdicionaisOriginal || venda.despesasAdicionais || 0)}</div>
-                </div>
-                
-                <div class="recipe-price-item">
-                    <div class="recipe-price-label">Desp. Adic. + 10%</div>
-                    <div class="recipe-price-value">${formatarMoeda(despesasAdicionaisComAcrescimo)}</div>
-                </div>
-            </div>
-            
-            <div class="recipe-pricing" style="margin: 15px 0; background-color: #f9f9f9; padding: 10px; border-radius: 5px;">
-                <div class="recipe-price-item">
-                    <div class="recipe-price-label">Valor Total</div>
-                    <div class="recipe-price-value" style="font-size: 18px;">${formatarMoeda(venda.valorTotal)}</div>
-                </div>
-                
-                <div class="recipe-price-item">
-                    <div class="recipe-price-label">Despesa</div>
-                    <div class="recipe-price-value">${formatarMoeda(despesa)}</div>
-                </div>
-                
-                <div class="recipe-price-item">
-                    <div class="recipe-price-label">Reinvestir</div>
-                    <div class="recipe-price-value">${formatarMoeda(valorReinvestir)}</div>
-                </div>
-                
-                <div class="recipe-price-item">
-                    <div class="recipe-price-label">Total Desp. Adic.</div>
-                    <div class="recipe-price-value">${formatarMoeda(totalDespesasAdicionais)}</div>
-                </div>
-                
-                <div class="recipe-price-item">
-                    <div class="recipe-price-label">Lucro</div>
-                    <div class="recipe-price-value" style="color: ${lucro >= 0 ? '#28a745' : '#dc3545'}; font-size: 18px;">${formatarMoeda(lucro)}</div>
-                </div>
-            </div>
+  const venda = vendas.find(v => v.id === vendaId);
+  if (!venda) return;
+  
+  const modal = document.getElementById('venda-details-modal');
+  const content = document.getElementById('venda-details-content');
+  
+  if (!modal || !content) return;
+  
+  // MODIFICAÇÃO: Cálculos financeiros corrigidos
+  const despesa = venda.despesa || (venda.custoProducao + venda.custosVariados);
+  const valorReinvestir = despesa;
+  
+  // Verificar se despesasAdicionaisComAcrescimo existe
+  // Para compatibilidade com vendas antigas
+  const despesasAdicionaisComAcrescimo = venda.despesasAdicionaisComAcrescimo || 
+                                         (venda.despesasAdicionaisOriginal || venda.despesasAdicionais || 0) * 1.1;
+  const totalDespesasAdicionais = venda.totalDespesasAdicionais || 
+                                 (despesasAdicionaisComAcrescimo + (venda.custoFrete || 0) + (venda.custoDecoracao || 0));
+  
+  // Recalcular lucro (Valor Total - Despesa - Reinvestir - Despesas Adicionais)
+  const lucro = venda.valorTotal - despesa - valorReinvestir - totalDespesasAdicionais;
+  
+  content.innerHTML = `
+    <div class="sale-details">
+      <h4>${venda.receitaNome}</h4>
+      <p><strong>Data:</strong> ${formatarData(venda.data)}</p>
+      <p><strong>Cliente:</strong> ${venda.cliente.nome}</p>
+      <p><strong>Telefone:</strong> ${venda.cliente.telefone || 'N/A'}</p>
+      <p><strong>Endereço:</strong> ${venda.cliente.endereco || 'N/A'}</p>
+      
+      ${venda.observacoes ? `<p><strong>Observações:</strong> ${venda.observacoes}</p>` : ''}
+      
+      <div class="recipe-pricing" style="margin: 15px 0;">
+        <div class="recipe-price-item">
+          <div class="recipe-price-label">Custo de Produção</div>
+          <div class="recipe-price-value">${formatarMoeda(venda.custoProducao)}</div>
         </div>
-    `;
-    
-    modal.classList.remove('hidden');
+        
+        <div class="recipe-price-item">
+          <div class="recipe-price-label">Custos Variados</div>
+          <div class="recipe-price-value">${formatarMoeda(venda.custosVariados)}</div>
+        </div>
+        
+        <div class="recipe-price-item">
+          <div class="recipe-price-label">Preço Unitário</div>
+          <div class="recipe-price-value">${formatarMoeda(venda.precoVenda)}</div>
+        </div>
+        
+        <div class="recipe-price-item">
+          <div class="recipe-price-label">Quantidade</div>
+          <div class="recipe-price-value">${venda.quantidade}</div>
+        </div>
+      </div>
+      
+      <div class="recipe-pricing" style="margin: 15px 0;">
+        <div class="recipe-price-item">
+          <div class="recipe-price-label">Frete</div>
+          <div class="recipe-price-value">${formatarMoeda(venda.custoFrete || 0)}</div>
+        </div>
+        
+        <div class="recipe-price-item">
+          <div class="recipe-price-label">Decoração</div>
+          <div class="recipe-price-value">${formatarMoeda(venda.custoDecoracao || 0)}</div>
+        </div>
+        
+        <div class="recipe-price-item">
+          <div class="recipe-price-label">Despesas Adicionais</div>
+          <div class="recipe-price-value">${formatarMoeda(venda.despesasAdicionaisOriginal || venda.despesasAdicionais || 0)}</div>
+        </div>
+        
+        <div class="recipe-price-item">
+          <div class="recipe-price-label">Desp. Adic. + 10%</div>
+          <div class="recipe-price-value">${formatarMoeda(despesasAdicionaisComAcrescimo)}</div>
+        </div>
+      </div>
+      
+      <div class="venda-resumo-financeiro">
+        <div class="venda-resumo-grid">
+          <div class="venda-resumo-item">
+            <div class="venda-resumo-label">Valor Total</div>
+            <div class="venda-resumo-valor">${formatarMoeda(venda.valorTotal)}</div>
+          </div>
+          
+          <div class="venda-resumo-item">
+            <div class="venda-resumo-label">Despesa</div>
+            <div class="venda-resumo-valor">${formatarMoeda(despesa)}</div>
+          </div>
+          
+          <div class="venda-resumo-item">
+            <div class="venda-resumo-label">Reinvestir</div>
+            <div class="venda-resumo-valor">${formatarMoeda(valorReinvestir)}</div>
+          </div>
+          
+          <div class="venda-resumo-item">
+            <div class="venda-resumo-label">Total Desp. Adic.</div>
+            <div class="venda-resumo-valor">${formatarMoeda(totalDespesasAdicionais)}</div>
+          </div>
+          
+          <div class="venda-resumo-item">
+            <div class="venda-resumo-label">Lucro</div>
+            <div class="venda-resumo-valor ${lucro >= 0 ? 'lucro-positivo' : 'lucro-negativo'}">${formatarMoeda(lucro)}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  modal.classList.remove('hidden');
 }
-// PARTE 6: JAVASCRIPT (TERCEIRA PARTE - CORRIGIDA)
 
 // Configurar eventos adicionais para esta parte do código
 function setupAdditionalEvents() {
-    // Evento para adicionar receita
-    const formAdicionarReceita = document.getElementById('form-adicionar-receita');
-    if (formAdicionarReceita) {
-        formAdicionarReceita.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const nome = document.getElementById('nome-receita').value;
-            const descricao = document.getElementById('descricao-receita').value;
-            const precoVenda = parseFloat(document.getElementById('preco-venda').value) || 0;
-            
-            // Validar preço de venda
-            if (isNaN(precoVenda) || precoVenda <= 0) {
-                alert('O preço de venda deve ser um número válido maior que zero.');
-                return;
-            }
-            
-            // Coletar ingredientes
-            const ingredientes = [];
-            document.querySelectorAll('.ingrediente-item').forEach(item => {
-                const select = item.querySelector('.ingrediente-select');
-                if (select.value) {
-                    const quantidade = parseFloat(item.querySelector('.ingrediente-quantidade').value);
-                    const unidadeMedidaSelect = item.querySelector('.ingrediente-unidade-medida');
-                    const material = materiais.find(m => m.id === select.value);
-                    
-                    // Validar quantidade
-                    if (isNaN(quantidade) || quantidade <= 0) {
-                        alert('A quantidade do ingrediente deve ser um número válido maior que zero.');
-                        return;
-                    }
-                    
-                    ingredientes.push({
-                        materialId: select.value,
-                        nome: material ? material.nome : select.options[select.selectedIndex].text,
-                        quantidade: quantidade,
-                        unidadeMedida: unidadeMedidaSelect.value
-                    });
-                }
-            });
-            
-            // Verificar se tem ingredientes
-            if (ingredientes.length === 0) {
-                alert('Adicione pelo menos um ingrediente à receita!');
-                return;
-            }
-            
-            // Verificar se é uma edição
-            const submitBtn = document.querySelector('#form-adicionar-receita button[type="submit"]');
-            const indexEdicao = submitBtn.getAttribute('data-edicao');
-            
-            if (indexEdicao !== null && indexEdicao !== undefined) {
-                // Edição de receita existente
-                receitas[indexEdicao].nome = nome;
-                receitas[indexEdicao].descricao = descricao;
-                receitas[indexEdicao].ingredientes = ingredientes;
-                receitas[indexEdicao].precoVenda = precoVenda;
-                
-                // Resetar o botão
-                submitBtn.textContent = 'Salvar Receita';
-                submitBtn.removeAttribute('data-edicao');
-                
-                mostrarNotificacao('notification-estoque', 'Receita atualizada com sucesso!', 'success');
-            } else {
-                // Nova receita
-                const novaReceita = {
-                    id: gerarId(),
-                    nome: nome,
-                    descricao: descricao,
-                    ingredientes: ingredientes,
-                    precoVenda: precoVenda,
-                    dataCriacao: new Date().toISOString()
-                };
-                
-                receitas.push(novaReceita);
-                mostrarNotificacao('notification-estoque', 'Receita adicionada com sucesso!', 'success');
-            }
-            
-            // Atualizar localStorage e interface
-            atualizarLocalStorage();
-            carregarReceitas();
-            
-            // Limpar o formulário
-            this.reset();
-            document.getElementById('lista-ingredientes').innerHTML = '';
-            document.getElementById('custo-producao').textContent = formatarMoeda(0);
-            document.getElementById('custos-variados').textContent = formatarMoeda(0);
-            document.getElementById('preco-estimado').textContent = formatarMoeda(0);
-            
-            // Adicionar um campo vazio de ingrediente
-            adicionarCampoIngrediente();
-            
-            // Mudar para a aba de listar receitas
-            const tabButton = document.querySelector('[data-tab="listar-receitas"]');
-            if (tabButton) {
-                tabButton.click();
-            }
-        });
-    }
-    
-    // Evento para adicionar ingrediente à receita
-    const btnAdicionarIngrediente = document.getElementById('adicionar-ingrediente');
-    if (btnAdicionarIngrediente) {
-        btnAdicionarIngrediente.addEventListener('click', function() {
-            adicionarCampoIngrediente();
-        });
-    }
-    
-    // Evento para selecionar receita para venda
-    const selecionarReceitaVenda = document.getElementById('selecionar-receita-venda');
-    if (selecionarReceitaVenda) {
-        selecionarReceitaVenda.addEventListener('change', function() {
-            const receitaId = this.value;
-            if (receitaId) {
-                // Definir a data atual para o campo de data
-                const dataVendaEl = document.getElementById('data-venda');
-                if (dataVendaEl && !dataVendaEl.value) {
-                    const hoje = new Date();
-                    dataVendaEl.value = hoje.toISOString().split('T')[0];
-                }
-                
-                carregarDetalhesReceitaVenda(receitaId);
-            } else {
-                document.getElementById('detalhes-receita-venda').classList.add('hidden');
-            }
-        });
-    }
-
-    // Evento para atualizar valor total quando quantidade ou custos adicionais mudam - MODIFICADO
-    const qtdVenda = document.getElementById('quantidade-venda');
-    const custoFrete = document.getElementById('custo-frete');
-    const custoDecoracao = document.getElementById('custo-decoracao');
-    const despesasAdicionais = document.getElementById('despesas-adicionais');
-    
-    [qtdVenda, custoFrete, custoDecoracao, despesasAdicionais].forEach(input => {
-        if (input) {
-            input.addEventListener('input', atualizarValorTotalVenda);
-        }
-    });
-    
-    // MODIFICADO: Novo cálculo do valor total
-    function atualizarValorTotalVenda() {
-        const receitaId = document.getElementById('selecionar-receita-venda').value;
-        if (!receitaId) return;
-        
-        const receita = receitas.find(r => r.id === receitaId);
-        if (!receita) return;
-        
-        const qtd = parseInt(document.getElementById('quantidade-venda').value) || 1;
-        const frete = parseFloat(document.getElementById('custo-frete').value) || 0;
-        const decoracao = parseFloat(document.getElementById('custo-decoracao').value) || 0;
-        
-        // Novo cálculo do valor total - incluindo frete e decoração
-        const valorTotal = (receita.precoVenda * qtd) + frete + decoracao;
-        document.getElementById('valor-total-venda').value = valorTotal.toFixed(2);
-        
-        // Atualizar a lista de ingredientes necessários com a nova quantidade
-        carregarDetalhesReceitaVenda(receitaId);
-    }
-    
-    // Evento para registrar venda
-    const formRegistrarVenda = document.getElementById('form-registrar-venda');
-    if (formRegistrarVenda) {
-        formRegistrarVenda.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const receitaId = document.getElementById('selecionar-receita-venda').value;
-            if (!receitaId) {
-                alert('Selecione uma receita primeiro!');
-                return;
-            }
-            
-            const quantidade = parseInt(document.getElementById('quantidade-venda').value) || 1;
-            
-            // Validar quantidade
-            if (isNaN(quantidade) || quantidade <= 0) {
-                alert('A quantidade deve ser um número válido maior que zero.');
-                return;
-            }
-            
-            const clienteNome = document.getElementById('cliente-nome').value;
-            
-            // Validar nome do cliente
-            if (!clienteNome.trim()) {
-                alert('O nome do cliente é obrigatório.');
-                return;
-            }
-            
-            const clienteTelefone = document.getElementById('cliente-telefone').value;
-            const clienteEndereco = document.getElementById('cliente-endereco').value;
-            const observacoes = document.getElementById('observacoes-venda').value;
-            const custoFrete = parseFloat(document.getElementById('custo-frete').value) || 0;
-            const custoDecoracao = parseFloat(document.getElementById('custo-decoracao').value) || 0;
-            const despesasAdicionais = parseFloat(document.getElementById('despesas-adicionais').value) || 0;
-            
-            // Data da venda
-            let dataVenda = null;
-            const dataVendaEl = document.getElementById('data-venda');
-            if (dataVendaEl && dataVendaEl.value) {
-                dataVenda = new Date(dataVendaEl.value).toISOString();
-            } else {
-                // Se não tem data definida, usar a data atual
-                dataVenda = new Date().toISOString();
-            }
-            
-            // Processar venda
-            toggleModal(true, "Processando venda...", "Aguarde enquanto processamos a venda e atualizamos o estoque.");
-            
-            setTimeout(() => {
-                const resultado = registrarVenda(
-                    receitaId, 
-                    quantidade, 
-                    clienteNome, 
-                    clienteTelefone, 
-                    clienteEndereco, 
-                    custoFrete, 
-                    custoDecoracao, 
-                    despesasAdicionais,
-                    observacoes,
-                    dataVenda
-                );
-                
-                toggleModal(false);
-                
-                if (resultado) {
-                    mostrarNotificacao('notification-vendas', 'Venda registrada com sucesso!', 'success');
-                    
-                    // Atualizar interfaces
-                    carregarEstoque();
-                    carregarVendas();
-                    
-                    // Limpar formulário
-                    this.reset();
-                    document.getElementById('detalhes-receita-venda').classList.add('hidden');
-                    
-                    // Mudar para a aba de listar vendas
-                    const tabButton = document.querySelector('[data-tab="listar-vendas"]');
-                    if (tabButton) {
-                        tabButton.click();
-                    }
-                } else {
-                    mostrarNotificacao('notification-vendas', 'Erro ao registrar venda. Verifique o estoque de ingredientes.', 'error');
-                }
-            }, 1000);
-        });
-    }
-    
-    // Eventos para os novos botões de edição e exclusão
-    
-    // Botão de fechar modal de edição
-    const btnFecharEditarVenda = document.getElementById('fechar-editar-venda');
-    if (btnFecharEditarVenda) {
-        btnFecharEditarVenda.addEventListener('click', function() {
-            document.getElementById('editar-venda-modal').classList.add('hidden');
-        });
-    }
-    
-    // Formulário de edição de venda
-    const formEditarVenda = document.getElementById('form-editar-venda');
-    if (formEditarVenda) {
-        formEditarVenda.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const vendaId = document.getElementById('editar-venda-id').value;
-            const quantidade = parseInt(document.getElementById('editar-quantidade-venda').value);
-            const clienteNome = document.getElementById('editar-cliente-nome').value;
-            const clienteTelefone = document.getElementById('editar-cliente-telefone').value;
-            const clienteEndereco = document.getElementById('editar-cliente-endereco').value;
-            const custoFrete = parseFloat(document.getElementById('editar-custo-frete').value);
-            const custoDecoracao = parseFloat(document.getElementById('editar-custo-decoracao').value);
-            const despesasAdicionais = parseFloat(document.getElementById('editar-despesas-adicionais').value);
-            const observacoes = document.getElementById('editar-observacoes-venda').value;
-            const dataVenda = document.getElementById('editar-data-venda').value;
-            const valorTotal = parseFloat(document.getElementById('editar-valor-total-venda').value);
-            
-            // Validar campos obrigatórios
-            if (!clienteNome.trim()) {
-                alert('O nome do cliente é obrigatório.');
-                return;
-            }
-            
-            if (isNaN(quantidade) || quantidade <= 0) {
-                alert('A quantidade deve ser um número válido maior que zero.');
-                return;
-            }
-            
-            if (isNaN(valorTotal) || valorTotal < 0) {
-                alert('O valor total deve ser um número válido.');
-                return;
-            }
-            
-            // Processar a edição
-            toggleModal(true, "Atualizando venda...", "Aguarde enquanto processamos as alterações.");
-            
-            setTimeout(() => {
-                const resultado = editarVenda(
-                    vendaId,
-                    quantidade,
-                    clienteNome,
-                    clienteTelefone,
-                    clienteEndereco,
-                    custoFrete,
-                    custoDecoracao,
-                    despesasAdicionais,
-                    observacoes,
-                    dataVenda,
-                    valorTotal
-                );
-                
-                toggleModal(false);
-                
-                if (resultado) {
-                    document.getElementById('editar-venda-modal').classList.add('hidden');
-                    mostrarNotificacao('notification-vendas', 'Venda atualizada com sucesso!', 'success');
-                    carregarEstoque();
-                    carregarVendas();
-                } else {
-                    mostrarNotificacao('notification-vendas', 'Erro ao atualizar a venda. Verifique o estoque disponível.', 'error');
-                }
-            }, 1000);
-        });
-    }
-    
-    // Botões para confirmar/cancelar exclusão
-    const btnCancelarExclusao = document.getElementById('cancelar-exclusao');
-    if (btnCancelarExclusao) {
-        btnCancelarExclusao.addEventListener('click', function() {
-            document.getElementById('confirmar-exclusao-modal').classList.add('hidden');
-        });
-    }
-    
-    const btnConfirmarExclusao = document.getElementById('confirmar-exclusao');
-    if (btnConfirmarExclusao) {
-        btnConfirmarExclusao.addEventListener('click', function() {
-            const vendaId = document.getElementById('excluir-venda-id').value;
-            
-            toggleModal(true, "Excluindo venda...", "Aguarde enquanto excluímos a venda e restauramos o estoque.");
-            
-            setTimeout(() => {
-                const resultado = excluirVenda(vendaId);
-                
-                toggleModal(false);
-                document.getElementById('confirmar-exclusao-modal').classList.add('hidden');
-                
-                if (resultado) {
-                    mostrarNotificacao('notification-vendas', 'Venda excluída com sucesso!', 'success');
-                    carregarEstoque();
-                    carregarVendas();
-                } else {
-                    mostrarNotificacao('notification-vendas', 'Erro ao excluir a venda.', 'error');
-                }
-            }, 1000);
-        });
-    }
-    
-    // Evento para filtrar vendas
-    const btnFiltrarVendas = document.getElementById('btn-filtrar-vendas');
-    if (btnFiltrarVendas) {
-        btnFiltrarVendas.addEventListener('click', filtrarVendas);
-    }
-    
-    const btnLimparFiltros = document.getElementById('btn-limpar-filtros');
-    if (btnLimparFiltros) {
-        btnLimparFiltros.addEventListener('click', function() {
-            document.getElementById('filtro-data-inicio').value = '';
-            document.getElementById('filtro-data-fim').value = '';
-            document.getElementById('filtro-receita').value = '';
-            
-            // Recarregar todas as vendas
-            carregarVendas();
-        });
-    }
-    
-    // MODIFICADO: Função de filtrar vendas com novos cálculos
-    function filtrarVendas() {
-        const dataInicio = document.getElementById('filtro-data-inicio').value;
-        const dataFim = document.getElementById('filtro-data-fim').value;
-        const receitaId = document.getElementById('filtro-receita').value;
-        
-        const vendasFiltradas = vendas.filter(venda => {
-            // Filtrar por data
-            let passaFiltroData = true;
-            if (dataInicio) {
-                const dataVenda = new Date(venda.data);
-                const dataInicioDate = new Date(dataInicio);
-                passaFiltroData = passaFiltroData && dataVenda >= dataInicioDate;
-            }
-            
-            if (dataFim) {
-                const dataVenda = new Date(venda.data);
-                const dataFimDate = new Date(dataFim);
-                // Adicionar 1 dia para incluir o dia final completo
-                dataFimDate.setDate(dataFimDate.getDate() + 1);
-                passaFiltroData = passaFiltroData && dataVenda < dataFimDate;
-            }
-            
-            // Filtrar por receita
-            let passaFiltroReceita = true;
-            if (receitaId) {
-                passaFiltroReceita = venda.receitaId === receitaId;
-            }
-            
-            return passaFiltroData && passaFiltroReceita;
-        });
-        
-        // Renderizar vendas filtradas
-        const container = document.getElementById('lista-vendas');
-        if (!container) return;
-        
-        container.innerHTML = '';
-        
-        if (vendasFiltradas.length === 0) {
-            container.innerHTML = '<p>Nenhuma venda encontrada com os filtros selecionados.</p>';
+  // Evento para adicionar receita
+  const formAdicionarReceita = document.getElementById('form-adicionar-receita');
+  if (formAdicionarReceita) {
+    formAdicionarReceita.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const nome = document.getElementById('nome-receita').value;
+      const descricao = document.getElementById('descricao-receita').value;
+      const precoVenda = parseFloat(document.getElementById('preco-venda').value) || 0;
+      
+      // Validar preço de venda
+      if (isNaN(precoVenda) || precoVenda <= 0) {
+        alert('O preço de venda deve ser um número válido maior que zero.');
+        return;
+      }
+      
+      // Coletar ingredientes
+      const ingredientes = [];
+      document.querySelectorAll('.ingrediente-item').forEach(item => {
+        const select = item.querySelector('.ingrediente-select');
+        if (select.value) {
+          const quantidade = parseFloat(item.querySelector('.ingrediente-quantidade').value);
+          const unidadeMedidaSelect = item.querySelector('.ingrediente-unidade-medida');
+          const material = materiais.find(m => m.id === select.value);
+          
+          // Validar quantidade
+          if (isNaN(quantidade) || quantidade <= 0) {
+            alert('A quantidade do ingrediente deve ser um número válido maior que zero.');
             return;
+          }
+          
+          ingredientes.push({
+            materialId: select.value,
+            nome: material ? material.nome : select.options[select.selectedIndex].text,
+            quantidade: quantidade,
+            unidadeMedida: unidadeMedidaSelect.value
+          });
+        }
+      });
+      
+      // Verificar se tem ingredientes
+      if (ingredientes.length === 0) {
+        alert('Adicione pelo menos um ingrediente à receita!');
+        return;
+      }
+      
+      // Verificar se é uma edição
+      const submitBtn = document.querySelector('#form-adicionar-receita button[type="submit"]');
+      const indexEdicao = submitBtn.getAttribute('data-edicao');
+      
+      if (indexEdicao !== null && indexEdicao !== undefined) {
+        // Edição de receita existente
+        receitas[indexEdicao].nome = nome;
+        receitas[indexEdicao].descricao = descricao;
+        receitas[indexEdicao].ingredientes = ingredientes;
+        receitas[indexEdicao].precoVenda = precoVenda;
+        
+        // Resetar o botão
+        submitBtn.textContent = 'Salvar Receita';
+        submitBtn.removeAttribute('data-edicao');
+        
+        mostrarNotificacao('notification-estoque', 'Receita atualizada com sucesso!', 'success');
+      } else {
+        // Nova receita
+        const novaReceita = {
+          id: gerarId(),
+          nome: nome,
+          descricao: descricao,
+          ingredientes: ingredientes,
+          precoVenda: precoVenda,
+          dataCriacao: new Date().toISOString()
+        };
+        
+        receitas.push(novaReceita);
+        mostrarNotificacao('notification-estoque', 'Receita adicionada com sucesso!', 'success');
+      }
+      
+      // Atualizar localStorage e interface
+      atualizarLocalStorage();
+      carregarReceitas();
+      
+      // Limpar o formulário
+      this.reset();
+      document.getElementById('lista-ingredientes').innerHTML = '';
+      document.getElementById('custo-producao').textContent = formatarMoeda(0);
+      document.getElementById('custos-variados').textContent = formatarMoeda(0);
+      document.getElementById('preco-estimado').textContent = formatarMoeda(0);
+      
+      // Adicionar um campo vazio de ingrediente
+      adicionarCampoIngrediente();
+      
+      // Mudar para a aba de listar receitas
+      const tabButton = document.querySelector('[data-tab="listar-receitas"]');
+      if (tabButton) {
+        tabButton.click();
+      }
+    });
+  }
+  
+  // Evento para adicionar ingrediente à receita
+  const btnAdicionarIngrediente = document.getElementById('adicionar-ingrediente');
+  if (btnAdicionarIngrediente) {
+    btnAdicionarIngrediente.addEventListener('click', function() {
+      adicionarCampoIngrediente();
+    });
+  }
+  
+  // Evento para selecionar receita para venda
+  const selecionarReceitaVenda = document.getElementById('selecionar-receita-venda');
+  if (selecionarReceitaVenda) {
+    selecionarReceitaVenda.addEventListener('change', function() {
+      const receitaId = this.value;
+      if (receitaId) {
+        // Definir a data atual para o campo de data
+        const dataVendaEl = document.getElementById('data-venda');
+        if (dataVendaEl && !dataVendaEl.value) {
+          const hoje = new Date();
+          dataVendaEl.value = hoje.toISOString().split('T')[0];
         }
         
-        // Ordenar vendas da mais recente para a mais antiga
-        const vendasOrdenadas = [...vendasFiltradas].sort((a, b) => new Date(b.data) - new Date(a.data));
-        
-        vendasOrdenadas.forEach((venda) => {
-            // MODIFICADO: Calcular valores financeiros com nova lógica
-            const despesa = venda.despesa || (venda.custoProducao + venda.custosVariados);
-            const valorReinvestir = despesa;
-            
-            // Compatibilidade com vendas antigas
-            const despesasAdicionaisComAcrescimo = venda.despesasAdicionaisComAcrescimo || 
-                                            ((venda.despesasAdicionaisOriginal || venda.despesasAdicionais || 0) * 1.1);
-            const totalDespesasAdicionais = venda.totalDespesasAdicionais || 
-                                         (despesasAdicionaisComAcrescimo + (venda.custoFrete || 0) + (venda.custoDecoracao || 0));
-            
-            // CORRIGIDO: Recalcular lucro corretamente
-            const lucro = venda.valorTotal - despesa - valorReinvestir - totalDespesasAdicionais;
-            
-            const card = document.createElement('div');
-            card.className = 'sale-card';
-            card.innerHTML = `
-                <div class="sale-header">
-                    <div class="sale-title">${venda.receitaNome}</div>
-                    <div class="sale-date">${formatarData(venda.data)}</div>
-                </div>
-                <div>Cliente: ${venda.cliente.nome}</div>
-                <div>Quantidade: ${venda.quantidade}</div>
-                <div>Valor Total: ${formatarMoeda(venda.valorTotal)}</div>
-                <div>Despesa: ${formatarMoeda(despesa)}</div>
-                <div>Reinvestir: ${formatarMoeda(valorReinvestir)}</div>
-                <div>Despesas Adicionais: ${formatarMoeda(totalDespesasAdicionais)}</div>
-                <div>Lucro: ${formatarMoeda(lucro)}</div>
-                <div style="margin-top: 10px;">
-                    <button class="btn btn-secondary btn-detalhes-venda" data-id="${venda.id}">Ver Detalhes</button>
-                    <button class="btn btn-primary btn-editar-venda" data-id="${venda.id}">Editar</button>
-                    <button class="btn btn-danger btn-excluir-venda" data-id="${venda.id}">Excluir</button>
-                </div>
-            `;
-            container.appendChild(card);
-        });
-        
-        // Adicionar eventos aos botões
-        document.querySelectorAll('.btn-detalhes-venda').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const id = this.getAttribute('data-id');
-                mostrarDetalhesVenda(id);
-            });
-        });
-        
-        document.querySelectorAll('.btn-editar-venda').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const id = this.getAttribute('data-id');
-                mostrarFormEditarVenda(id);
-            });
-        });
-        
-        document.querySelectorAll('.btn-excluir-venda').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const id = this.getAttribute('data-id');
-                confirmarExclusaoVenda(id);
-            });
-        });
-    }
-    
-    // Evento para fechar o modal de detalhes de venda
-    const btnFecharDetalhesVenda = document.getElementById('fechar-detalhes-venda');
-    if (btnFecharDetalhesVenda) {
-        btnFecharDetalhesVenda.addEventListener('click', function() {
-            document.getElementById('venda-details-modal').classList.add('hidden');
-        });
-    }
-    
-    // Adicionar um campo de ingrediente inicial na tela de receitas
-    if (document.getElementById('lista-ingredientes')) {
-        adicionarCampoIngrediente();
-    }
-}
+        carregarDetalhesReceitaVenda(receitaId);
+      } else {
+        document.getElementById('detalhes-receita-venda').classList.add('hidden');
+      }
+    });
+  }
 
-// MODIFICADO: Inicializar dados com nova lógica de cálculos
-function inicializarDados() {
-    // Garantir que o modal esteja oculto ao iniciar
-    const modalElement = document.getElementById('processing-modal');
-    if (modalElement) {
-        modalElement.classList.add('hidden');
+  // Evento para atualizar valor total quando quantidade ou custos adicionais mudam
+  const qtdVenda = document.getElementById('quantidade-venda');
+  const custoFrete = document.getElementById('custo-frete');
+  const custoDecoracao = document.getElementById('custo-decoracao');
+  const despesasAdicionais = document.getElementById('despesas-adicionais');
+  
+  [qtdVenda, custoFrete, custoDecoracao, despesasAdicionais].forEach(input => {
+    if (input) {
+      input.addEventListener('input', atualizarValorTotalVenda);
     }
+  });
+  
+  // MODIFICADO: Atualização do valor total com resumo financeiro
+  function atualizarValorTotalVenda() {
+    const receitaId = document.getElementById('selecionar-receita-venda').value;
+    if (!receitaId) return;
     
-    // Inicializar IDs para itens de estoque e materiais
-    estoque.forEach((item) => {
-        if (!item.id) {
-            item.id = gerarId();
-        }
-        if (!item.materialId && item.codigo) {
-            // Tentar encontrar material correspondente
-            const material = materiais.find(m => m.codigo === item.codigo);
-            if (material) {
-                item.materialId = material.id;
-            }
-        }
-    });
+    const receita = receitas.find(r => r.id === receitaId);
+    if (!receita) return;
     
-    materiais.forEach((material) => {
-        if (!material.id) {
-            material.id = gerarId();
-        }
+    const qtd = parseInt(document.getElementById('quantidade-venda').value) || 1;
+    const frete = parseFloat(document.getElementById('custo-frete').value) || 0;
+    const decoracao = parseFloat(document.getElementById('custo-decoracao').value) || 0;
+    const despesasAdicionais = parseFloat(document.getElementById('despesas-adicionais').value) || 0;
+    
+    // Cálculo do valor total - incluindo frete e decoração
+    const valorTotal = (receita.precoVenda * qtd) + frete + decoracao;
+    document.getElementById('valor-total-venda').value = valorTotal.toFixed(2);
+    
+    // Calcular custos da receita
+    const custoProducao = calcularCustoReceita(receita);
+    const custosVariados = custoProducao * 0.1;
+    
+    // Atualizar também o resumo financeiro
+    atualizarResumoFinanceiroVenda(
+      receita, 
+      qtd, 
+      custoProducao, 
+      custosVariados, 
+      frete, 
+      decoracao, 
+      despesasAdicionais, 
+      valorTotal
+    );
+    
+    // Atualizar a lista de ingredientes necessários com a nova quantidade
+    carregarDetalhesReceitaVenda(receitaId);
+  }
+  
+  // Evento para registrar venda
+  const formRegistrarVenda = document.getElementById('form-registrar-venda');
+  if (formRegistrarVenda) {
+    formRegistrarVenda.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const receitaId = document.getElementById('selecionar-receita-venda').value;
+      if (!receitaId) {
+        alert('Selecione uma receita primeiro!');
+        return;
+      }
+      
+      const quantidade = parseInt(document.getElementById('quantidade-venda').value) || 1;
+      
+      // Validar quantidade
+      if (isNaN(quantidade) || quantidade <= 0) {
+        alert('A quantidade deve ser um número válido maior que zero.');
+        return;
+      }
+      
+      const clienteNome = document.getElementById('cliente-nome').value;
+      
+      // Validar nome do cliente
+      if (!clienteNome.trim()) {
+        alert('O nome do cliente é obrigatório.');
+        return;
+      }
+      
+      const clienteTelefone = document.getElementById('cliente-telefone').value;
+      const clienteEndereco = document.getElementById('cliente-endereco').value;
+      const observacoes = document.getElementById('observacoes-venda').value;
+      const custoFrete = parseFloat(document.getElementById('custo-frete').value) || 0;
+      const custoDecoracao = parseFloat(document.getElementById('custo-decoracao').value) || 0;
+      const despesasAdicionais = parseFloat(document.getElementById('despesas-adicionais').value) || 0;
+      
+      // Data da venda
+      let dataVenda = null;
+      const dataVendaEl = document.getElementById('data-venda');
+      if (dataVendaEl && dataVendaEl.value) {
+        dataVenda = new Date(dataVendaEl.value).toISOString();
+      } else {
+        // Se não tem data definida, usar a data atual
+        dataVenda = new Date().toISOString();
+      }
+      
+      // Processar venda
+      toggleModal(true, "Processando venda...", "Aguarde enquanto processamos a venda e atualizamos o estoque.");
+      
+      setTimeout(() => {
+        const resultado = registrarVenda(
+          receitaId, 
+          quantidade, 
+          clienteNome, 
+          clienteTelefone, 
+          clienteEndereco, 
+          custoFrete, 
+          custoDecoracao, 
+          despesasAdicionais,
+          observacoes,
+          dataVenda
+        );
         
-        // Garantir que o histórico de preços existe
-        if (!material.historicoPrecos) {
-            material.historicoPrecos = [{
-                data: material.dataCadastro || new Date().toISOString(),
-                preco: material.ultimoPreco || 0
-            }];
-        }
-    });
-    
-    receitas.forEach(receita => {
-        if (!receita.id) {
-            receita.id = gerarId();
-        }
+        toggleModal(false);
         
-        // Remover ingredientes que não têm materialId válido
-        if (receita.ingredientes) {
-            receita.ingredientes = receita.ingredientes.filter(ing => {
-                return ing.materialId && materiais.some(m => m.id === ing.materialId);
-            });
+        if (resultado) {
+          mostrarNotificacao('notification-vendas', 'Venda registrada com sucesso!', 'success');
+          
+          // Atualizar interfaces
+          carregarEstoque();
+          carregarVendas();
+          
+          // Limpar formulário
+          this.reset();
+          document.getElementById('detalhes-receita-venda').classList.add('hidden');
+          
+          // Mudar para a aba de listar vendas
+          const tabButton = document.querySelector('[data-tab="listar-vendas"]');
+          if (tabButton) {
+            tabButton.click();
+          }
         } else {
-            receita.ingredientes = [];
+          mostrarNotificacao('notification-vendas', 'Erro ao registrar venda. Verifique o estoque de ingredientes.', 'error');
         }
-        
-        // Garantir que precoVenda existe
-        if (!receita.precoVenda) {
-            const custoProducao = calcularCustoReceita(receita);
-            const custosVariados = custoProducao * 0.1;
-            receita.precoVenda = (custoProducao + custosVariados) * 2.5;
-        }
+      }, 1000);
     });
-    
-    // MODIFICADO: Atualizar vendas antigas para o novo modelo de cálculo
-    vendas.forEach(venda => {
-        if (!venda.id) {
-            venda.id = gerarId();
-        }
-        
-        // Para compatibilidade com vendas antigas
-        const custoProducao = venda.custoProducao || 0;
-        const custosVariados = venda.custosVariados || 0;
-        
-        // Despesa = custo produção + custo variado
-        const despesa = custoProducao + custosVariados;
-        
-        // Renomear campo de despesas adicionais para compatibilidade
-        if (venda.despesasAdicionais !== undefined && venda.despesasAdicionaisOriginal === undefined) {
-            venda.despesasAdicionaisOriginal = venda.despesasAdicionais;
-            delete venda.despesasAdicionais; // Remover campo antigo
-        }
-        
-        // Calcular despesas adicionais com acréscimo de 10%
-        venda.despesasAdicionaisComAcrescimo = (venda.despesasAdicionaisOriginal || 0) * 1.1;
-        
-        // Total despesas adicionais (despesa adicional com acréscimo + frete + decoração)
-        venda.totalDespesasAdicionais = venda.despesasAdicionaisComAcrescimo + (venda.custoFrete || 0) + (venda.custoDecoracao || 0);
-        
-        // Atualizar campos de cálculo financeiro
-        venda.despesa = despesa;
-        venda.valorReinvestir = despesa;
-        
-        // CORRIGIDO: Novo cálculo de lucro
-        // Lucro = Valor Total - Despesa - Reinvestir - Despesas Adicionais Total
-        venda.lucro = venda.valorTotal - despesa - despesa - venda.totalDespesasAdicionais;
+  }
+  
+  // Eventos para os novos botões de edição e exclusão
+  
+  // Botão de fechar modal de edição
+  const btnFecharEditarVenda = document.getElementById('fechar-editar-venda');
+  if (btnFecharEditarVenda) {
+    btnFecharEditarVenda.addEventListener('click', function() {
+      document.getElementById('editar-venda-modal').classList.add('hidden');
     });
-    
-    atualizarLocalStorage();
-}
-
-// CORRIGIDO: Inicialização principal única do aplicativo
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM Carregado!');
-    
-    // Garantir que localStorage está inicializado
-    if (!localStorage.getItem('estoque')) {
-        localStorage.setItem('estoque', JSON.stringify([]));
+  }
+  
+  // Formulário de edição de venda
+  const formEditarVenda = document.getElementById('form-editar-venda');
+  if (formEditarVenda) {
+    formEditarVenda.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const vendaId = document.getElementById('editar-venda-id').value;
+      const quantidade = parseInt(document.getElementById('editar-quantidade-venda').value);
+      const clienteNome = document.getElementById('editar-cliente-nome').value;
+      const clienteTelefone = document.getElementById('editar-cliente-telefone').value;
+      const clienteEndereco = document.getElementById('editar-cliente-endereco').value;
+      const custoFrete = parseFloat(document.getElementById('editar-custo-frete').value);
+      const custoDecoracao = parseFloat(document.getElementById('editar-custo-decoracao').value);
+      const despesasAdicionais = parseFloat(document.getElementById('editar-despesas-adicionais').value);
+      const observacoes = document.getElementById('editar-observacoes-venda').value;
+      const dataVenda = document.getElementById('editar-data-venda').value;
+      const valorTotal = parseFloat(document.getElementById('editar-valor-total-venda').value);
+      
+      // Validar campos obrigatórios
+      if (!clienteNome.trim()) {
+        alert('O nome do cliente é obrigatório.');
+        return;
+      }
+      
+      if (isNaN(quantidade) || quantidade <= 0) {
+        alert('A quantidade deve ser um número válido maior que zero.');
+        return;
+      }
+      
+      if (isNaN(valorTotal) || valorTotal < 0) {
+        alert('O valor total deve ser um número válido.');
+        return;
+      }
+      
+      // Processar a edição
+      toggleModal(true, "Atualizando venda...", "Aguarde enquanto processamos as alterações.");
+      
+      setTimeout(() => {
+        const resultado = editarVenda(
+          vendaId,
+          quantidade,
+          clienteNome,
+          clienteTelefone,
+          clienteEndereco,
+          custoFrete,
+          custoDecoracao,
+          despesasAdicionais,
+          observacoes,
+          dataVenda,
+          valorTotal
+        );
+        
+        toggleModal(false);
+        
+        if (resultado) {
+          document.getElementById('editar-venda-modal').classList.add('hidden');
+          mostrarNotificacao('notification-vendas', 'Venda atualizada com sucesso!', 'success');
+          carregarEstoque();
+          carregarVendas();
+        } else {
+          mostrarNotificacao('notification-vendas', 'Erro ao atualizar a venda. Verifique o estoque disponível.', 'error');
+        }
+      }, 1000);
+    });
+  }
+  
+  // Eventos para atualizar resumo financeiro ao editar
+  const editarQtdVenda = document.getElementById('editar-quantidade-venda');
+  const editarCustoFrete = document.getElementById('editar-custo-frete');
+  const editarCustoDecoracao = document.getElementById('editar-custo-decoracao');
+  const editarDespesasAdicionais = document.getElementById('editar-despesas-adicionais');
+  const editarValorTotal = document.getElementById('editar-valor-total-venda');
+  
+  [editarQtdVenda, editarCustoFrete, editarCustoDecoracao, editarDespesasAdicionais, editarValorTotal].forEach(input => {
+    if (input) {
+      input.addEventListener('input', atualizarResumoFinanceiroEdicao);
     }
-    if (!localStorage.getItem('materiais')) {
-        localStorage.setItem('materiais', JSON.stringify([]));
+  });
+  
+  // NOVA função para atualizar o resumo financeiro na tela de edição
+  function atualizarResumoFinanceiroEdicao() {
+    const vendaId = document.getElementById('editar-venda-id').value;
+    const venda = vendas.find(v => v.id === vendaId);
+    if (!venda) return;
+    
+    const receita = receitas.find(r => r.id === venda.receitaId);
+    if (!receita) return;
+    
+    const quantidade = parseInt(document.getElementById('editar-quantidade-venda').value) || venda.quantidade;
+    const frete = parseFloat(document.getElementById('editar-custo-frete').value) || 0;
+    const decoracao = parseFloat(document.getElementById('editar-custo-decoracao').value) || 0;
+    const despesasAdicionais = parseFloat(document.getElementById('editar-despesas-adicionais').value) || 0;
+    const valorTotal = parseFloat(document.getElementById('editar-valor-total-venda').value) || venda.valorTotal;
+    
+    // Cálculos financeiros
+    let custoProducao = venda.custoProducao;
+    let custosVariados = venda.custosVariados;
+    
+    // Se a quantidade mudou, recalcular os custos
+    if (quantidade !== venda.quantidade) {
+      // Proporcional à quantidade
+      const fatorProporcional = quantidade / venda.quantidade;
+      custoProducao = venda.custoProducao * fatorProporcional;
+      custosVariados = venda.custosVariados * fatorProporcional;
     }
-    if (!localStorage.getItem('receitas')) {
-        localStorage.setItem('receitas', JSON.stringify([]));
+    
+    // Despesa (Custo Produção + Custo Variado)
+    const despesa = custoProducao + custosVariados;
+    
+    // Reinvestir (igual à Despesa)
+    const valorReinvestir = despesa;
+    
+    // Despesas Adicionais com acréscimo de 10%
+    const despesasAdicionaisComAcrescimo = despesasAdicionais * 1.1;
+    const totalDespesasAdicionais = despesasAdicionaisComAcrescimo + frete + decoracao;
+    
+    // Lucro (Valor Total - Despesa - Reinvestir - Despesas Adicionais)
+    const lucro = valorTotal - despesa - valorReinvestir - totalDespesasAdicionais;
+    
+    // Atualizar os elementos na interface
+    document.getElementById('editar-resumo-valor-total').textContent = formatarMoeda(valorTotal);
+    document.getElementById('editar-resumo-despesa').textContent = formatarMoeda(despesa);
+    document.getElementById('editar-resumo-reinvestir').textContent = formatarMoeda(valorReinvestir);
+    document.getElementById('editar-resumo-desp-adic').textContent = formatarMoeda(totalDespesasAdicionais);
+    
+    const resumoLucro = document.getElementById('editar-resumo-lucro');
+    resumoLucro.textContent = formatarMoeda(lucro);
+    
+    // Adicionar classe para colorir o lucro
+    if (lucro >= 0) {
+      resumoLucro.className = 'venda-resumo-valor lucro-positivo';
+    } else {
+      resumoLucro.className = 'venda-resumo-valor lucro-negativo';
     }
-    if (!localStorage.getItem('vendas')) {
-        localStorage.setItem('vendas', JSON.stringify([]));
-    }
-    
-    // Carregar dados globais
-    estoque = JSON.parse(localStorage.getItem('estoque')) || [];
-    materiais = JSON.parse(localStorage.getItem('materiais')) || [];
-    receitas = JSON.parse(localStorage.getItem('receitas')) || [];
-    vendas = JSON.parse(localStorage.getItem('vendas')) || [];
-    
-    // Inicializar dados
-    inicializarDados();
-    
-    // Carregar interfaces visuais
-    carregarEstoque();
-    carregarMateriais();
-    carregarReceitas();
-    carregarVendas();
-    
-    // Configurar eventos
-    setupEventListeners();
-    setupAdditionalEvents();
-    
-    // Iniciar o relógio
-    atualizarDataHora();
-    setInterval(atualizarDataHora, 1000);
-});
-
-// Funções auxiliares para edição e exclusão de vendas
-function mostrarFormEditarVenda(vendaId) {
+  }
+  
+  // Função para preencher o formulário de edição de venda - MODIFICADA
+  function mostrarFormEditarVenda(vendaId) {
     const venda = vendas.find(v => v.id === vendaId);
     if (!venda) return;
     
@@ -3137,90 +3324,450 @@ function mostrarFormEditarVenda(vendaId) {
     // Data da venda
     const dataVendaEl = document.getElementById('editar-data-venda');
     if (dataVendaEl) {
-        const data = new Date(venda.data);
-        dataVendaEl.value = data.toISOString().split('T')[0];
+      const data = new Date(venda.data);
+      dataVendaEl.value = data.toISOString().split('T')[0];
     }
+    
+    // Atualizar resumo financeiro
+    atualizarResumoFinanceiroEdicao();
     
     // Mostrar o modal
     document.getElementById('editar-venda-modal').classList.remove('hidden');
-}
-
-function confirmarExclusaoVenda(vendaId) {
-    document.getElementById('excluir-venda-id').value = vendaId;
-    document.getElementById('confirmar-exclusao-modal').classList.remove('hidden');
-}
-
-// Carregar a lista de vendas
-function carregarVendas() {
+  }
+  
+  // Botões para confirmar/cancelar exclusão
+  const btnCancelarExclusao = document.getElementById('cancelar-exclusao');
+  if (btnCancelarExclusao) {
+    btnCancelarExclusao.addEventListener('click', function() {
+      document.getElementById('confirmar-exclusao-modal').classList.add('hidden');
+    });
+  }
+  
+  const btnConfirmarExclusao = document.getElementById('confirmar-exclusao');
+  if (btnConfirmarExclusao) {
+    btnConfirmarExclusao.addEventListener('click', function() {
+      const vendaId = document.getElementById('excluir-venda-id').value;
+      
+      toggleModal(true, "Excluindo venda...", "Aguarde enquanto excluímos a venda e restauramos o estoque.");
+      
+      setTimeout(() => {
+        const resultado = excluirVenda(vendaId);
+        
+        toggleModal(false);
+        document.getElementById('confirmar-exclusao-modal').classList.add('hidden');
+        
+        if (resultado) {
+          mostrarNotificacao('notification-vendas', 'Venda excluída com sucesso!', 'success');
+          carregarEstoque();
+          carregarVendas();
+        } else {
+          mostrarNotificacao('notification-vendas', 'Erro ao excluir a venda.', 'error');
+        }
+      }, 1000);
+    });
+  }
+  
+  // Evento para filtrar vendas
+  const btnFiltrarVendas = document.getElementById('btn-filtrar-vendas');
+  if (btnFiltrarVendas) {
+    btnFiltrarVendas.addEventListener('click', filtrarVendas);
+  }
+  
+  const btnLimparFiltros = document.getElementById('btn-limpar-filtros');
+  if (btnLimparFiltros) {
+    btnLimparFiltros.addEventListener('click', function() {
+      document.getElementById('filtro-data-inicio').value = '';
+      document.getElementById('filtro-data-fim').value = '';
+      document.getElementById('filtro-receita').value = '';
+      
+      // Recarregar todas as vendas
+      carregarVendas();
+    });
+  }
+  
+  // MODIFICADO: Função de filtrar vendas com novos cálculos
+  function filtrarVendas() {
+    const dataInicio = document.getElementById('filtro-data-inicio').value;
+    const dataFim = document.getElementById('filtro-data-fim').value;
+    const receitaId = document.getElementById('filtro-receita').value;
+    
+    const vendasFiltradas = vendas.filter(venda => {
+      // Filtrar por data
+      let passaFiltroData = true;
+      if (dataInicio) {
+        const dataVenda = new Date(venda.data);
+        const dataInicioDate = new Date(dataInicio);
+        passaFiltroData = passaFiltroData && dataVenda >= dataInicioDate;
+      }
+      
+      if (dataFim) {
+        const dataVenda = new Date(venda.data);
+        const dataFimDate = new Date(dataFim);
+        // Adicionar 1 dia para incluir o dia final completo
+        dataFimDate.setDate(dataFimDate.getDate() + 1);
+        passaFiltroData = passaFiltroData && dataVenda < dataFimDate;
+      }
+      
+      // Filtrar por receita
+      let passaFiltroReceita = true;
+      if (receitaId) {
+        passaFiltroReceita = venda.receitaId === receitaId;
+      }
+      
+      return passaFiltroData && passaFiltroReceita;
+    });
+    
+    // Renderizar vendas filtradas
     const container = document.getElementById('lista-vendas');
     if (!container) return;
     
     container.innerHTML = '';
     
-    if (vendas.length === 0) {
-        container.innerHTML = '<p>Nenhuma venda registrada.</p>';
-        return;
+    if (vendasFiltradas.length === 0) {
+      container.innerHTML = '<p>Nenhuma venda encontrada com os filtros selecionados.</p>';
+      return;
     }
     
     // Ordenar vendas da mais recente para a mais antiga
-    const vendasOrdenadas = [...vendas].sort((a, b) => new Date(b.data) - new Date(a.data));
+    const vendasOrdenadas = [...vendasFiltradas].sort((a, b) => new Date(b.data) - new Date(a.data));
     
     vendasOrdenadas.forEach((venda) => {
-        // Cálculo dos valores financeiros
-        const despesa = venda.despesa || (venda.custoProducao + venda.custosVariados);
-        const valorReinvestir = despesa;
+      // MODIFICADO: Calcular valores financeiros com nova lógica
+      const despesa = venda.despesa || (venda.custoProducao + venda.custosVariados);
+      const valorReinvestir = despesa;
+      
+      // Compatibilidade com vendas antigas
+      const despesasAdicionaisComAcrescimo = venda.despesasAdicionaisComAcrescimo || 
+                                          ((venda.despesasAdicionaisOriginal || venda.despesasAdicionais || 0) * 1.1);
+      const totalDespesasAdicionais = venda.totalDespesasAdicionais || 
+                                    (despesasAdicionaisComAcrescimo + (venda.custoFrete || 0) + (venda.custoDecoracao || 0));
+      
+      // CORRIGIDO: Recalcular lucro corretamente
+      const lucro = venda.valorTotal - despesa - valorReinvestir - totalDespesasAdicionais;
+      
+      const card = document.createElement('div');
+      card.className = 'sale-card';
+      card.innerHTML = `
+        <div class="sale-header">
+          <div class="sale-title">${venda.receitaNome}</div>
+          <div class="sale-date">${formatarData(venda.data)}</div>
+        </div>
+        <div>Cliente: ${venda.cliente.nome}</div>
+        <div>Quantidade: ${venda.quantidade}</div>
+        <div>Valor Total: ${formatarMoeda(venda.valorTotal)}</div>
         
-        // Compatibilidade com vendas antigas
-        const despesasAdicionaisComAcrescimo = venda.despesasAdicionaisComAcrescimo || 
-                                        ((venda.despesasAdicionaisOriginal || venda.despesasAdicionais || 0) * 1.1);
-        const totalDespesasAdicionais = venda.totalDespesasAdicionais || 
-                                     (despesasAdicionaisComAcrescimo + (venda.custoFrete || 0) + (venda.custoDecoracao || 0));
-        
-        // Recalcular lucro corretamente
-        const lucro = venda.valorTotal - despesa - valorReinvestir - totalDespesasAdicionais;
-        
-        const card = document.createElement('div');
-        card.className = 'sale-card';
-        card.innerHTML = `
-            <div class="sale-header">
-                <div class="sale-title">${venda.receitaNome}</div>
-                <div class="sale-date">${formatarData(venda.data)}</div>
+        <div class="venda-resumo-financeiro" style="margin-top: 10px;">
+          <div class="venda-resumo-grid">
+            <div class="venda-resumo-item">
+              <div class="venda-resumo-label">Valor Total</div>
+              <div class="venda-resumo-valor">${formatarMoeda(venda.valorTotal)}</div>
             </div>
-            <div>Cliente: ${venda.cliente.nome}</div>
-            <div>Quantidade: ${venda.quantidade}</div>
-            <div>Valor Total: ${formatarMoeda(venda.valorTotal)}</div>
-            <div>Lucro: ${formatarMoeda(lucro)}</div>
-            <div style="margin-top: 10px;">
-                <button class="btn btn-secondary btn-detalhes-venda" data-id="${venda.id}">Ver Detalhes</button>
-                <button class="btn btn-primary btn-editar-venda" data-id="${venda.id}">Editar</button>
-                <button class="btn btn-danger btn-excluir-venda" data-id="${venda.id}">Excluir</button>
+            <div class="venda-resumo-item">
+              <div class="venda-resumo-label">Despesa</div>
+              <div class="venda-resumo-valor">${formatarMoeda(despesa)}</div>
             </div>
-        `;
-        container.appendChild(card);
+            <div class="venda-resumo-item">
+              <div class="venda-resumo-label">Reinvestir</div>
+              <div class="venda-resumo-valor">${formatarMoeda(valorReinvestir)}</div>
+            </div>
+            <div class="venda-resumo-item">
+              <div class="venda-resumo-label">Total Desp. Adic.</div>
+              <div class="venda-resumo-valor">${formatarMoeda(totalDespesasAdicionais)}</div>
+            </div>
+            <div class="venda-resumo-item">
+              <div class="venda-resumo-label">Lucro</div>
+              <div class="venda-resumo-valor ${lucro >= 0 ? 'lucro-positivo' : 'lucro-negativo'}">${formatarMoeda(lucro)}</div>
+            </div>
+          </div>
+        </div>
+        
+        <div style="margin-top: 10px;">
+          <button class="btn btn-secondary btn-detalhes-venda" data-id="${venda.id}">Ver Detalhes</button>
+          <button class="btn btn-primary btn-editar-venda" data-id="${venda.id}">Editar</button>
+          <button class="btn btn-danger btn-excluir-venda" data-id="${venda.id}">Excluir</button>
+        </div>
+      `;
+      container.appendChild(card);
     });
     
     // Adicionar eventos aos botões
     document.querySelectorAll('.btn-detalhes-venda').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const id = this.getAttribute('data-id');
-            mostrarDetalhesVenda(id);
-        });
+      btn.addEventListener('click', function() {
+        const id = this.getAttribute('data-id');
+        mostrarDetalhesVenda(id);
+      });
     });
     
     document.querySelectorAll('.btn-editar-venda').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const id = this.getAttribute('data-id');
-            mostrarFormEditarVenda(id);
-        });
+      btn.addEventListener('click', function() {
+        const id = this.getAttribute('data-id');
+        mostrarFormEditarVenda(id);
+      });
     });
     
     document.querySelectorAll('.btn-excluir-venda').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const id = this.getAttribute('data-id');
-            confirmarExclusaoVenda(id);
-        });
+      btn.addEventListener('click', function() {
+        const id = this.getAttribute('data-id');
+        confirmarExclusaoVenda(id);
+      });
     });
+  }
+  
+  // Evento para fechar o modal de detalhes de venda
+  const btnFecharDetalhesVenda = document.getElementById('fechar-detalhes-venda');
+  if (btnFecharDetalhesVenda) {
+    btnFecharDetalhesVenda.addEventListener('click', function() {
+      document.getElementById('venda-details-modal').classList.add('hidden');
+    });
+  }
+  
+  // Adicionar um campo de ingrediente inicial na tela de receitas
+  if (document.getElementById('lista-ingredientes')) {
+    adicionarCampoIngrediente();
+  }
 }
+
+// MODIFICADO: Inicializar dados com nova lógica de cálculos
+function inicializarDados() {
+  // Garantir que o modal esteja oculto ao iniciar
+  const modalElement = document.getElementById('processing-modal');
+  if (modalElement) {
+    modalElement.classList.add('hidden');
+  }
+  
+  // Inicializar IDs para itens de estoque e materiais
+  estoque.forEach((item) => {
+    if (!item.id) {
+      item.id = gerarId();
+    }
+    if (!item.materialId && item.codigo) {
+      // Tentar encontrar material correspondente
+      const material = materiais.find(m => m.codigo === item.codigo);
+      if (material) {
+        item.materialId = material.id;
+      }
+    }
+  });
+  
+  materiais.forEach((material) => {
+    if (!material.id) {
+      material.id = gerarId();
+    }
+    
+    // Garantir que o histórico de preços existe
+    if (!material.historicoPrecos) {
+      material.historicoPrecos = [{
+        data: material.dataCadastro || new Date().toISOString(),
+        preco: material.ultimoPreco || 0
+      }];
+    }
+  });
+  
+  receitas.forEach(receita => {
+    if (!receita.id) {
+      receita.id = gerarId();
+    }
+    
+    // Remover ingredientes que não têm materialId válido
+    if (receita.ingredientes) {
+      receita.ingredientes = receita.ingredientes.filter(ing => {
+        return ing.materialId && materiais.some(m => m.id === ing.materialId);
+      });
+    } else {
+      receita.ingredientes = [];
+    }
+    
+    // Garantir que precoVenda existe
+    if (!receita.precoVenda) {
+      const custoProducao = calcularCustoReceita(receita);
+      const custosVariados = custoProducao * 0.1;
+      receita.precoVenda = (custoProducao + custosVariados) * 2.5;
+    }
+  });
+  
+  // MODIFICADO: Atualizar vendas antigas para o novo modelo de cálculo
+  vendas.forEach(venda => {
+    if (!venda.id) {
+      venda.id = gerarId();
+    }
+    
+    // Para compatibilidade com vendas antigas
+    const custoProducao = venda.custoProducao || 0;
+    const custosVariados = venda.custosVariados || 0;
+    
+    // Despesa = custo produção + custo variado
+    const despesa = custoProducao + custosVariados;
+    
+    // Renomear campo de despesas adicionais para compatibilidade
+    if (venda.despesasAdicionais !== undefined && venda.despesasAdicionaisOriginal === undefined) {
+      venda.despesasAdicionaisOriginal = venda.despesasAdicionais;
+      delete venda.despesasAdicionais; // Remover campo antigo
+    }
+    
+    // Calcular despesas adicionais com acréscimo de 10%
+    venda.despesasAdicionaisComAcrescimo = (venda.despesasAdicionaisOriginal || 0) * 1.1;
+    
+    // Total despesas adicionais (despesa adicional com acréscimo + frete + decoração)
+    venda.totalDespesasAdicionais = venda.despesasAdicionaisComAcrescimo + (venda.custoFrete || 0) + (venda.custoDecoracao || 0);
+    
+    // Atualizar campos de cálculo financeiro
+    venda.despesa = despesa;
+    venda.valorReinvestir = despesa;
+    
+    // CORRIGIDO: Novo cálculo de lucro
+    // Lucro = Valor Total - Despesa - Reinvestir - Despesas Adicionais Total
+    venda.lucro = venda.valorTotal - despesa - despesa - venda.totalDespesasAdicionais;
+  });
+  
+  atualizarLocalStorage();
+}
+
+function confirmarExclusaoVenda(vendaId) {
+  document.getElementById('excluir-venda-id').value = vendaId;
+  document.getElementById('confirmar-exclusao-modal').classList.remove('hidden');
+}
+
+// Carregar a lista de vendas - MODIFICADA
+function carregarVendas() {
+  const container = document.getElementById('lista-vendas');
+  if (!container) return;
+  
+  container.innerHTML = '';
+  
+  if (vendas.length === 0) {
+    container.innerHTML = '<p>Nenhuma venda registrada.</p>';
+    return;
+  }
+  
+  // Ordenar vendas da mais recente para a mais antiga
+  const vendasOrdenadas = [...vendas].sort((a, b) => new Date(b.data) - new Date(a.data));
+  
+  vendasOrdenadas.forEach((venda) => {
+    // Cálculo dos valores financeiros
+    const despesa = venda.despesa || (venda.custoProducao + venda.custosVariados);
+    const valorReinvestir = despesa;
+    
+    // Compatibilidade com vendas antigas
+    const despesasAdicionaisComAcrescimo = venda.despesasAdicionaisComAcrescimo || 
+                                      ((venda.despesasAdicionaisOriginal || venda.despesasAdicionais || 0) * 1.1);
+    const totalDespesasAdicionais = venda.totalDespesasAdicionais || 
+                                  (despesasAdicionaisComAcrescimo + (venda.custoFrete || 0) + (venda.custoDecoracao || 0));
+    
+    // Recalcular lucro corretamente
+    const lucro = venda.valorTotal - despesa - valorReinvestir - totalDespesasAdicionais;
+    
+    const card = document.createElement('div');
+    card.className = 'sale-card';
+    card.innerHTML = `
+      <div class="sale-header">
+        <div class="sale-title">${venda.receitaNome}</div>
+        <div class="sale-date">${formatarData(venda.data)}</div>
+      </div>
+      <div>Cliente: ${venda.cliente.nome}</div>
+      <div>Quantidade: ${venda.quantidade}</div>
+      
+      <div class="venda-resumo-financeiro" style="margin-top: 10px;">
+        <div class="venda-resumo-grid">
+          <div class="venda-resumo-item">
+            <div class="venda-resumo-label">Valor Total</div>
+            <div class="venda-resumo-valor">${formatarMoeda(venda.valorTotal)}</div>
+          </div>
+          <div class="venda-resumo-item">
+            <div class="venda-resumo-label">Despesa</div>
+            <div class="venda-resumo-valor">${formatarMoeda(despesa)}</div>
+          </div>
+          <div class="venda-resumo-item">
+            <div class="venda-resumo-label">Reinvestir</div>
+            <div class="venda-resumo-valor">${formatarMoeda(valorReinvestir)}</div>
+          </div>
+          <div class="venda-resumo-item">
+            <div class="venda-resumo-label">Total Desp. Adic.</div>
+            <div class="venda-resumo-valor">${formatarMoeda(totalDespesasAdicionais)}</div>
+          </div>
+          <div class="venda-resumo-item">
+            <div class="venda-resumo-label">Lucro</div>
+            <div class="venda-resumo-valor ${lucro >= 0 ? 'lucro-positivo' : 'lucro-negativo'}">${formatarMoeda(lucro)}</div>
+          </div>
+        </div>
+      </div>
+      
+      <div style="margin-top: 10px;">
+        <button class="btn btn-secondary btn-detalhes-venda" data-id="${venda.id}">Ver Detalhes</button>
+        <button class="btn btn-primary btn-editar-venda" data-id="${venda.id}">Editar</button>
+        <button class="btn btn-danger btn-excluir-venda" data-id="${venda.id}">Excluir</button>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+  
+  // Adicionar eventos aos botões
+  document.querySelectorAll('.btn-detalhes-venda').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const id = this.getAttribute('data-id');
+      mostrarDetalhesVenda(id);
+    });
+  });
+  
+  document.querySelectorAll('.btn-editar-venda').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const id = this.getAttribute('data-id');
+      mostrarFormEditarVenda(id);
+    });
+  });
+  
+  document.querySelectorAll('.btn-excluir-venda').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const id = this.getAttribute('data-id');
+      confirmarExclusaoVenda(id);
+    });
+  });
+}
+
+// CORRIGIDO: Inicialização principal única do aplicativo
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('DOM Carregado!');
+  
+  // Verificar autenticação do Firebase
+  firebase.auth().onAuthStateChanged((user) => {
+    if (user) {
+      // Usuário está logado
+      currentUser = user;
+      
+      // Mostrar email do usuário
+      const userInfoEl = document.getElementById('user-info');
+      if (userInfoEl) {
+        userInfoEl.classList.remove('hidden');
+        document.getElementById('user-email').textContent = user.email;
+      }
+      
+      // Carregar dados e iniciar sincronização
+      estoque = JSON.parse(localStorage.getItem('estoque')) || [];
+      materiais = JSON.parse(localStorage.getItem('materiais')) || [];
+      receitas = JSON.parse(localStorage.getItem('receitas')) || [];
+      vendas = JSON.parse(localStorage.getItem('vendas')) || [];
+      
+      inicializarDados();
+      iniciarSincronizacao();
+      
+      // Carregar interfaces
+      carregarEstoque();
+      carregarMateriais();
+      carregarReceitas();
+      carregarVendas();
+      
+      // Configurar eventos
+      setupEventListeners();
+      setupAdditionalEvents();
+      
+      // Iniciar relógio
+      atualizarDataHora();
+      setInterval(atualizarDataHora, 1000);
+    } else {
+      // Usuário não está logado, mostrar tela de login
+      mostrarTelaLogin();
+    }
+  });
+});
 </script>
 </body>
 </html>
