@@ -930,39 +930,16 @@
     </div>
 </div>
 <script>
-// PARTE 4: JAVASCRIPT (PRIMEIRA PARTE - MODIFICADA)
+// PARTE 4: JAVASCRIPT (PRIMEIRA PARTE - CORRIGIDA)
 
-// Inicialização do localStorage se necessário
-document.addEventListener('DOMContentLoaded', function() {
-    if (!localStorage.getItem('estoque')) {
-        localStorage.setItem('estoque', JSON.stringify([]));
-    }
+// Funções utilitárias para seleção de elementos
+function $(selector) {
+    return document.querySelector(selector);
+}
 
-    if (!localStorage.getItem('materiais')) {
-        localStorage.setItem('materiais', JSON.stringify([]));
-    }
-
-    if (!localStorage.getItem('receitas')) {
-        localStorage.setItem('receitas', JSON.stringify([]));
-    }
-
-    if (!localStorage.getItem('vendas')) {
-        localStorage.setItem('vendas', JSON.stringify([]));
-    }
-
-    // Carregar dados
-    carregarEstoque();
-    carregarMateriais();
-    carregarReceitas();
-    carregarVendas();
-    
-    // Iniciar relógio
-    atualizarDataHora();
-    setInterval(atualizarDataHora, 1000);
-    
-    // Configurar eventos
-    setupEventListeners();
-});
+function $$(selector) {
+    return document.querySelectorAll(selector);
+}
 
 // Variáveis globais
 let estoque = JSON.parse(localStorage.getItem('estoque')) || [];
@@ -1527,102 +1504,54 @@ function setupEventListeners() {
         modalElement.classList.add('hidden');
     }
 
-    // Inicializar IDs para itens de estoque e materiais
-    estoque.forEach((item) => {
-        if (!item.id) {
-            item.id = gerarId();
-        }
-        if (!item.materialId && item.codigo) {
-            // Tentar encontrar material correspondente
-            const material = materiais.find(m => m.codigo === item.codigo);
-            if (material) {
-                item.materialId = material.id;
-            }
-        }
-    });
-   
-    materiais.forEach((material) => {
-        if (!material.id) {
-            material.id = gerarId();
-        }
-       
-        // Garantir que o histórico de preços existe
-        if (!material.historicoPrecos) {
-            material.historicoPrecos = [{
-                data: material.dataCadastro || new Date().toISOString(),
-                preco: material.ultimoPreco || 0
-            }];
-        }
-    });
-   
-    receitas.forEach(receita => {
-        if (!receita.id) {
-            receita.id = gerarId();
-        }
-       
-        // Garantir que precoVenda existe
-        if (!receita.precoVenda) {
-            const custoProducao = calcularCustoReceita(receita);
-            const custosVariados = custoProducao * 0.1;
-            receita.precoVenda = (custoProducao + custosVariados) * 2.5;
-        }
-    });
-   
-    vendas.forEach(venda => {
-        if (!venda.id) {
-            venda.id = gerarId();
-        }
-        
-        // Garantir que campos adicionais existam
-        if (!venda.observacoes) {
-            venda.observacoes = "";
-        }
-        if (!venda.despesasAdicionais) {
-            venda.despesasAdicionais = 0;
-        }
-    });
-   
-    atualizarLocalStorage();
-   
     // Eventos de navegação
-    document.querySelectorAll('.nav-link').forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-           
-            // Atualizar navegação
-            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-            this.classList.add('active');
-           
-            // Mostrar página correspondente
-            const pagina = this.getAttribute('data-page');
-            document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
-            document.getElementById(`${pagina}-page`).classList.add('active');
+    const navLinks = document.querySelectorAll('.nav-link');
+    if (navLinks.length > 0) {
+        navLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Atualizar navegação
+                document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Mostrar página correspondente
+                const pagina = this.getAttribute('data-page');
+                document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+                const pageElement = document.getElementById(`${pagina}-page`);
+                if (pageElement) {
+                    pageElement.classList.add('active');
+                }
+            });
         });
-    });
+    }
    
     // Eventos das abas
-    document.querySelectorAll('.tab-button').forEach(button => {
-        button.addEventListener('click', function() {
-            // Obter todos os botões na mesma tab
-            const parent = this.parentElement;
-            parent.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-           
-            // Obter o ID da aba a ser mostrada
-            const tabId = this.getAttribute('data-tab');
-           
-            // Encontrar o conteúdo da aba
-            const tabContents = parent.parentElement.querySelectorAll('.tab-content');
-            tabContents.forEach(content => {
-                content.classList.remove('active');
+    const tabButtons = document.querySelectorAll('.tab-button');
+    if (tabButtons.length > 0) {
+        tabButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                // Obter todos os botões na mesma tab
+                const parent = this.parentElement;
+                parent.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Obter o ID da aba a ser mostrada
+                const tabId = this.getAttribute('data-tab');
+                
+                // Encontrar o conteúdo da aba
+                const tabContents = parent.parentElement.querySelectorAll('.tab-content');
+                tabContents.forEach(content => {
+                    content.classList.remove('active');
+                });
+                
+                const tabContent = document.getElementById(tabId);
+                if (tabContent) {
+                    tabContent.classList.add('active');
+                }
             });
-           
-            const tabContent = document.getElementById(tabId);
-            if (tabContent) {
-                tabContent.classList.add('active');
-            }
         });
-    });
+    }
    
     // Eventos de pesquisa
     ['pesquisar-estoque', 'pesquisar-materiais', 'pesquisar-receita', 'pesquisar-vendas'].forEach(id => {
@@ -1631,7 +1560,7 @@ function setupEventListeners() {
             el.addEventListener('input', function() {
                 const termo = this.value.toLowerCase();
                 let itens;
-               
+                
                 switch(id) {
                     case 'pesquisar-estoque':
                         itens = document.querySelectorAll('#tabela-estoque tbody tr');
@@ -2244,26 +2173,25 @@ function registrarVenda(receitaId, quantidade, clienteNome, clienteTelefone,
        removerItemEstoque(ingrediente.materialId, ingrediente.quantidade * quantidade, ingrediente.unidadeMedida);
    }
    
-   // Calcular valores
+   // CÁLCULOS FINANCEIROS CORRIGIDOS
+   // 1. Custo Produção e Variados
    const custoProducao = calcularCustoReceita(receita);
    const custosVariados = custoProducao * 0.1;
    
-   // MODIFICAÇÃO: Calcular despesas adicionais com acréscimo de 10%
-   const despesasAdicionaisComAcrescimo = despesasAdicionais * 1.1;
-   
-   // MODIFICAÇÃO: Total de despesas adicionais (despesas + frete + decoração)
-   const totalDespesasAdicionais = despesasAdicionaisComAcrescimo + custoFrete + custoDecoracao;
-   
-   // Valor da despesa (custo produção + custo variado)
+   // 2. Despesa (Custo Produção + Custo Variado)
    const despesa = custoProducao + custosVariados;
    
-   // Valor para reinvestir (igual à despesa)
+   // 3. Reinvestir (igual à Despesa)
    const valorReinvestir = despesa;
    
-   // Valor total da venda (preço da receita * quantidade + frete + decoração)
+   // 4. Despesas Adicionais
+   const despesasAdicionaisComAcrescimo = despesasAdicionais * 1.1;
+   const totalDespesasAdicionais = despesasAdicionaisComAcrescimo + custoFrete + custoDecoracao;
+   
+   // 5. Valor total da venda (preço da receita * quantidade + frete + decoração)
    const valorTotal = (receita.precoVenda * quantidade) + custoFrete + custoDecoracao;
    
-   // MODIFICAÇÃO: Novo cálculo do lucro
+   // 6. Lucro (Valor Total - Despesa - Reinvestir - Despesas Adicionais)
    const lucro = valorTotal - despesa - valorReinvestir - totalDespesasAdicionais;
    
    // Criar registro de venda
@@ -2412,15 +2340,16 @@ function editarVenda(vendaId, quantidade, clienteNome, clienteTelefone,
         venda.data = new Date(dataVenda).toISOString();
     }
     
-    // MODIFICAÇÃO: Atualizar valor total e lucro
+    // MODIFICAÇÃO: Atualizar valor total e recalcular lucro corretamente
     venda.valorTotal = valorTotal;
+    // Lucro = Valor Total - Despesa - Reinvestir - Despesas Adicionais Total
     venda.lucro = valorTotal - venda.despesa - venda.valorReinvestir - venda.totalDespesasAdicionais;
     
     atualizarLocalStorage();
     return true;
 }
 
-// Função para excluir uma venda - MODIFICADA
+// Função para excluir uma venda
 function excluirVenda(vendaId) {
     const index = vendas.findIndex(v => v.id === vendaId);
     if (index === -1) return false;
@@ -2467,7 +2396,7 @@ function mostrarDetalhesVenda(vendaId) {
     const totalDespesasAdicionais = venda.totalDespesasAdicionais || 
                                    (despesasAdicionaisComAcrescimo + (venda.custoFrete || 0) + (venda.custoDecoracao || 0));
     
-    // Recalcular lucro
+    // Recalcular lucro (Valor Total - Despesa - Reinvestir - Despesas Adicionais)
     const lucro = venda.valorTotal - despesa - valorReinvestir - totalDespesasAdicionais;
     
     content.innerHTML = `
@@ -2547,7 +2476,7 @@ function mostrarDetalhesVenda(vendaId) {
                 
                 <div class="recipe-price-item">
                     <div class="recipe-price-label">Lucro</div>
-                    <div class="recipe-price-value" style="color: #28a745; font-size: 18px;">${formatarMoeda(lucro)}</div>
+                    <div class="recipe-price-value" style="color: ${lucro >= 0 ? '#28a745' : '#dc3545'}; font-size: 18px;">${formatarMoeda(lucro)}</div>
                 </div>
             </div>
         </div>
@@ -2555,7 +2484,8 @@ function mostrarDetalhesVenda(vendaId) {
     
     modal.classList.remove('hidden');
 }
-    // PARTE 6: JAVASCRIPT (TERCEIRA PARTE - MODIFICADA)
+// PARTE 6: JAVASCRIPT (TERCEIRA PARTE - CORRIGIDA)
+
 // Configurar eventos adicionais para esta parte do código
 function setupAdditionalEvents() {
     // Evento para adicionar receita
@@ -2987,7 +2917,7 @@ function setupAdditionalEvents() {
             const totalDespesasAdicionais = venda.totalDespesasAdicionais || 
                                          (despesasAdicionaisComAcrescimo + (venda.custoFrete || 0) + (venda.custoDecoracao || 0));
             
-            // Recalcular lucro
+            // CORRIGIDO: Recalcular lucro corretamente
             const lucro = venda.valorTotal - despesa - valorReinvestir - totalDespesasAdicionais;
             
             const card = document.createElement('div');
@@ -3050,30 +2980,6 @@ function setupAdditionalEvents() {
     }
 }
 
-// Adicionar eventos quando o documento estiver carregado
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM Carregado!');
-    
-    // Inicializar IDs para entidades
-    inicializarDados();
-    
-    // Carregar dados nas interfaces
-    carregarEstoque();
-    carregarMateriais();
-    carregarReceitas();
-    carregarVendas();
-    
-    // Configurar eventos básicos
-    setupEventListeners();
-    
-    // Configurar eventos adicionais
-    setupAdditionalEvents();
-    
-    // Iniciar o relógio
-    atualizarDataHora();
-    setInterval(atualizarDataHora, 1000);
-});
-
 // MODIFICADO: Inicializar dados com nova lógica de cálculos
 function inicializarDados() {
     // Garantir que o modal esteja oculto ao iniciar
@@ -3132,35 +3038,188 @@ function inicializarDados() {
         }
     });
     
+    // MODIFICADO: Atualizar vendas antigas para o novo modelo de cálculo
     vendas.forEach(venda => {
         if (!venda.id) {
             venda.id = gerarId();
         }
         
-        // MODIFICADO: Atualizar campos para nova lógica de cálculos
         // Para compatibilidade com vendas antigas
         const custoProducao = venda.custoProducao || 0;
         const custosVariados = venda.custosVariados || 0;
+        
+        // Despesa = custo produção + custo variado
         const despesa = custoProducao + custosVariados;
         
         // Renomear campo de despesas adicionais para compatibilidade
         if (venda.despesasAdicionais !== undefined && venda.despesasAdicionaisOriginal === undefined) {
             venda.despesasAdicionaisOriginal = venda.despesasAdicionais;
+            delete venda.despesasAdicionais; // Remover campo antigo
         }
         
-        // Calcular despesas adicionais com acréscimo
+        // Calcular despesas adicionais com acréscimo de 10%
         venda.despesasAdicionaisComAcrescimo = (venda.despesasAdicionaisOriginal || 0) * 1.1;
         
-        // Total de despesas adicionais (despesas + frete + decoração)
+        // Total despesas adicionais (despesa adicional com acréscimo + frete + decoração)
         venda.totalDespesasAdicionais = venda.despesasAdicionaisComAcrescimo + (venda.custoFrete || 0) + (venda.custoDecoracao || 0);
         
         // Atualizar campos de cálculo financeiro
         venda.despesa = despesa;
         venda.valorReinvestir = despesa;
+        
+        // CORRIGIDO: Novo cálculo de lucro
+        // Lucro = Valor Total - Despesa - Reinvestir - Despesas Adicionais Total
         venda.lucro = venda.valorTotal - despesa - despesa - venda.totalDespesasAdicionais;
     });
     
     atualizarLocalStorage();
+}
+
+// CORRIGIDO: Inicialização principal única do aplicativo
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM Carregado!');
+    
+    // Garantir que localStorage está inicializado
+    if (!localStorage.getItem('estoque')) {
+        localStorage.setItem('estoque', JSON.stringify([]));
+    }
+    if (!localStorage.getItem('materiais')) {
+        localStorage.setItem('materiais', JSON.stringify([]));
+    }
+    if (!localStorage.getItem('receitas')) {
+        localStorage.setItem('receitas', JSON.stringify([]));
+    }
+    if (!localStorage.getItem('vendas')) {
+        localStorage.setItem('vendas', JSON.stringify([]));
+    }
+    
+    // Carregar dados globais
+    estoque = JSON.parse(localStorage.getItem('estoque')) || [];
+    materiais = JSON.parse(localStorage.getItem('materiais')) || [];
+    receitas = JSON.parse(localStorage.getItem('receitas')) || [];
+    vendas = JSON.parse(localStorage.getItem('vendas')) || [];
+    
+    // Inicializar dados
+    inicializarDados();
+    
+    // Carregar interfaces visuais
+    carregarEstoque();
+    carregarMateriais();
+    carregarReceitas();
+    carregarVendas();
+    
+    // Configurar eventos
+    setupEventListeners();
+    setupAdditionalEvents();
+    
+    // Iniciar o relógio
+    atualizarDataHora();
+    setInterval(atualizarDataHora, 1000);
+});
+
+// Funções auxiliares para edição e exclusão de vendas
+function mostrarFormEditarVenda(vendaId) {
+    const venda = vendas.find(v => v.id === vendaId);
+    if (!venda) return;
+    
+    // Preencher formulário de edição
+    document.getElementById('editar-venda-id').value = venda.id;
+    document.getElementById('editar-cliente-nome').value = venda.cliente.nome;
+    document.getElementById('editar-cliente-telefone').value = venda.cliente.telefone || '';
+    document.getElementById('editar-cliente-endereco').value = venda.cliente.endereco || '';
+    document.getElementById('editar-observacoes-venda').value = venda.observacoes || '';
+    document.getElementById('editar-custo-frete').value = venda.custoFrete || 0;
+    document.getElementById('editar-custo-decoracao').value = venda.custoDecoracao || 0;
+    document.getElementById('editar-despesas-adicionais').value = venda.despesasAdicionaisOriginal || 0;
+    document.getElementById('editar-quantidade-venda').value = venda.quantidade;
+    document.getElementById('editar-valor-total-venda').value = venda.valorTotal;
+    
+    // Data da venda
+    const dataVendaEl = document.getElementById('editar-data-venda');
+    if (dataVendaEl) {
+        const data = new Date(venda.data);
+        dataVendaEl.value = data.toISOString().split('T')[0];
+    }
+    
+    // Mostrar o modal
+    document.getElementById('editar-venda-modal').classList.remove('hidden');
+}
+
+function confirmarExclusaoVenda(vendaId) {
+    document.getElementById('excluir-venda-id').value = vendaId;
+    document.getElementById('confirmar-exclusao-modal').classList.remove('hidden');
+}
+
+// Carregar a lista de vendas
+function carregarVendas() {
+    const container = document.getElementById('lista-vendas');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (vendas.length === 0) {
+        container.innerHTML = '<p>Nenhuma venda registrada.</p>';
+        return;
+    }
+    
+    // Ordenar vendas da mais recente para a mais antiga
+    const vendasOrdenadas = [...vendas].sort((a, b) => new Date(b.data) - new Date(a.data));
+    
+    vendasOrdenadas.forEach((venda) => {
+        // Cálculo dos valores financeiros
+        const despesa = venda.despesa || (venda.custoProducao + venda.custosVariados);
+        const valorReinvestir = despesa;
+        
+        // Compatibilidade com vendas antigas
+        const despesasAdicionaisComAcrescimo = venda.despesasAdicionaisComAcrescimo || 
+                                        ((venda.despesasAdicionaisOriginal || venda.despesasAdicionais || 0) * 1.1);
+        const totalDespesasAdicionais = venda.totalDespesasAdicionais || 
+                                     (despesasAdicionaisComAcrescimo + (venda.custoFrete || 0) + (venda.custoDecoracao || 0));
+        
+        // Recalcular lucro corretamente
+        const lucro = venda.valorTotal - despesa - valorReinvestir - totalDespesasAdicionais;
+        
+        const card = document.createElement('div');
+        card.className = 'sale-card';
+        card.innerHTML = `
+            <div class="sale-header">
+                <div class="sale-title">${venda.receitaNome}</div>
+                <div class="sale-date">${formatarData(venda.data)}</div>
+            </div>
+            <div>Cliente: ${venda.cliente.nome}</div>
+            <div>Quantidade: ${venda.quantidade}</div>
+            <div>Valor Total: ${formatarMoeda(venda.valorTotal)}</div>
+            <div>Lucro: ${formatarMoeda(lucro)}</div>
+            <div style="margin-top: 10px;">
+                <button class="btn btn-secondary btn-detalhes-venda" data-id="${venda.id}">Ver Detalhes</button>
+                <button class="btn btn-primary btn-editar-venda" data-id="${venda.id}">Editar</button>
+                <button class="btn btn-danger btn-excluir-venda" data-id="${venda.id}">Excluir</button>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+    
+    // Adicionar eventos aos botões
+    document.querySelectorAll('.btn-detalhes-venda').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.getAttribute('data-id');
+            mostrarDetalhesVenda(id);
+        });
+    });
+    
+    document.querySelectorAll('.btn-editar-venda').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.getAttribute('data-id');
+            mostrarFormEditarVenda(id);
+        });
+    });
+    
+    document.querySelectorAll('.btn-excluir-venda').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.getAttribute('data-id');
+            confirmarExclusaoVenda(id);
+        });
+    });
 }
 </script>
 </body>
