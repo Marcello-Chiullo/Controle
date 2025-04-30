@@ -1098,22 +1098,22 @@
 
 // Funções utilitárias para seleção de elementos
 function $(selector) {
-    return document.querySelector(selector);
+   return document.querySelector(selector);
 }
 
 function $$(selector) {
-    return document.querySelectorAll(selector);
+   return document.querySelectorAll(selector);
 }
 
 // Configuração do Firebase
 const firebaseConfig = {
-    apiKey: "AIzaSyABzQdTgR9-Al-drNRMBcEb1dN76wUjqvY",
-    authDomain: "deiacontrole-faabc.firebaseapp.com",
-    databaseURL: "https://deiacontrole-faabc-default-rtdb.firebaseio.com",
-    projectId: "deiacontrole-faabc",
-    storageBucket: "deiacontrole-faabc.firebasestorage.app",
-    messagingSenderId: "216368622292",
-    appId: "1:216368622292:web:20522a4725c30907c92941",
+   apiKey: "AIzaSyABzQdTgR9-Al-drNRMBcEb1dN76wUjqvY",
+   authDomain: "deiacontrole-faabc.firebaseapp.com",
+   databaseURL: "https://deiacontrole-faabc-default-rtdb.firebaseio.com",
+   projectId: "deiacontrole-faabc",
+   storageBucket: "deiacontrole-faabc.firebasestorage.app",
+   messagingSenderId: "216368622292",
+   appId: "1:216368622292:web:20522a4725c30907c92941",
 };
 
 // Inicializar Firebase
@@ -1122,679 +1122,695 @@ const database = firebase.database();
 let currentUser = null;
 
 // Variáveis globais
-let estoque = JSON.parse(localStorage.getItem('estoque')) || [];
-let materiais = JSON.parse(localStorage.getItem('materiais')) || [];
-let receitas = JSON.parse(localStorage.getItem('receitas')) || [];
-let vendas = JSON.parse(localStorage.getItem('vendas')) || [];
+let estoque = [];
+let materiais = [];
+let receitas = [];
+let vendas = [];
 let html5QrCode;
 
 // Função para atualizar o localStorage
 function atualizarLocalStorage() {
-    localStorage.setItem('estoque', JSON.stringify(estoque));
-    localStorage.setItem('materiais', JSON.stringify(materiais));
-    localStorage.setItem('receitas', JSON.stringify(receitas));
-    localStorage.setItem('vendas', JSON.stringify(vendas));
-    localStorage.setItem('ultimaAtualizacao', new Date().toISOString());
-    
-    // Sincronizar com nuvem se o usuário estiver logado
-    if (currentUser) {
-        sincronizarComNuvem();
-    }
+   localStorage.setItem('estoque', JSON.stringify(estoque));
+   localStorage.setItem('materiais', JSON.stringify(materiais));
+   localStorage.setItem('receitas', JSON.stringify(receitas));
+   localStorage.setItem('vendas', JSON.stringify(vendas));
+   localStorage.setItem('ultimaAtualizacao', new Date().toISOString());
+   
+   // Sincronizar com nuvem se o usuário estiver logado
+   if (currentUser) {
+       sincronizarComNuvem();
+   }
 }
 
 // Função para sincronizar com o Firebase
 function sincronizarComNuvem() {
-    if (!currentUser) return Promise.reject('Usuário não autenticado');
-    
-    const userId = currentUser.uid;
-    
-    // Mostrar modal de sincronização
-    toggleModal(true, "Sincronizando dados...", "Enviando informações para a nuvem.");
-    
-    return database.ref('usuarios/' + userId).set({
-        estoque: estoque,
-        materiais: materiais,
-        receitas: receitas,
-        vendas: vendas,
-        ultimaAtualizacao: new Date().toISOString()
-    }).then(() => {
-        toggleModal(false);
-        mostrarNotificacao('notification-estoque', 'Dados sincronizados com a nuvem!', 'success');
-        return true;
-    }).catch(error => {
-        toggleModal(false);
-        mostrarNotificacao('notification-estoque', 'Erro ao sincronizar: ' + error.message, 'error');
-        console.error('Erro na sincronização:', error);
-        return false;
-    });
+   if (!currentUser) return Promise.reject('Usuário não autenticado');
+   
+   // NOVA VERIFICAÇÃO - impedir envio de dados vazios
+   if (estoque.length === 0 && materiais.length === 0 && 
+       receitas.length === 0 && vendas.length === 0) {
+       console.log("Evitando sincronizar arrays vazios");
+       return Promise.resolve(false);
+   }
+   
+   const userId = currentUser.uid;
+   console.log("Enviando dados para o Firebase:", {
+       estoque: estoque.length,
+       materiais: materiais.length,
+       receitas: receitas.length,
+       vendas: vendas.length
+   });
+   
+   // Mostrar modal de sincronização
+   toggleModal(true, "Sincronizando dados...", "Enviando informações para a nuvem.");
+   
+   return database.ref('usuarios/' + userId).set({
+       estoque: estoque,
+       materiais: materiais,
+       receitas: receitas,
+       vendas: vendas,
+       ultimaAtualizacao: new Date().toISOString()
+   }).then(() => {
+       toggleModal(false);
+       mostrarNotificacao('notification-estoque', 'Dados sincronizados com a nuvem!', 'success');
+       return true;
+   }).catch(error => {
+       toggleModal(false);
+       mostrarNotificacao('notification-estoque', 'Erro ao sincronizar: ' + error.message, 'error');
+       console.error('Erro na sincronização:', error);
+       return false;
+   });
 }
 
 // Função para mostrar uma notificação
 function mostrarNotificacao(elemento, mensagem, tipo) {
-    const notificacao = document.getElementById(elemento);
-    if (!notificacao) return;
-    
-    notificacao.className = `notification notification-${tipo}`;
-    notificacao.textContent = mensagem;
-    
-    // Esconder a notificação após 5 segundos
-    setTimeout(() => {
-        notificacao.className = 'notification hidden';
-    }, 5000);
+   const notificacao = document.getElementById(elemento);
+   if (!notificacao) return;
+   
+   notificacao.className = `notification notification-${tipo}`;
+   notificacao.textContent = mensagem;
+   
+   // Esconder a notificação após 5 segundos
+   setTimeout(() => {
+       notificacao.className = 'notification hidden';
+   }, 5000);
 }
 
 // Função para mostrar/esconder o modal de processamento
 function toggleModal(show, title = "Processando...", message = "Aguarde enquanto processamos as informações.") {
-    const modal = document.getElementById('processing-modal');
-    if (!modal) return;
-    
-    document.getElementById('modal-title').textContent = title;
-    document.getElementById('modal-message').textContent = message;
-    
-    if (show) {
-        modal.classList.remove('hidden');
-        
-        // Adicionar timer de segurança - fechará o modal após 10 segundos
-        window.modalSafetyTimer = setTimeout(() => {
-            modal.classList.add('hidden');
-        }, 10000);
-    } else {
-        modal.classList.add('hidden');
-        // Limpar o timer de segurança se o modal for fechado manualmente
-        if (window.modalSafetyTimer) {
-            clearTimeout(window.modalSafetyTimer);
-        }
-    }
+   const modal = document.getElementById('processing-modal');
+   if (!modal) return;
+   
+   document.getElementById('modal-title').textContent = title;
+   document.getElementById('modal-message').textContent = message;
+   
+   if (show) {
+       modal.classList.remove('hidden');
+       
+       // Adicionar timer de segurança - fechará o modal após 10 segundos
+       window.modalSafetyTimer = setTimeout(() => {
+           modal.classList.add('hidden');
+       }, 10000);
+   } else {
+       modal.classList.add('hidden');
+       // Limpar o timer de segurança se o modal for fechado manualmente
+       if (window.modalSafetyTimer) {
+           clearTimeout(window.modalSafetyTimer);
+       }
+   }
 }
 
 // Função para formatar data
 function formatarData(data) {
-    const d = new Date(data);
-    return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+   const d = new Date(data);
+   return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
 }
 
 // Função para formatar valor monetário
 function formatarMoeda(valor) {
-    return 'R$ ' + parseFloat(valor).toFixed(2).replace('.', ',');
+   return 'R$ ' + parseFloat(valor).toFixed(2).replace('.', ',');
 }
 
 // Função para gerar ID único
 function gerarId() {
-    return 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+   return 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 }
 
 // FUNÇÕES PARA ESTOQUE E MATERIAIS
 
 // Função para encontrar um material pelo código
 function encontrarMaterialPorCodigo(codigo) {
-    // Encontra o material mais recente com o código informado
-    const materiaisComCodigo = materiais.filter(m => m.codigo === codigo);
-    if (materiaisComCodigo.length === 0) return null;
-    
-    // Ordena por data de cadastro decrescente (mais recente primeiro)
-    materiaisComCodigo.sort((a, b) => new Date(b.dataCadastro) - new Date(a.dataCadastro));
-    
-    // Retorna o material mais recente
-    return materiaisComCodigo[0];
+   // Encontra o material mais recente com o código informado
+   const materiaisComCodigo = materiais.filter(m => m.codigo === codigo);
+   if (materiaisComCodigo.length === 0) return null;
+   
+   // Ordena por data de cadastro decrescente (mais recente primeiro)
+   materiaisComCodigo.sort((a, b) => new Date(b.dataCadastro) - new Date(a.dataCadastro));
+   
+   // Retorna o material mais recente
+   return materiaisComCodigo[0];
 }
 
 // Função para adicionar ou atualizar um material no catálogo - MODIFICADA
 function adicionarOuAtualizarMaterial(codigoMaterial, nomeMaterial, unidadeMaterial, unidadeMedidaMaterial, quantidadeMedidaMaterial, precoMaterial, dataCompra = null) {
-    // Converter valores para números
-    quantidadeMedidaMaterial = parseFloat(quantidadeMedidaMaterial);
-    precoMaterial = parseFloat(precoMaterial);
-    
-    // Verificar se valores são válidos
-    if (isNaN(quantidadeMedidaMaterial) || quantidadeMedidaMaterial <= 0) {
-        alert('A quantidade por unidade deve ser um número válido maior que zero.');
-        return null;
-    }
-    
-    if (isNaN(precoMaterial) || precoMaterial <= 0) {
-        alert('O preço deve ser um número válido maior que zero.');
-        return null;
-    }
-    
-    // MODIFICADO: Criar sempre um novo registro, mas manter referência do material existente
-    const materialExistente = encontrarMaterialPorCodigo(codigoMaterial);
-    
-    // Criar novo material (sempre, mesmo que exista um com o mesmo código)
-    const novoMaterial = {
-        id: gerarId(),
-        codigo: codigoMaterial,
-        nome: nomeMaterial,
-        unidade: unidadeMaterial,
-        unidadeMedida: unidadeMedidaMaterial,
-        quantidadeMedida: quantidadeMedidaMaterial,
-        ultimoPreco: precoMaterial,
-        precoMedio: materialExistente ? 
-            ((materialExistente.precoMedio * materialExistente.historicoPrecos.length) + precoMaterial) / 
-            (materialExistente.historicoPrecos.length + 1) : 
-            precoMaterial,
-        ultimaCompra: dataCompra || new Date().toISOString(),
-        dataCadastro: new Date().toISOString(),
-        historicoPrecos: [{
-            data: dataCompra || new Date().toISOString(),
-            preco: precoMaterial
-        }]
-    };
-    
-    materiais.push(novoMaterial);
-    return novoMaterial.id;
+   // Converter valores para números
+   quantidadeMedidaMaterial = parseFloat(quantidadeMedidaMaterial);
+   precoMaterial = parseFloat(precoMaterial);
+   
+   // Verificar se valores são válidos
+   if (isNaN(quantidadeMedidaMaterial) || quantidadeMedidaMaterial <= 0) {
+       alert('A quantidade por unidade deve ser um número válido maior que zero.');
+       return null;
+   }
+   
+   if (isNaN(precoMaterial) || precoMaterial <= 0) {
+       alert('O preço deve ser um número válido maior que zero.');
+       return null;
+   }
+   
+   // MODIFICADO: Criar sempre um novo registro, mas manter referência do material existente
+   const materialExistente = encontrarMaterialPorCodigo(codigoMaterial);
+   
+   // Criar novo material (sempre, mesmo que exista um com o mesmo código)
+   const novoMaterial = {
+       id: gerarId(),
+       codigo: codigoMaterial,
+       nome: nomeMaterial,
+       unidade: unidadeMaterial,
+       unidadeMedida: unidadeMedidaMaterial,
+       quantidadeMedida: quantidadeMedidaMaterial,
+       ultimoPreco: precoMaterial,
+       precoMedio: materialExistente ? 
+           ((materialExistente.precoMedio * materialExistente.historicoPrecos.length) + precoMaterial) / 
+           (materialExistente.historicoPrecos.length + 1) : 
+           precoMaterial,
+       ultimaCompra: dataCompra || new Date().toISOString(),
+       dataCadastro: new Date().toISOString(),
+       historicoPrecos: [{
+           data: dataCompra || new Date().toISOString(),
+           preco: precoMaterial
+       }]
+   };
+   
+   materiais.push(novoMaterial);
+   return novoMaterial.id;
 }
 
 // Função para adicionar item ao estoque
 function adicionarItemEstoque(materialId, quantidade, preco = null) {
-    const material = materiais.find(m => m.id === materialId);
-    if (!material) return false;
-    
-    // Verificar se a quantidade é válida
-    quantidade = parseFloat(quantidade);
-    if (isNaN(quantidade) || quantidade <= 0) {
-        alert('A quantidade deve ser um número válido maior que zero.');
-        return false;
-    }
-    
-    // Verificar se o item já existe no estoque
-    const itemExistente = estoque.find(i => i.materialId === materialId);
-    
-    if (itemExistente) {
-        // Atualizar item existente
-        itemExistente.quantidade += quantidade;
-        if (preco !== null) {
-            itemExistente.preco = parseFloat(preco);
-        }
-        return true;
-    } else {
-        // Criar novo item
-        const novoItem = {
-            id: gerarId(),
-            materialId: materialId,
-            codigo: material.codigo,
-            nome: material.nome,
-            quantidade: quantidade,
-            unidade: material.unidade,
-            unidadeMedida: material.unidadeMedida,
-            quantidadeMedida: material.quantidadeMedida,
-            preco: preco !== null ? parseFloat(preco) : parseFloat(material.ultimoPreco),
-            dataAdicao: new Date().toISOString()
-        };
-        
-        estoque.push(novoItem);
-        return true;
-    }
+   const material = materiais.find(m => m.id === materialId);
+   if (!material) return false;
+   
+   // Verificar se a quantidade é válida
+   quantidade = parseFloat(quantidade);
+   if (isNaN(quantidade) || quantidade <= 0) {
+       alert('A quantidade deve ser um número válido maior que zero.');
+       return false;
+   }
+   
+   // Verificar se o item já existe no estoque
+   const itemExistente = estoque.find(i => i.materialId === materialId);
+   
+   if (itemExistente) {
+       // Atualizar item existente
+       itemExistente.quantidade += quantidade;
+       if (preco !== null) {
+           itemExistente.preco = parseFloat(preco);
+       }
+       return true;
+   } else {
+       // Criar novo item
+       const novoItem = {
+           id: gerarId(),
+           materialId: materialId,
+           codigo: material.codigo,
+           nome: material.nome,
+           quantidade: quantidade,
+           unidade: material.unidade,
+           unidadeMedida: material.unidadeMedida,
+           quantidadeMedida: material.quantidadeMedida,
+           preco: preco !== null ? parseFloat(preco) : parseFloat(material.ultimoPreco),
+           dataAdicao: new Date().toISOString()
+       };
+       
+       estoque.push(novoItem);
+       return true;
+   }
 }
 
 // Função para remover item do estoque - FUNÇÃO MODIFICADA
 function removerItemEstoque(materialId, quantidade, unidadeMedida) {
-    const item = estoque.find(i => i.materialId === materialId);
-    if (!item) return false;
-    
-    // Normalizar unidades para a menor unidade (g ou ml)
-    let quantidadeNormalizada = quantidade;
-    
-    // Se a unidade de medida for passada, converter conforme necessário
-    if (unidadeMedida) {
-        // Converter KG para g, L para ml
-        if (unidadeMedida.toLowerCase() === 'kg' && item.unidadeMedida.toLowerCase() === 'g') {
-            quantidadeNormalizada *= 1000;
-        } else if (unidadeMedida.toLowerCase() === 'l' && item.unidadeMedida.toLowerCase() === 'ml') {
-            quantidadeNormalizada *= 1000;
-        }
-        // Converter g para kg, ml para l se necessário
-        else if (unidadeMedida.toLowerCase() === 'g' && item.unidadeMedida.toLowerCase() === 'kg') {
-            quantidadeNormalizada /= 1000;
-        } else if (unidadeMedida.toLowerCase() === 'ml' && item.unidadeMedida.toLowerCase() === 'l') {
-            quantidadeNormalizada /= 1000;
-        }
-    }
-    
-    // Converter a quantidade solicitada para unidades do estoque
-    const quantidadeEmUnidades = quantidadeNormalizada / item.quantidadeMedida;
-    
-    // Verificar se a quantidade disponível é suficiente
-    if (item.quantidade < quantidadeEmUnidades) {
-        return false;
-    }
-    
-    // Atualizar a quantidade
-    item.quantidade -= quantidadeEmUnidades;
-    
-    // Se a quantidade ficar zero ou negativa, remover o item
-    if (item.quantidade <= 0) {
-        const index = estoque.findIndex(i => i.materialId === materialId);
-        if (index !== -1) {
-            estoque.splice(index, 1);
-        }
-    }
-    
-    return true;
+   const item = estoque.find(i => i.materialId === materialId);
+   if (!item) return false;
+   
+   // Normalizar unidades para a menor unidade (g ou ml)
+   let quantidadeNormalizada = quantidade;
+   
+   // Se a unidade de medida for passada, converter conforme necessário
+   if (unidadeMedida) {
+       // Converter KG para g, L para ml
+       if (unidadeMedida.toLowerCase() === 'kg' && item.unidadeMedida.toLowerCase() === 'g') {
+           quantidadeNormalizada *= 1000;
+       } else if (unidadeMedida.toLowerCase() === 'l' && item.unidadeMedida.toLowerCase() === 'ml') {
+           quantidadeNormalizada *= 1000;
+       }
+       // Converter g para kg, ml para l se necessário
+       else if (unidadeMedida.toLowerCase() === 'g' && item.unidadeMedida.toLowerCase() === 'kg') {
+           quantidadeNormalizada /= 1000;
+       } else if (unidadeMedida.toLowerCase() === 'ml' && item.unidadeMedida.toLowerCase() === 'l') {
+           quantidadeNormalizada /= 1000;
+       }
+   }
+   
+   // Converter a quantidade solicitada para unidades do estoque
+   const quantidadeEmUnidades = quantidadeNormalizada / item.quantidadeMedida;
+   
+   // Verificar se a quantidade disponível é suficiente
+   if (item.quantidade < quantidadeEmUnidades) {
+       return false;
+   }
+   
+   // Atualizar a quantidade
+   item.quantidade -= quantidadeEmUnidades;
+   
+   // Se a quantidade ficar zero ou negativa, remover o item
+   if (item.quantidade <= 0) {
+       const index = estoque.findIndex(i => i.materialId === materialId);
+       if (index !== -1) {
+           estoque.splice(index, 1);
+       }
+   }
+   
+   return true;
 }
 
 // Função para adicionar estoque de volta (quando cancela uma venda)
 function adicionarEstoqueDeVolta(materialId, quantidade, unidadeMedida) {
-    // Essa função é o inverso de removerItemEstoque
-    const item = estoque.find(i => i.materialId === materialId);
-    const material = materiais.find(m => m.id === materialId);
-    
-    if (!item && !material) return false;
-    
-    // Normalizar unidades
-    let quantidadeNormalizada = quantidade;
-    
-    if (unidadeMedida) {
-        if (item) {
-            // Usar o item atual do estoque
-            if (unidadeMedida.toLowerCase() === 'kg' && item.unidadeMedida.toLowerCase() === 'g') {
-                quantidadeNormalizada *= 1000;
-            } else if (unidadeMedida.toLowerCase() === 'l' && item.unidadeMedida.toLowerCase() === 'ml') {
-                quantidadeNormalizada *= 1000;
-            } else if (unidadeMedida.toLowerCase() === 'g' && item.unidadeMedida.toLowerCase() === 'kg') {
-                quantidadeNormalizada /= 1000;
-            } else if (unidadeMedida.toLowerCase() === 'ml' && item.unidadeMedida.toLowerCase() === 'l') {
-                quantidadeNormalizada /= 1000;
-            }
-            
-            // Converter para unidades
-            const quantidadeEmUnidades = quantidadeNormalizada / item.quantidadeMedida;
-            
-            // Adicionar de volta
-            item.quantidade += quantidadeEmUnidades;
-        } else if (material) {
-            // Criar novo item no estoque se não existir
-            const novoItem = {
-                id: gerarId(),
-                materialId: materialId,
-                codigo: material.codigo,
-                nome: material.nome,
-                quantidade: quantidade / material.quantidadeMedida, // Converter para unidades
-                unidade: material.unidade,
-                unidadeMedida: material.unidadeMedida,
-                quantidadeMedida: material.quantidadeMedida,
-                preco: material.ultimoPreco,
-                dataAdicao: new Date().toISOString()
-            };
-            
-            estoque.push(novoItem);
-        }
-    }
-    
-    return true;
+   // Essa função é o inverso de removerItemEstoque
+   const item = estoque.find(i => i.materialId === materialId);
+   const material = materiais.find(m => m.id === materialId);
+   
+   if (!item && !material) return false;
+   
+   // Normalizar unidades
+   let quantidadeNormalizada = quantidade;
+   
+   if (unidadeMedida) {
+       if (item) {
+           // Usar o item atual do estoque
+           if (unidadeMedida.toLowerCase() === 'kg' && item.unidadeMedida.toLowerCase() === 'g') {
+               quantidadeNormalizada *= 1000;
+           } else if (unidadeMedida.toLowerCase() === 'l' && item.unidadeMedida.toLowerCase() === 'ml') {
+               quantidadeNormalizada *= 1000;
+           } else if (unidadeMedida.toLowerCase() === 'g' && item.unidadeMedida.toLowerCase() === 'kg') {
+               quantidadeNormalizada /= 1000;
+           } else if (unidadeMedida.toLowerCase() === 'ml' && item.unidadeMedida.toLowerCase() === 'l') {
+               quantidadeNormalizada /= 1000;
+           }
+           
+           // Converter para unidades
+           const quantidadeEmUnidades = quantidadeNormalizada / item.quantidadeMedida;
+           
+           // Adicionar de volta
+           item.quantidade += quantidadeEmUnidades;
+       } else if (material) {
+           // Criar novo item no estoque se não existir
+           const novoItem = {
+               id: gerarId(),
+               materialId: materialId,
+               codigo: material.codigo,
+               nome: material.nome,
+               quantidade: quantidade / material.quantidadeMedida, // Converter para unidades
+               unidade: material.unidade,
+               unidadeMedida: material.unidadeMedida,
+               quantidadeMedida: material.quantidadeMedida,
+               preco: material.ultimoPreco,
+               dataAdicao: new Date().toISOString()
+           };
+           
+           estoque.push(novoItem);
+       }
+   }
+   
+   return true;
 }
 
 // Função para remover um material e todas suas referências
 function removerMaterial(id) {
-    if (!confirm('Tem certeza que deseja remover este material e todas as suas referências?')) {
-        return;
-    }
-    
-    // Remover do estoque
-    estoque = estoque.filter(item => item.materialId !== id);
-    
-    // Remover das receitas - remover ingredientes que usam este material
-    receitas.forEach(receita => {
-        receita.ingredientes = receita.ingredientes.filter(ing => ing.materialId !== id);
-    });
-    
-    // Remover do cadastro de materiais
-    const index = materiais.findIndex(m => m.id === id);
-    if (index !== -1) {
-        materiais.splice(index, 1);
-    }
-    
-    // Atualizar localStorage e recarregar interfaces
-    atualizarLocalStorage();
-    carregarMateriais();
-    carregarEstoque();
-    carregarReceitas();
-    
-    mostrarNotificacao('notification-materiais', 'Material removido com sucesso!', 'success');
+   if (!confirm('Tem certeza que deseja remover este material e todas as suas referências?')) {
+       return;
+   }
+   
+   // Remover do estoque
+   estoque = estoque.filter(item => item.materialId !== id);
+   
+   // Remover das receitas - remover ingredientes que usam este material
+   receitas.forEach(receita => {
+       receita.ingredientes = receita.ingredientes.filter(ing => ing.materialId !== id);
+   });
+   
+   // Remover do cadastro de materiais
+   const index = materiais.findIndex(m => m.id === id);
+   if (index !== -1) {
+       materiais.splice(index, 1);
+   }
+   
+   // Atualizar localStorage e recarregar interfaces
+   atualizarLocalStorage();
+   carregarMateriais();
+   carregarEstoque();
+   carregarReceitas();
+   
+   mostrarNotificacao('notification-materiais', 'Material removido com sucesso!', 'success');
 }
 
 // Função para carregar materiais na tabela - MODIFICADA
 function carregarMateriais() {
-    const tbody = document.getElementById('itens-materiais');
-    if (!tbody) return;
-    
-    tbody.innerHTML = '';
-    
-    if (materiais.length === 0) {
-        const tr = document.createElement('tr');
-        tr.innerHTML = '<td colspan="8" style="text-align: center;">Nenhum material cadastrado.</td>';
-        tbody.appendChild(tr);
-        return;
-    }
-    
-    // MODIFICADO: Exibir cada material como uma entrada separada, ordenado por data decrescente
-    const materiaisOrdenados = [...materiais].sort((a, b) => new Date(b.dataCadastro) - new Date(a.dataCadastro));
-    
-    materiaisOrdenados.forEach((material, index) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${material.codigo || 'N/A'}</td>
-            <td>${material.nome}</td>
-            <td>${material.unidade}</td>
-            <td>${material.unidadeMedida}</td>
-            <td>${material.quantidadeMedida}</td>
-            <td>${formatarData(material.ultimaCompra)}</td>
-            <td>${formatarMoeda(material.ultimoPreco)}</td>
-            <td>
-                <button class="btn btn-primary btn-editar-material" data-id="${material.id}">Editar</button>
-                <button class="btn btn-success btn-adicionar-estoque" data-id="${material.id}">+ Estoque</button>
-                <button class="btn btn-danger btn-remover-material" data-id="${material.id}">Excluir</button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
-    
-    // Adicionar eventos aos botões
-    document.querySelectorAll('.btn-editar-material').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const id = this.getAttribute('data-id');
-            const material = materiais.find(m => m.id === id);
-            const index = materiais.indexOf(material);
-            if (index !== -1) {
-                editarMaterial(index);
-            }
-        });
-    });
-    
-    document.querySelectorAll('.btn-adicionar-estoque').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const id = this.getAttribute('data-id');
-            adicionarAoEstoque(id);
-        });
-    });
-    
-    document.querySelectorAll('.btn-remover-material').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const id = this.getAttribute('data-id');
-            removerMaterial(id);
-        });
-    });
+   const tbody = document.getElementById('itens-materiais');
+   if (!tbody) return;
+   
+   tbody.innerHTML = '';
+   
+   if (materiais.length === 0) {
+       const tr = document.createElement('tr');
+       tr.innerHTML = '<td colspan="8" style="text-align: center;">Nenhum material cadastrado.</td>';
+       tbody.appendChild(tr);
+       return;
+   }
+   
+   // MODIFICADO: Exibir cada material como uma entrada separada, ordenado por data decrescente
+   const materiaisOrdenados = [...materiais].sort((a, b) => new Date(b.dataCadastro) - new Date(a.dataCadastro));
+   
+   materiaisOrdenados.forEach((material, index) => {
+       const tr = document.createElement('tr');
+       tr.innerHTML = `
+           <td>${material.codigo || 'N/A'}</td>
+           <td>${material.nome}</td>
+           <td>${material.unidade}</td>
+           <td>${material.unidadeMedida}</td>
+           <td>${material.quantidadeMedida}</td>
+           <td>${formatarData(material.ultimaCompra)}</td>
+           <td>${formatarMoeda(material.ultimoPreco)}</td>
+           <td>
+               <button class="btn btn-primary btn-editar-material" data-id="${material.id}">Editar</button>
+               <button class="btn btn-success btn-adicionar-estoque" data-id="${material.id}">+ Estoque</button>
+               <button class="btn btn-danger btn-remover-material" data-id="${material.id}">Excluir</button>
+           </td>
+       `;
+       tbody.appendChild(tr);
+   });
+   
+   // Adicionar eventos aos botões
+   document.querySelectorAll('.btn-editar-material').forEach(btn => {
+       btn.addEventListener('click', function() {
+           const id = this.getAttribute('data-id');
+           const material = materiais.find(m => m.id === id);
+           const index = materiais.indexOf(material);
+           if (index !== -1) {
+               editarMaterial(index);
+           }
+       });
+   });
+   
+   document.querySelectorAll('.btn-adicionar-estoque').forEach(btn => {
+       btn.addEventListener('click', function() {
+           const id = this.getAttribute('data-id');
+           adicionarAoEstoque(id);
+       });
+   });
+   
+   document.querySelectorAll('.btn-remover-material').forEach(btn => {
+       btn.addEventListener('click', function() {
+           const id = this.getAttribute('data-id');
+           removerMaterial(id);
+       });
+   });
 }
 
 // Função para editar um material
 function editarMaterial(index) {
-    const material = materiais[index];
-    if(!material) return;
-    
-    // Mudar para a aba de adicionar item
-    const tabButton = document.querySelector('[data-tab="adicionar-item"]');
-    if (tabButton) {
-        tabButton.click();
-    }
-    
-    // Preencher o formulário
-    document.getElementById('codigo-material').value = material.codigo || '';
-    document.getElementById('nome-material').value = material.nome;
-    document.getElementById('unidade-material').value = material.unidade;
-    document.getElementById('unidade-medida-material').value = material.unidadeMedida;
-    document.getElementById('quantidade-medida-material').value = material.quantidadeMedida;
-    document.getElementById('preco-material').value = material.ultimoPreco;
-    
-    // Quantidade para estoque
-    document.getElementById('quantidade-material').value = 1;
-    
-    // Data de compra
-    const dataCompra = document.getElementById('data-compra-material');
-    if (dataCompra) {
-        const data = new Date(material.ultimaCompra);
-        dataCompra.value = data.toISOString().split('T')[0];
-    }
-    
-    // Modificar o botão de submit
-    const submitBtn = document.querySelector('#form-adicionar-material button[type="submit"]');
-    if (submitBtn) {
-        submitBtn.textContent = 'Atualizar Material';
-        submitBtn.setAttribute('data-edicao', index);
-    }
+   const material = materiais[index];
+   if(!material) return;
+   
+   // Mudar para a aba de adicionar item
+   const tabButton = document.querySelector('[data-tab="adicionar-item"]');
+   if (tabButton) {
+       tabButton.click();
+   }
+   
+   // Preencher o formulário
+   document.getElementById('codigo-material').value = material.codigo || '';
+   document.getElementById('nome-material').value = material.nome;
+   document.getElementById('unidade-material').value = material.unidade;
+   document.getElementById('unidade-medida-material').value = material.unidadeMedida;
+   document.getElementById('quantidade-medida-material').value = material.quantidadeMedida;
+   document.getElementById('preco-material').value = material.ultimoPreco;
+   
+   // Quantidade para estoque
+   document.getElementById('quantidade-material').value = 1;
+   
+   // Data de compra
+   const dataCompra = document.getElementById('data-compra-material');
+   if (dataCompra) {
+       const data = new Date(material.ultimaCompra);
+       dataCompra.value = data.toISOString().split('T')[0];
+   }
+   
+   // Modificar o botão de submit
+   const submitBtn = document.querySelector('#form-adicionar-material button[type="submit"]');
+   if (submitBtn) {
+       submitBtn.textContent = 'Atualizar Material';
+       submitBtn.setAttribute('data-edicao', index);
+   }
 }
 
 // Função para adicionar um material ao estoque
 function adicionarAoEstoque(materialId) {
-    const material = materiais.find(m => m.id === materialId);
-    if (!material) return;
-    
-    // Mudar para a aba de adicionar item
-    const tabButton = document.querySelector('[data-tab="adicionar-item"]');
-    if (tabButton) {
-        tabButton.click();
-    }
-    
-    // Preencher o formulário com os dados do material
-    document.getElementById('codigo-material').value = material.codigo || '';
-    document.getElementById('nome-material').value = material.nome;
-    document.getElementById('quantidade-material').value = 1;
-    document.getElementById('unidade-material').value = material.unidade;
-    document.getElementById('unidade-medida-material').value = material.unidadeMedida;
-    document.getElementById('quantidade-medida-material').value = material.quantidadeMedida;
-    document.getElementById('preco-material').value = material.ultimoPreco;
-    
-    // Data atual para compra
-    const dataCompra = document.getElementById('data-compra-material');
-    if (dataCompra) {
-        const hoje = new Date();
-        dataCompra.value = hoje.toISOString().split('T')[0];
-    }
+   const material = materiais.find(m => m.id === materialId);
+   if (!material) return;
+   
+   // Mudar para a aba de adicionar item
+   const tabButton = document.querySelector('[data-tab="adicionar-item"]');
+   if (tabButton) {
+       tabButton.click();
+   }
+   
+   // Preencher o formulário com os dados do material
+   document.getElementById('codigo-material').value = material.codigo || '';
+   document.getElementById('nome-material').value = material.nome;
+   document.getElementById('quantidade-material').value = 1;
+   document.getElementById('unidade-material').value = material.unidade;
+   document.getElementById('unidade-medida-material').value = material.unidadeMedida;
+   document.getElementById('quantidade-medida-material').value = material.quantidadeMedida;
+   document.getElementById('preco-material').value = material.ultimoPreco;
+   
+   // Data atual para compra
+   const dataCompra = document.getElementById('data-compra-material');
+   if (dataCompra) {
+       const hoje = new Date();
+       dataCompra.value = hoje.toISOString().split('T')[0];
+   }
 }
 
 // Função para carregar o estoque na tabela
 function carregarEstoque() {
-    const tbody = document.getElementById('itens-estoque');
-    if (!tbody) return;
-    
-    tbody.innerHTML = '';
-    
-    if (estoque.length === 0) {
-        const tr = document.createElement('tr');
-        tr.innerHTML = '<td colspan="7" style="text-align: center;">Nenhum item no estoque.</td>';
-        tbody.appendChild(tr);
-        return;
-    }
-    
-    estoque.forEach((item) => {
-        // Calcular a quantidade em unidade de medida (ex: ml restantes)
-        const quantidadeTotalMedida = item.quantidade * (item.quantidadeMedida || 1);
-        // Verificar se é um número fracionário
-        const quantidadeFracionada = item.quantidade % 1 !== 0;
-        
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${item.codigo || 'N/A'}</td>
-            <td>${item.nome}</td>
-            <td>${item.quantidade.toFixed(2)} ${quantidadeFracionada ? `(${Math.floor(item.quantidade)} + ${((item.quantidade % 1) * 100).toFixed(0)}%)` : ''}</td>
-            <td>${item.unidade}</td>
-            <td>${quantidadeTotalMedida.toFixed(0)} ${item.unidadeMedida || 'N/A'}</td>
-            <td>${formatarMoeda(item.preco || 0)}</td>
-            <td>${formatarData(item.dataAdicao)}</td>
-        `;
-        tbody.appendChild(tr);
-    });
+   const tbody = document.getElementById('itens-estoque');
+   if (!tbody) return;
+   
+   tbody.innerHTML = '';
+   
+   if (estoque.length === 0) {
+       const tr = document.createElement('tr');
+       tr.innerHTML = '<td colspan="7" style="text-align: center;">Nenhum item no estoque.</td>';
+       tbody.appendChild(tr);
+       return;
+   }
+   
+   estoque.forEach((item) => {
+       // Calcular a quantidade em unidade de medida (ex: ml restantes)
+       const quantidadeTotalMedida = item.quantidade * (item.quantidadeMedida || 1);
+       // Verificar se é um número fracionário
+       const quantidadeFracionada = item.quantidade % 1 !== 0;
+       
+       const tr = document.createElement('tr');
+       tr.innerHTML = `
+           <td>${item.codigo || 'N/A'}</td>
+           <td>${item.nome}</td>
+           <td>${item.quantidade.toFixed(2)} ${quantidadeFracionada ? `(${Math.floor(item.quantidade)} + ${((item.quantidade % 1) * 100).toFixed(0)}%)` : ''}</td>
+           <td>${item.unidade}</td>
+           <td>${quantidadeTotalMedida.toFixed(0)} ${item.unidadeMedida || 'N/A'}</td>
+           <td>${formatarMoeda(item.preco || 0)}</td>
+           <td>${formatarData(item.dataAdicao)}</td>
+       `;
+       tbody.appendChild(tr);
+   });
 }
 
 // FUNÇÕES PARA SCANNER DE QR CODE/CÓDIGO DE BARRAS
 function iniciarScanner() {
-    const scannerContainer = document.getElementById('scanner-container');
-    if (!scannerContainer) return;
-    
-    scannerContainer.classList.remove('hidden');
-    
-    html5QrCode = new Html5Qrcode("reader");
-    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-    
-    html5QrCode.start(
-        { facingMode: "environment" }, 
-        config, 
-        onScanSuccess, 
-        onScanFailure
-    );
+   const scannerContainer = document.getElementById('scanner-container');
+   if (!scannerContainer) return;
+   
+   scannerContainer.classList.remove('hidden');
+   
+   html5QrCode = new Html5Qrcode("reader");
+   const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+   
+   html5QrCode.start(
+       { facingMode: "environment" }, 
+       config, 
+       onScanSuccess, 
+       onScanFailure
+   );
 }
 
 function pararScanner() {
-    if (html5QrCode && html5QrCode.isScanning) {
-        html5QrCode.stop().then(() => {
-            console.log('Scanner parado.');
-            document.getElementById('scanner-container').classList.add('hidden');
-        }).catch(err => {
-            console.error('Erro ao parar o scanner:', err);
-        });
-    }
+   if (html5QrCode && html5QrCode.isScanning) {
+       html5QrCode.stop().then(() => {
+           console.log('Scanner parado.');
+           document.getElementById('scanner-container').classList.add('hidden');
+       }).catch(err => {
+           console.error('Erro ao parar o scanner:', err);
+       });
+   }
 }
 
 function onScanSuccess(decodedText, decodedResult) {
-    console.log(`Código escaneado: ${decodedText}`);
-    
-    // Preencher o campo de código
-    document.getElementById('codigo-material').value = decodedText;
-    
-    // Mostrar resultado
-    document.getElementById('scanner-result').innerHTML = `
-        <div class="notification notification-success">
-            Código detectado: ${decodedText}
-        </div>
-    `;
-    
-    // Parar o scanner
-    pararScanner();
-    
-    // Buscar informações do produto
-    buscarInformacoesProduto(decodedText);
+   console.log(`Código escaneado: ${decodedText}`);
+   
+   // Preencher o campo de código
+   document.getElementById('codigo-material').value = decodedText;
+   
+   // Mostrar resultado
+   document.getElementById('scanner-result').innerHTML = `
+       <div class="notification notification-success">
+           Código detectado: ${decodedText}
+       </div>
+   `;
+   
+   // Parar o scanner
+   pararScanner();
+   
+   // Buscar informações do produto
+   buscarInformacoesProduto(decodedText);
 }
 
 function onScanFailure(error) {
-    // Silenciar erro para não encher o console
-    // console.warn(`Erro ao escanear: ${error}`);
+   // Silenciar erro para não encher o console
+   // console.warn(`Erro ao escanear: ${error}`);
 }
 
 // Função para buscar informações do produto - MODIFICADA
 function buscarInformacoesProduto(codigo) {
-    // Verificar se o código já existe no catálogo
-    const materialExistente = encontrarMaterialPorCodigo(codigo);
-    
-    if (materialExistente) {
-        // Preencher formulário com dados existentes
-        document.getElementById('nome-material').value = materialExistente.nome;
-        document.getElementById('unidade-material').value = materialExistente.unidade;
-        document.getElementById('unidade-medida-material').value = materialExistente.unidadeMedida;
-        document.getElementById('quantidade-medida-material').value = materialExistente.quantidadeMedida;
-        document.getElementById('preco-material').value = materialExistente.ultimoPreco;
-        
-        mostrarNotificacao('notification-materiais', 'Produto encontrado no catálogo!', 'success');
-    } else {
-        // Mostrar mensagem
-        mostrarNotificacao('notification-materiais', 'Produto não encontrado no catálogo. Preencha os detalhes manualmente.', 'info');
-    }
+   // Verificar se o código já existe no catálogo
+   const materialExistente = encontrarMaterialPorCodigo(codigo);
+   
+   if (materialExistente) {
+       // Preencher formulário com dados existentes
+       document.getElementById('nome-material').value = materialExistente.nome;
+       document.getElementById('unidade-material').value = materialExistente.unidade;
+       document.getElementById('unidade-medida-material').value = materialExistente.unidadeMedida;
+       document.getElementById('quantidade-medida-material').value = materialExistente.quantidadeMedida;
+       document.getElementById('preco-material').value = materialExistente.ultimoPreco;
+       
+       mostrarNotificacao('notification-materiais', 'Produto encontrado no catálogo!', 'success');
+   } else {
+       // Mostrar mensagem
+       mostrarNotificacao('notification-materiais', 'Produto não encontrado no catálogo. Preencha os detalhes manualmente.', 'info');
+   }
 }
 
 // Função para atualizar data/hora atual
 function atualizarDataHora() {
-    const elemento = document.getElementById('date-time');
-    if (!elemento) return;
-    
-    const agora = new Date();
-    const dataFormatada = agora.toLocaleDateString('pt-BR');
-    const horaFormatada = agora.toLocaleTimeString('pt-BR');
-    elemento.textContent = `${dataFormatada} ${horaFormatada}`;
+   const elemento = document.getElementById('date-time');
+   if (!elemento) return;
+   
+   const agora = new Date();
+   const dataFormatada = agora.toLocaleDateString('pt-BR');
+   const horaFormatada = agora.toLocaleTimeString('pt-BR');
+   elemento.textContent = `${dataFormatada} ${horaFormatada}`;
 }
 
 // Função para iniciar sincronização
-function iniciarSincronizacao() {
-    if (!currentUser) return;
-    
-    const userId = currentUser.uid;
-    
-    // Mostrar modal de sincronização
-    toggleModal(true, "Verificando dados...", "Buscando informações na nuvem.");
-    
-    // Primeiro, verificar se existem dados na nuvem
-    database.ref('usuarios/' + userId).once('value').then((snapshot) => {
-        const dados = snapshot.val();
-        
-        if (dados) {
-            // Há dados na nuvem, verificar se são mais recentes
-            const ultimaAtualizacaoLocal = localStorage.getItem('ultimaAtualizacao');
-            
-            if (!ultimaAtualizacaoLocal || new Date(dados.ultimaAtualizacao) > new Date(ultimaAtualizacaoLocal)) {
-                console.log('Sincronizando dados da nuvem...');
-                
-                // Atualizar dados locais
-                estoque = dados.estoque || [];
-                materiais = dados.materiais || [];
-                receitas = dados.receitas || [];
-                vendas = dados.vendas || [];
-                
-                // Salvar no localStorage sem acionar nova sincronização
-                localStorage.setItem('estoque', JSON.stringify(estoque));
-                localStorage.setItem('materiais', JSON.stringify(materiais));
-                localStorage.setItem('receitas', JSON.stringify(receitas));
-                localStorage.setItem('vendas', JSON.stringify(vendas));
-                localStorage.setItem('ultimaAtualizacao', dados.ultimaAtualizacao);
-                
-                mostrarNotificacao('notification-estoque', 'Dados carregados da nuvem!', 'success');
-            } else {
-                // Dados locais são mais recentes, enviar para nuvem
-                sincronizarComNuvem();
-            }
-        } else {
-            // Não há dados na nuvem, enviar dados locais
-            sincronizarComNuvem();
-        }
-        
-        toggleModal(false);
-        
-        // Recarregar interfaces
-        carregarEstoque();
-        carregarMateriais();
-        carregarReceitas();
-        carregarVendas();
-        
-        // Configurar listener para atualizações futuras (de outros dispositivos)
-        database.ref('usuarios/' + userId).on('value', (snapshot) => {
-            const dadosNovos = snapshot.val();
-            if (dadosNovos && dadosNovos.ultimaAtualizacao) {
-                const ultimaAtualizacaoLocal = localStorage.getItem('ultimaAtualizacao');
-                
-                // Só atualizar se os dados da nuvem forem mais recentes e não forem os que acabamos de enviar
-                if (ultimaAtualizacaoLocal && 
-                    new Date(dadosNovos.ultimaAtualizacao) > new Date(ultimaAtualizacaoLocal) && 
-                    dadosNovos.ultimaAtualizacao !== new Date(ultimaAtualizacaoLocal).toISOString()) {
-                    
-                    console.log('Recebendo atualização da nuvem...');
-                    
-                    // Atualizar dados locais
-                    estoque = dadosNovos.estoque || [];
-                    materiais = dadosNovos.materiais || [];
-                    receitas = dadosNovos.receitas || [];
-                    vendas = dadosNovos.vendas || [];
-                    
-                    // Salvar no localStorage sem acionar nova sincronização
-                    localStorage.setItem('estoque', JSON.stringify(estoque));
-                    localStorage.setItem('materiais', JSON.stringify(materiais));
-                    localStorage.setItem('receitas', JSON.stringify(receitas));
-                    localStorage.setItem('vendas', JSON.stringify(vendas));
-                    localStorage.setItem('ultimaAtualizacao', dadosNovos.ultimaAtualizacao);
-                    
-                    // Recarregar interfaces
-                    carregarEstoque();
-                    carregarMateriais();
-                    carregarReceitas();
-                    carregarVendas();
-                    
-                    mostrarNotificacao('notification-estoque', 'Dados atualizados da nuvem!', 'info');
-                }
-            }
-        });
-    }).catch(error => {
-        toggleModal(false);
-        console.error('Erro ao verificar dados na nuvem:', error);
-        mostrarNotificacao('notification-estoque', 'Erro ao verificar dados na nuvem', 'error');
-    });
+function iniciarSincronizacao(skipSync = false) {
+   if (!currentUser) return Promise.reject('Usuário não autenticado');
+   
+   const userId = currentUser.uid;
+   
+   toggleModal(true, "Verificando dados...", "Buscando informações na nuvem.");
+   
+   return database.ref('usuarios/' + userId).once('value').then((snapshot) => {
+       const dados = snapshot.val();
+       
+       if (dados) {
+           console.log('Dados encontrados na nuvem:', dados);
+           
+           // Verificar se tem dados válidos
+           if (dados.estoque || dados.materiais || dados.receitas || dados.vendas) {
+               // Atualizar dados locais com dados da nuvem
+               estoque = dados.estoque || [];
+               materiais = dados.materiais || [];
+               receitas = dados.receitas || [];
+               vendas = dados.vendas || [];
+               
+               // Salvar no localStorage sem acionar sincronização
+               localStorage.setItem('estoque', JSON.stringify(estoque));
+               localStorage.setItem('materiais', JSON.stringify(materiais));
+               localStorage.setItem('receitas', JSON.stringify(receitas));
+               localStorage.setItem('vendas', JSON.stringify(vendas));
+               localStorage.setItem('ultimaAtualizacao', dados.ultimaAtualizacao);
+               
+               mostrarNotificacao('notification-estoque', 'Dados carregados da nuvem!', 'success');
+           } else if (!skipSync) {
+               // Dados vazios na nuvem, mas temos dados locais para enviar
+               if (estoque.length > 0 || materiais.length > 0 || receitas.length > 0 || vendas.length > 0) {
+                   sincronizarComNuvem();
+               }
+           }
+       } else if (!skipSync) {
+           // Não há dados na nuvem, talvez temos dados locais para enviar
+           if (estoque.length > 0 || materiais.length > 0 || receitas.length > 0 || vendas.length > 0) {
+               sincronizarComNuvem();
+           }
+       }
+       
+       toggleModal(false);
+       
+       // Recarregar interfaces
+       carregarEstoque();
+       carregarMateriais();
+       carregarReceitas();
+       carregarVendas();
+       
+       // Configurar listener para atualizações futuras (de outros dispositivos)
+       database.ref('usuarios/' + userId).on('value', (snapshot) => {
+           const dadosNovos = snapshot.val();
+           if (dadosNovos && dadosNovos.ultimaAtualizacao) {
+               const ultimaAtualizacaoLocal = localStorage.getItem('ultimaAtualizacao');
+               
+               // Só atualizar se os dados da nuvem forem mais recentes e não forem os que acabamos de enviar
+               if (ultimaAtualizacaoLocal && 
+                   new Date(dadosNovos.ultimaAtualizacao) > new Date(ultimaAtualizacaoLocal) && 
+                   dadosNovos.ultimaAtualizacao !== new Date(ultimaAtualizacaoLocal).toISOString()) {
+                   
+                   console.log('Recebendo atualização da nuvem...');
+                   
+                   // Atualizar dados locais
+                   estoque = dadosNovos.estoque || [];
+                   materiais = dadosNovos.materiais || [];
+                   receitas = dadosNovos.receitas || [];
+                   vendas = dadosNovos.vendas || [];
+                   
+                   // Salvar no localStorage sem acionar nova sincronização
+                   localStorage.setItem('estoque', JSON.stringify(estoque));
+                   localStorage.setItem('materiais', JSON.stringify(materiais));
+                   localStorage.setItem('receitas', JSON.stringify(receitas));
+                   localStorage.setItem('vendas', JSON.stringify(vendas));
+                   localStorage.setItem('ultimaAtualizacao', dadosNovos.ultimaAtualizacao);
+                   
+                   // Recarregar interfaces
+                   carregarEstoque();
+                   carregarMateriais();
+                   carregarReceitas();
+                   carregarVendas();
+                   
+                   mostrarNotificacao('notification-estoque', 'Dados atualizados da nuvem!', 'info');
+               }
+           }
+       });
+       
+       return dados;
+   }).catch(error => {
+       toggleModal(false);
+       console.error('Erro ao verificar dados na nuvem:', error);
+       mostrarNotificacao('notification-estoque', 'Erro ao verificar dados na nuvem', 'error');
+       return null;
+   });
 }
 
 // Funções de Autenticação e Login
 function mostrarTelaLogin() {
-    document.getElementById('login-modal').classList.remove('hidden');
+   document.getElementById('login-modal').classList.remove('hidden');
 }
 
 function esconderTelaLogin() {
@@ -1811,6 +1827,7 @@ function fazerLogin() {
     }
     
     toggleModal(true, "Fazendo login...", "Por favor aguarde...");
+    
     firebase.auth().signInWithEmailAndPassword(email, senha)
         .then((userCredential) => {
             // Login bem-sucedido
@@ -1826,8 +1843,8 @@ function fazerLogin() {
             // Esconder a tela de login
             esconderTelaLogin();
             
-            // Verificar se há dados na nuvem
-            iniciarSincronizacao();
+            // Adicionar botão de sincronização
+            adicionarBotaoSincronizacao();
             
             toggleModal(false);
         })
@@ -1862,8 +1879,8 @@ function fazerCadastro() {
             // Esconder a tela de login
             esconderTelaLogin();
             
-            // Salvar dados locais na nuvem
-            sincronizarComNuvem();
+            // Adicionar botão de sincronização
+            adicionarBotaoSincronizacao();
             
             toggleModal(false);
             mostrarNotificacao('notification-estoque', 'Conta criada com sucesso!', 'success');
@@ -1878,16 +1895,19 @@ function fazerCadastro() {
 function adicionarBotaoSincronizacao() {
     const userInfo = document.getElementById('user-info');
     if (userInfo) {
-        const botaoSync = document.createElement('button');
-        botaoSync.id = 'btn-sync';
-        botaoSync.className = 'btn btn-primary';
-        botaoSync.style.marginLeft = '10px';
-        botaoSync.innerHTML = 'Sincronizar';
-        botaoSync.addEventListener('click', function() {
-            sincronizarComNuvem();
-        });
-        
-        userInfo.appendChild(botaoSync);
+        // Verificar se já existe um botão
+        if (!document.getElementById('btn-sync')) {
+            const botaoSync = document.createElement('button');
+            botaoSync.id = 'btn-sync';
+            botaoSync.className = 'btn btn-primary';
+            botaoSync.style.marginLeft = '10px';
+            botaoSync.innerHTML = 'Sincronizar';
+            botaoSync.addEventListener('click', function() {
+                sincronizarComNuvem();
+            });
+            
+            userInfo.appendChild(botaoSync);
+        }
     }
 }
 
@@ -2116,22 +2136,20 @@ document.addEventListener('DOMContentLoaded', function() {
             // Adicionar botão de sincronização
             adicionarBotaoSincronizacao();
             
-            // Carregar dados e iniciar sincronização
-            estoque = JSON.parse(localStorage.getItem('estoque')) || [];
-            materiais = JSON.parse(localStorage.getItem('materiais')) || [];
-            receitas = JSON.parse(localStorage.getItem('receitas')) || [];
-            vendas = JSON.parse(localStorage.getItem('vendas')) || [];
+            // IMPORTANTE: Primeiro iniciar sincronização e só depois carregar dados
+            toggleModal(true, "Carregando...", "Verificando se há dados salvos na nuvem.");
             
-            inicializarDados();
-            iniciarSincronizacao();
-            
-            // Configurar eventos
-            setupEventListeners();
-            setupAdditionalEvents();
-            
-            // Iniciar relógio
-            atualizarDataHora();
-            setInterval(atualizarDataHora, 1000);
+            iniciarSincronizacao().then(() => {
+                toggleModal(false);
+                
+                // Iniciar relógio
+                atualizarDataHora();
+                setInterval(atualizarDataHora, 1000);
+                
+                // Configurar eventos
+                setupEventListeners();
+                setupAdditionalEvents();
+            });
         } else {
             // Usuário não está logado, mostrar tela de login
             mostrarTelaLogin();
