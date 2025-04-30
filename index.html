@@ -1127,7 +1127,6 @@ let materiais = JSON.parse(localStorage.getItem('materiais')) || [];
 let receitas = JSON.parse(localStorage.getItem('receitas')) || [];
 let vendas = JSON.parse(localStorage.getItem('vendas')) || [];
 let html5QrCode;
-let sincronizacaoAtiva = false;
 
 // Função para atualizar o localStorage
 function atualizarLocalStorage() {
@@ -1137,22 +1136,37 @@ function atualizarLocalStorage() {
     localStorage.setItem('vendas', JSON.stringify(vendas));
     localStorage.setItem('ultimaAtualizacao', new Date().toISOString());
     
-    // Sincronizar com nuvem
-    sincronizarComNuvem();
+    // Sincronizar com nuvem se o usuário estiver logado
+    if (currentUser) {
+        sincronizarComNuvem();
+    }
 }
 
 // Função para sincronizar com o Firebase
 function sincronizarComNuvem() {
-    if (currentUser && !sincronizacaoAtiva) {
-        const userId = currentUser.uid;
-        database.ref('usuarios/' + userId).set({
-            estoque: estoque,
-            materiais: materiais,
-            receitas: receitas,
-            vendas: vendas,
-            ultimaAtualizacao: new Date().toISOString()
-        });
-    }
+    if (!currentUser) return Promise.reject('Usuário não autenticado');
+    
+    const userId = currentUser.uid;
+    
+    // Mostrar modal de sincronização
+    toggleModal(true, "Sincronizando dados...", "Enviando informações para a nuvem.");
+    
+    return database.ref('usuarios/' + userId).set({
+        estoque: estoque,
+        materiais: materiais,
+        receitas: receitas,
+        vendas: vendas,
+        ultimaAtualizacao: new Date().toISOString()
+    }).then(() => {
+        toggleModal(false);
+        mostrarNotificacao('notification-estoque', 'Dados sincronizados com a nuvem!', 'success');
+        return true;
+    }).catch(error => {
+        toggleModal(false);
+        mostrarNotificacao('notification-estoque', 'Erro ao sincronizar: ' + error.message, 'error');
+        console.error('Erro na sincronização:', error);
+        return false;
+    });
 }
 
 // Função para mostrar uma notificação
@@ -1684,7 +1698,101 @@ function atualizarDataHora() {
     elemento.textContent = `${dataFormatada} ${horaFormatada}`;
 }
 
-// Funções de Autenticação e Login - NOVA
+// Função para iniciar sincronização
+function iniciarSincronizacao() {
+    if (!currentUser) return;
+    
+    const userId = currentUser.uid;
+    
+    // Mostrar modal de sincronização
+    toggleModal(true, "Verificando dados...", "Buscando informações na nuvem.");
+    
+    // Primeiro, verificar se existem dados na nuvem
+    database.ref('usuarios/' + userId).once('value').then((snapshot) => {
+        const dados = snapshot.val();
+        
+        if (dados) {
+            // Há dados na nuvem, verificar se são mais recentes
+            const ultimaAtualizacaoLocal = localStorage.getItem('ultimaAtualizacao');
+            
+            if (!ultimaAtualizacaoLocal || new Date(dados.ultimaAtualizacao) > new Date(ultimaAtualizacaoLocal)) {
+                console.log('Sincronizando dados da nuvem...');
+                
+                // Atualizar dados locais
+                estoque = dados.estoque || [];
+                materiais = dados.materiais || [];
+                receitas = dados.receitas || [];
+                vendas = dados.vendas || [];
+                
+                // Salvar no localStorage sem acionar nova sincronização
+                localStorage.setItem('estoque', JSON.stringify(estoque));
+                localStorage.setItem('materiais', JSON.stringify(materiais));
+                localStorage.setItem('receitas', JSON.stringify(receitas));
+                localStorage.setItem('vendas', JSON.stringify(vendas));
+                localStorage.setItem('ultimaAtualizacao', dados.ultimaAtualizacao);
+                
+                mostrarNotificacao('notification-estoque', 'Dados carregados da nuvem!', 'success');
+            } else {
+                // Dados locais são mais recentes, enviar para nuvem
+                sincronizarComNuvem();
+            }
+        } else {
+            // Não há dados na nuvem, enviar dados locais
+            sincronizarComNuvem();
+        }
+        
+        toggleModal(false);
+        
+        // Recarregar interfaces
+        carregarEstoque();
+        carregarMateriais();
+        carregarReceitas();
+        carregarVendas();
+        
+        // Configurar listener para atualizações futuras (de outros dispositivos)
+        database.ref('usuarios/' + userId).on('value', (snapshot) => {
+            const dadosNovos = snapshot.val();
+            if (dadosNovos && dadosNovos.ultimaAtualizacao) {
+                const ultimaAtualizacaoLocal = localStorage.getItem('ultimaAtualizacao');
+                
+                // Só atualizar se os dados da nuvem forem mais recentes e não forem os que acabamos de enviar
+                if (ultimaAtualizacaoLocal && 
+                    new Date(dadosNovos.ultimaAtualizacao) > new Date(ultimaAtualizacaoLocal) && 
+                    dadosNovos.ultimaAtualizacao !== new Date(ultimaAtualizacaoLocal).toISOString()) {
+                    
+                    console.log('Recebendo atualização da nuvem...');
+                    
+                    // Atualizar dados locais
+                    estoque = dadosNovos.estoque || [];
+                    materiais = dadosNovos.materiais || [];
+                    receitas = dadosNovos.receitas || [];
+                    vendas = dadosNovos.vendas || [];
+                    
+                    // Salvar no localStorage sem acionar nova sincronização
+                    localStorage.setItem('estoque', JSON.stringify(estoque));
+                    localStorage.setItem('materiais', JSON.stringify(materiais));
+                    localStorage.setItem('receitas', JSON.stringify(receitas));
+                    localStorage.setItem('vendas', JSON.stringify(vendas));
+                    localStorage.setItem('ultimaAtualizacao', dadosNovos.ultimaAtualizacao);
+                    
+                    // Recarregar interfaces
+                    carregarEstoque();
+                    carregarMateriais();
+                    carregarReceitas();
+                    carregarVendas();
+                    
+                    mostrarNotificacao('notification-estoque', 'Dados atualizados da nuvem!', 'info');
+                }
+            }
+        });
+    }).catch(error => {
+        toggleModal(false);
+        console.error('Erro ao verificar dados na nuvem:', error);
+        mostrarNotificacao('notification-estoque', 'Erro ao verificar dados na nuvem', 'error');
+    });
+}
+
+// Funções de Autenticação e Login
 function mostrarTelaLogin() {
     document.getElementById('login-modal').classList.remove('hidden');
 }
@@ -1703,7 +1811,6 @@ function fazerLogin() {
     }
     
     toggleModal(true, "Fazendo login...", "Por favor aguarde...");
-    
     firebase.auth().signInWithEmailAndPassword(email, senha)
         .then((userCredential) => {
             // Login bem-sucedido
@@ -1767,55 +1874,21 @@ function fazerCadastro() {
         });
 }
 
-function iniciarSincronizacao() {
-  if (!currentUser) return;
-  
-  const userId = currentUser.uid;
-  
-  // Primeiro, verificar se existem dados na nuvem
-  database.ref('usuarios/' + userId).once('value').then((snapshot) => {
-    const dados = snapshot.val();
-    
-    if (dados) {
-      // Há dados na nuvem, verificar se são mais recentes
-      const ultimaAtualizacaoLocal = localStorage.getItem('ultimaAtualizacao');
-      
-      if (!ultimaAtualizacaoLocal || new Date(dados.ultimaAtualizacao) > new Date(ultimaAtualizacaoLocal)) {
-        console.log('Sincronizando dados da nuvem...');
+// Adicionar botão de sincronização manual
+function adicionarBotaoSincronizacao() {
+    const userInfo = document.getElementById('user-info');
+    if (userInfo) {
+        const botaoSync = document.createElement('button');
+        botaoSync.id = 'btn-sync';
+        botaoSync.className = 'btn btn-primary';
+        botaoSync.style.marginLeft = '10px';
+        botaoSync.innerHTML = 'Sincronizar';
+        botaoSync.addEventListener('click', function() {
+            sincronizarComNuvem();
+        });
         
-        // Atualizar dados locais
-        estoque = dados.estoque || [];
-        materiais = dados.materiais || [];
-        receitas = dados.receitas || [];
-        vendas = dados.vendas || [];
-        
-        // Salvar no localStorage
-        localStorage.setItem('estoque', JSON.stringify(estoque));
-        localStorage.setItem('materiais', JSON.stringify(materiais));
-        localStorage.setItem('receitas', JSON.stringify(receitas));
-        localStorage.setItem('vendas', JSON.stringify(vendas));
-        localStorage.setItem('ultimaAtualizacao', dados.ultimaAtualizacao);
-      } else {
-        // Dados locais são mais recentes, enviar para nuvem
-        sincronizarComNuvem();
-      }
-    } else {
-      // Não há dados na nuvem, enviar dados locais
-      sincronizarComNuvem();
+        userInfo.appendChild(botaoSync);
     }
-    
-    // Recarregar interfaces
-    carregarEstoque();
-    carregarMateriais();
-    carregarReceitas();
-    carregarVendas();
-    
-    // Configurar listener para atualizações futuras
-    sincronizacaoAtiva = true;
-    database.ref('usuarios/' + userId).on('value', (snapshot) => {
-      // Código existente para atualização contínua...
-    });
-  });
 }
 
 // Configurar eventos
@@ -2021,7 +2094,50 @@ function setupEventListeners() {
         fazerCadastro();
       });
     }
-}  
+}
+
+// Inicialização principal
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM Carregado!');
+    
+    // Verificar autenticação do Firebase
+    firebase.auth().onAuthStateChanged((user) => {
+        if (user) {
+            // Usuário está logado
+            currentUser = user;
+            
+            // Mostrar email do usuário
+            const userInfoEl = document.getElementById('user-info');
+            if (userInfoEl) {
+                userInfoEl.classList.remove('hidden');
+                document.getElementById('user-email').textContent = user.email;
+            }
+            
+            // Adicionar botão de sincronização
+            adicionarBotaoSincronizacao();
+            
+            // Carregar dados e iniciar sincronização
+            estoque = JSON.parse(localStorage.getItem('estoque')) || [];
+            materiais = JSON.parse(localStorage.getItem('materiais')) || [];
+            receitas = JSON.parse(localStorage.getItem('receitas')) || [];
+            vendas = JSON.parse(localStorage.getItem('vendas')) || [];
+            
+            inicializarDados();
+            iniciarSincronizacao();
+            
+            // Configurar eventos
+            setupEventListeners();
+            setupAdditionalEvents();
+            
+            // Iniciar relógio
+            atualizarDataHora();
+            setInterval(atualizarDataHora, 1000);
+        } else {
+            // Usuário não está logado, mostrar tela de login
+            mostrarTelaLogin();
+        }
+    });
+});
 // PARTE 5: JAVASCRIPT (SEGUNDA PARTE - MATERIAIS E RECEITAS)
 
 // FUNÇÕES PARA RECEITAS
