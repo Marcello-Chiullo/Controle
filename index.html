@@ -464,6 +464,63 @@
             border-radius: 5px;
             border: 1px solid #ddd;
         }
+        
+        /* NOVOS ESTILOS ADICIONADOS */
+        .preco-medio-badge {
+            background-color: #e0f7fa;
+            color: #0277bd;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+        
+        .material-detalhes {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .estoque-unificado {
+            background-color: #f0f8ff;
+        }
+        
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+        }
+        
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 200px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        .ingrediente-preco-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 3px;
+            font-size: 12px;
+            color: #666;
+        }
     </style>
 </head>
 <body>
@@ -506,8 +563,7 @@
                             <th>Quantidade</th>
                             <th>Unidade</th>
                             <th>Unidade de Medida</th>
-                            <th>Preço (R$)</th>
-                            <th>Data de Adição</th>
+                            <!-- Removidos colunas de data e preço -->
                         </tr>
                     </thead>
                     <tbody id="itens-estoque">
@@ -543,6 +599,7 @@
                                 <th>Quantidade por Unidade</th>
                                 <th>Data da Compra</th>
                                 <th>Preço (R$)</th>
+                                <th>Preço Médio (R$)</th> <!-- Nova coluna para preço médio -->
                                 <th>Ações</th>
                             </tr>
                         </thead>
@@ -571,6 +628,7 @@
                             <div class="form-group">
                                 <label for="codigo-material">Código do Item:</label>
                                 <input type="text" id="codigo-material" class="form-control" placeholder="Código ou código de barras">
+                                <!-- Campo para pesquisa por código com evento Enter -->
                             </div>
                         </div>
                     </div>
@@ -638,14 +696,19 @@
                             </div>
                         </div>
                         
+                        <!-- Exibir informações de preço médio quando editando um item existente -->
+                        <div id="info-preco-medio" class="hidden" style="margin-bottom: 15px; background-color: #f0f8ff; padding: 10px; border-radius: 5px;">
+                            <div><strong>Preço médio atual:</strong> <span id="valor-preco-medio">R$ 0,00</span></div>
+                            <div><strong>Número de registros:</strong> <span id="num-registros">0</span></div>
+                            <div><small>O novo preço será incluído no cálculo da média após a adição.</small></div>
+                        </div>
+                        
                         <button type="submit" class="btn btn-primary">Adicionar ao Estoque</button>
                     </form>
                 </div>
             </div>
         </div>
-        <!-- PARTE 2: PÁGINA DE RECEITAS -->
-    
-<!-- Página de Receitas -->
+<!-- PARTE 2: PÁGINA DE RECEITAS -->
 <div class="page-content" id="receitas-page">
     <h2>Gestão de Receitas</h2>
     
@@ -792,6 +855,7 @@
                     <div class="recipe-price-item">
                         <div class="recipe-price-label">Custo de Produção</div>
                         <div id="custo-producao-venda" class="recipe-price-value">R$ 0,00</div>
+                        <div class="material-detalhes">(baseado em preço médio)</div>
                     </div>
                     
                     <div class="recipe-price-item">
@@ -880,6 +944,7 @@
                                 <th>Quantidade Necessária</th>
                                 <th>Estoque Atual</th>
                                 <th>Status</th>
+                                <th>Preço Médio (R$)</th> <!-- Nova coluna -->
                             </tr>
                         </thead>
                         <tbody id="ingredientes-venda-selecionada">
@@ -900,6 +965,7 @@
                             <div class="venda-resumo-item">
                                 <div class="venda-resumo-label">Despesa</div>
                                 <div id="resumo-despesa" class="venda-resumo-valor">R$ 0,00</div>
+                                <div class="material-detalhes">(preço médio)</div>
                             </div>
                             <div class="venda-resumo-item">
                                 <div class="venda-resumo-label">Reinvestir</div>
@@ -956,6 +1022,7 @@
         <h3>Editar Venda</h3>
         <form id="form-editar-venda">
             <input type="hidden" id="editar-venda-id">
+            <input type="hidden" id="editar-venda-receita-id">
             
             <div class="form-row">
                 <div class="form-col">
@@ -1024,6 +1091,26 @@
                 </div>
             </div>
             
+            <!-- Tabela de ingredientes na edição -->
+            <div id="editar-tabela-ingredientes-container" class="hidden" style="margin-top: 20px;">
+                <h4>Ingredientes Necessários</h4>
+                <table id="editar-tabela-ingredientes">
+                    <thead>
+                        <tr>
+                            <th>Ingrediente</th>
+                            <th>Quantidade Necessária</th>
+                            <th>Estoque Atual</th>
+                            <th>Status</th>
+                            <th>Preço Médio (R$)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="editar-ingredientes-lista">
+                        <!-- Ingredientes serão adicionados aqui -->
+                    </tbody>
+                </table>
+                <div id="editar-aviso-estoque" class="notification hidden"></div>
+            </div>
+            
             <!-- Adicionado: Resumo financeiro da venda para edição -->
             <div class="venda-resumo-financeiro">
                 <h4>Resumo Financeiro</h4>
@@ -1035,6 +1122,7 @@
                     <div class="venda-resumo-item">
                         <div class="venda-resumo-label">Despesa</div>
                         <div id="editar-resumo-despesa" class="venda-resumo-valor">R$ 0,00</div>
+                        <div class="material-detalhes">(preço médio)</div>
                     </div>
                     <div class="venda-resumo-item">
                         <div class="venda-resumo-label">Reinvestir</div>
@@ -1236,9 +1324,39 @@ function gerarId() {
    return 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 }
 
-// FUNÇÕES PARA ESTOQUE E MATERIAIS
+// FUNÇÕES PARA ESTOQUE E MATERIAIS - MODIFICADAS
 
-// Função para encontrar um material pelo código
+// Função para calcular o preço médio de um material
+function calcularPrecoMedio(material) {
+    if (!material || !material.historicoPrecos || material.historicoPrecos.length === 0) {
+        return 0;
+    }
+    
+    const totalPrecos = material.historicoPrecos.reduce((total, registro) => total + registro.preco, 0);
+    return totalPrecos / material.historicoPrecos.length;
+}
+
+// Função para obter o preço médio de um material pelo código
+function obterPrecoMedioPorCodigo(codigo) {
+    // Encontrar todos os materiais com esse código
+    const materiaisComCodigo = materiais.filter(m => m.codigo === codigo);
+    if (materiaisComCodigo.length === 0) return 0;
+    
+    // Calcular preço médio geral considerando todos os registros de preço
+    let todosPrecos = [];
+    materiaisComCodigo.forEach(material => {
+        if (material.historicoPrecos && material.historicoPrecos.length > 0) {
+            todosPrecos = todosPrecos.concat(material.historicoPrecos);
+        }
+    });
+    
+    if (todosPrecos.length === 0) return 0;
+    
+    const totalPrecos = todosPrecos.reduce((total, registro) => total + registro.preco, 0);
+    return totalPrecos / todosPrecos.length;
+}
+
+// Função para encontrar um material pelo código - MODIFICADA
 function encontrarMaterialPorCodigo(codigo) {
    // Encontra o material mais recente com o código informado
    const materiaisComCodigo = materiais.filter(m => m.codigo === codigo);
@@ -1248,7 +1366,32 @@ function encontrarMaterialPorCodigo(codigo) {
    materiaisComCodigo.sort((a, b) => new Date(b.dataCadastro) - new Date(a.dataCadastro));
    
    // Retorna o material mais recente
-   return materiaisComCodigo[0];
+   const materialMaisRecente = materiaisComCodigo[0];
+   
+   // Calcular e atualizar o preço médio
+   materialMaisRecente.precoMedio = obterPrecoMedioPorCodigo(codigo);
+   
+   return materialMaisRecente;
+}
+
+// Função para encontrar um material pelo nome - NOVA
+function encontrarMaterialPorNome(nome) {
+    // Normalizar o nome para comparação (minúsculas, sem acentos)
+    const nomeLimpo = nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    
+    // Encontrar materiais com nomes similares
+    const materiaisComNome = materiais.filter(m => {
+        const materialNomeLimpo = m.nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        return materialNomeLimpo === nomeLimpo || materialNomeLimpo.includes(nomeLimpo) || nomeLimpo.includes(materialNomeLimpo);
+    });
+    
+    if (materiaisComNome.length === 0) return null;
+    
+    // Ordena por data de cadastro decrescente (mais recente primeiro)
+    materiaisComNome.sort((a, b) => new Date(b.dataCadastro) - new Date(a.dataCadastro));
+    
+    // Retorna o material mais recente
+    return materiaisComNome[0];
 }
 
 // Função para adicionar ou atualizar um material no catálogo - MODIFICADA
@@ -1271,32 +1414,66 @@ function adicionarOuAtualizarMaterial(codigoMaterial, nomeMaterial, unidadeMater
    // MODIFICADO: Criar sempre um novo registro, mas manter referência do material existente
    const materialExistente = encontrarMaterialPorCodigo(codigoMaterial);
    
-   // Criar novo material (sempre, mesmo que exista um com o mesmo código)
+   // Se não encontrou por código, tentar encontrar por nome para manter consistência
+   const materialPorNome = !materialExistente && nomeMaterial ? encontrarMaterialPorNome(nomeMaterial) : null;
+   
+   // Definir código correto caso encontrado pelo nome
+   if (!codigoMaterial && materialPorNome) {
+       codigoMaterial = materialPorNome.codigo;
+   }
+   
+   // Calcular preço médio atualizado
+   let historicoPrecos = [];
+   let precoMedio = precoMaterial;
+   
+   if (materialExistente && materialExistente.historicoPrecos) {
+       historicoPrecos = [...materialExistente.historicoPrecos];
+       // Adicionar novo preço ao histórico
+       historicoPrecos.push({
+           data: dataCompra || new Date().toISOString(),
+           preco: precoMaterial
+       });
+       
+       // Recalcular preço médio
+       precoMedio = historicoPrecos.reduce((total, item) => total + item.preco, 0) / historicoPrecos.length;
+   } else if (materialPorNome && materialPorNome.historicoPrecos) {
+       historicoPrecos = [...materialPorNome.historicoPrecos];
+       // Adicionar novo preço ao histórico
+       historicoPrecos.push({
+           data: dataCompra || new Date().toISOString(),
+           preco: precoMaterial
+       });
+       
+       // Recalcular preço médio
+       precoMedio = historicoPrecos.reduce((total, item) => total + item.preco, 0) / historicoPrecos.length;
+   } else {
+       // Primeiro registro deste material
+       historicoPrecos = [{
+           data: dataCompra || new Date().toISOString(),
+           preco: precoMaterial
+       }];
+   }
+   
+   // Criar novo material
    const novoMaterial = {
        id: gerarId(),
-       codigo: codigoMaterial,
+       codigo: codigoMaterial || gerarId().substring(0, 8), // Gerar código se não fornecido
        nome: nomeMaterial,
        unidade: unidadeMaterial,
        unidadeMedida: unidadeMedidaMaterial,
        quantidadeMedida: quantidadeMedidaMaterial,
        ultimoPreco: precoMaterial,
-       precoMedio: materialExistente ? 
-           ((materialExistente.precoMedio * materialExistente.historicoPrecos.length) + precoMaterial) / 
-           (materialExistente.historicoPrecos.length + 1) : 
-           precoMaterial,
+       precoMedio: precoMedio,
        ultimaCompra: dataCompra || new Date().toISOString(),
        dataCadastro: new Date().toISOString(),
-       historicoPrecos: [{
-           data: dataCompra || new Date().toISOString(),
-           preco: precoMaterial
-       }]
+       historicoPrecos: historicoPrecos
    };
    
    materiais.push(novoMaterial);
    return novoMaterial.id;
 }
 
-// Função para adicionar item ao estoque
+// Função para adicionar item ao estoque - MODIFICADA
 function adicionarItemEstoque(materialId, quantidade, preco = null) {
    const material = materiais.find(m => m.id === materialId);
    if (!material) return false;
@@ -1308,15 +1485,31 @@ function adicionarItemEstoque(materialId, quantidade, preco = null) {
        return false;
    }
    
-   // Verificar se o item já existe no estoque
-   const itemExistente = estoque.find(i => i.materialId === materialId);
+   // MODIFICADO: Verificar se existe um item com o mesmo código ou nome no estoque
+   const itemPorCodigo = estoque.find(i => {
+       const materialItem = materiais.find(m => m.id === i.materialId);
+       return materialItem && materialItem.codigo === material.codigo;
+   });
+   
+   const itemPorNome = estoque.find(i => {
+       const materialItem = materiais.find(m => m.id === i.materialId);
+       return materialItem && materialItem.nome.toLowerCase() === material.nome.toLowerCase();
+   });
+   
+   const itemExistente = itemPorCodigo || itemPorNome;
    
    if (itemExistente) {
-       // Atualizar item existente
+       // Atualizar item existente - somar quantidade
        itemExistente.quantidade += quantidade;
-       if (preco !== null) {
-           itemExistente.preco = parseFloat(preco);
+       
+       // Atualizar com o código do material atual se não tiver
+       if (!itemExistente.codigo && material.codigo) {
+           itemExistente.codigo = material.codigo;
        }
+       
+       // Usar preço médio do material para consistência
+       itemExistente.preco = material.precoMedio;
+       
        return true;
    } else {
        // Criar novo item
@@ -1329,7 +1522,7 @@ function adicionarItemEstoque(materialId, quantidade, preco = null) {
            unidade: material.unidade,
            unidadeMedida: material.unidadeMedida,
            quantidadeMedida: material.quantidadeMedida,
-           preco: preco !== null ? parseFloat(preco) : parseFloat(material.ultimoPreco),
+           preco: material.precoMedio, // Usar preço médio em vez do preço atual
            dataAdicao: new Date().toISOString()
        };
        
@@ -1340,14 +1533,28 @@ function adicionarItemEstoque(materialId, quantidade, preco = null) {
 
 // Função para remover item do estoque - FUNÇÃO MODIFICADA
 function removerItemEstoque(materialId, quantidade, unidadeMedida) {
-   const item = estoque.find(i => i.materialId === materialId);
-   if (!item) return false;
+   // Tenta encontrar o material específico
+   const material = materiais.find(m => m.id === materialId);
+   if (!material) return false;
+   
+   // Procurar por itens no estoque com mesmo código ou nome
+   const itensPossiveis = estoque.filter(i => {
+       const materialItem = materiais.find(m => m.id === i.materialId);
+       return materialItem && 
+              (materialItem.codigo === material.codigo || 
+               materialItem.nome.toLowerCase() === material.nome.toLowerCase());
+   });
+   
+   if (itensPossiveis.length === 0) return false;
    
    // Normalizar unidades para a menor unidade (g ou ml)
    let quantidadeNormalizada = quantidade;
    
    // Se a unidade de medida for passada, converter conforme necessário
    if (unidadeMedida) {
+       // Pegar a unidade do primeiro item encontrado para conversão
+       const item = itensPossiveis[0];
+       
        // Converter KG para g, L para ml
        if (unidadeMedida.toLowerCase() === 'kg' && item.unidadeMedida.toLowerCase() === 'g') {
            quantidadeNormalizada *= 1000;
@@ -1363,76 +1570,175 @@ function removerItemEstoque(materialId, quantidade, unidadeMedida) {
    }
    
    // Converter a quantidade solicitada para unidades do estoque
-   const quantidadeEmUnidades = quantidadeNormalizada / item.quantidadeMedida;
+   let quantidadeRestanteRemover = quantidadeNormalizada;
+   let removidoComSucesso = false;
    
-   // Verificar se a quantidade disponível é suficiente
-   if (item.quantidade < quantidadeEmUnidades) {
-       return false;
+   // Ordenar os itens do mais antigo para o mais recente para consumir primeiro os mais antigos
+   itensPossiveis.sort((a, b) => new Date(a.dataAdicao) - new Date(b.dataAdicao));
+   
+   // Remover de cada item até completar a quantidade necessária
+   for (const item of itensPossiveis) {
+       if (quantidadeRestanteRemover <= 0) break;
+       
+       // Converter para unidades do item atual
+       const quantidadeEmUnidades = quantidadeRestanteRemover / item.quantidadeMedida;
+       
+       if (item.quantidade >= quantidadeEmUnidades) {
+           // Este item tem quantidade suficiente
+           item.quantidade -= quantidadeEmUnidades;
+           quantidadeRestanteRemover = 0;
+           removidoComSucesso = true;
+           break;
+       } else {
+           // Este item não tem quantidade suficiente, remover o que puder
+           quantidadeRestanteRemover -= (item.quantidade * item.quantidadeMedida);
+           item.quantidade = 0;
+           removidoComSucesso = true;
+       }
    }
    
-   // Atualizar a quantidade
-   item.quantidade -= quantidadeEmUnidades;
+   // Remover itens com quantidade zero
+   estoque = estoque.filter(item => item.quantidade > 0);
    
-   // Se a quantidade ficar zero ou negativa, remover o item
-   if (item.quantidade <= 0) {
-       const index = estoque.findIndex(i => i.materialId === materialId);
-       if (index !== -1) {
-           estoque.splice(index, 1);
+   return removidoComSucesso;
+}
+
+// Função para adicionar estoque de volta (quando cancela uma venda) - MODIFICADA
+function adicionarEstoqueDeVolta(materialId, quantidade, unidadeMedida) {
+   // Essa função é o inverso de removerItemEstoque
+   const material = materiais.find(m => m.id === materialId);
+   if (!material) return false;
+   
+   // Verificar se já existe um item deste material no estoque
+   const itensPossiveis = estoque.filter(i => {
+       const materialItem = materiais.find(m => m.id === i.materialId);
+       return materialItem && 
+              (materialItem.codigo === material.codigo || 
+               materialItem.nome.toLowerCase() === material.nome.toLowerCase());
+   });
+   
+   // Normalizar unidades
+   let quantidadeNormalizada = quantidade;
+   
+   if (unidadeMedida && itensPossiveis.length > 0) {
+       const item = itensPossiveis[0];
+       
+       // Converter KG para g, L para ml
+       if (unidadeMedida.toLowerCase() === 'kg' && item.unidadeMedida.toLowerCase() === 'g') {
+           quantidadeNormalizada *= 1000;
+       } else if (unidadeMedida.toLowerCase() === 'l' && item.unidadeMedida.toLowerCase() === 'ml') {
+           quantidadeNormalizada *= 1000;
        }
+       // Converter g para kg, ml para l se necessário
+       else if (unidadeMedida.toLowerCase() === 'g' && item.unidadeMedida.toLowerCase() === 'kg') {
+           quantidadeNormalizada /= 1000;
+       } else if (unidadeMedida.toLowerCase() === 'ml' && item.unidadeMedida.toLowerCase() === 'l') {
+           quantidadeNormalizada /= 1000;
+       }
+   }
+   
+   if (itensPossiveis.length > 0) {
+       // Adicionar ao primeiro item encontrado
+       const itemEstoque = itensPossiveis[0];
+       const quantidadeEmUnidades = quantidadeNormalizada / itemEstoque.quantidadeMedida;
+       itemEstoque.quantidade += quantidadeEmUnidades;
+   } else {
+       // Criar novo item no estoque
+       const novoItem = {
+           id: gerarId(),
+           materialId: materialId,
+           codigo: material.codigo,
+           nome: material.nome,
+           quantidade: quantidade / material.quantidadeMedida, // Converter para unidades
+           unidade: material.unidade,
+           unidadeMedida: material.unidadeMedida,
+           quantidadeMedida: material.quantidadeMedida,
+           preco: material.precoMedio, // Usar preço médio
+           dataAdicao: new Date().toISOString()
+       };
+       
+       estoque.push(novoItem);
    }
    
    return true;
 }
 
-// Função para adicionar estoque de volta (quando cancela uma venda)
-function adicionarEstoqueDeVolta(materialId, quantidade, unidadeMedida) {
-   // Essa função é o inverso de removerItemEstoque
-   const item = estoque.find(i => i.materialId === materialId);
-   const material = materiais.find(m => m.id === materialId);
-   
-   if (!item && !material) return false;
-   
-   // Normalizar unidades
-   let quantidadeNormalizada = quantidade;
-   
-   if (unidadeMedida) {
-       if (item) {
-           // Usar o item atual do estoque
-           if (unidadeMedida.toLowerCase() === 'kg' && item.unidadeMedida.toLowerCase() === 'g') {
-               quantidadeNormalizada *= 1000;
-           } else if (unidadeMedida.toLowerCase() === 'l' && item.unidadeMedida.toLowerCase() === 'ml') {
-               quantidadeNormalizada *= 1000;
-           } else if (unidadeMedida.toLowerCase() === 'g' && item.unidadeMedida.toLowerCase() === 'kg') {
-               quantidadeNormalizada /= 1000;
-           } else if (unidadeMedida.toLowerCase() === 'ml' && item.unidadeMedida.toLowerCase() === 'l') {
-               quantidadeNormalizada /= 1000;
-           }
-           
-           // Converter para unidades
-           const quantidadeEmUnidades = quantidadeNormalizada / item.quantidadeMedida;
-           
-           // Adicionar de volta
-           item.quantidade += quantidadeEmUnidades;
-       } else if (material) {
-           // Criar novo item no estoque se não existir
-           const novoItem = {
-               id: gerarId(),
-               materialId: materialId,
-               codigo: material.codigo,
-               nome: material.nome,
-               quantidade: quantidade / material.quantidadeMedida, // Converter para unidades
-               unidade: material.unidade,
-               unidadeMedida: material.unidadeMedida,
-               quantidadeMedida: material.quantidadeMedida,
-               preco: material.ultimoPreco,
-               dataAdicao: new Date().toISOString()
-           };
-           
-           estoque.push(novoItem);
-       }
-   }
-   
-   return true;
+// Função para unificar itens de estoque - NOVA
+function unificarEstoque() {
+    const estoqueUnificado = [];
+    const itensPorCodigo = {};
+    const itensPorNome = {};
+    
+    // Primeiro agrupamos por código
+    estoque.forEach(item => {
+        const material = materiais.find(m => m.id === item.materialId);
+        if (!material) return; // Ignorar itens sem material associado
+        
+        const codigo = material.codigo;
+        if (codigo) {
+            if (!itensPorCodigo[codigo]) {
+                itensPorCodigo[codigo] = {
+                    id: gerarId(),
+                    materialId: material.id,
+                    codigo: codigo,
+                    nome: material.nome,
+                    quantidade: 0,
+                    unidade: material.unidade,
+                    unidadeMedida: material.unidadeMedida,
+                    quantidadeMedida: material.quantidadeMedida,
+                    preco: material.precoMedio,
+                    dataAdicao: new Date().toISOString()
+                };
+            }
+            
+            // Somar quantidade normalizada
+            itensPorCodigo[codigo].quantidade += item.quantidade;
+        }
+    });
+    
+    // Depois agrupamos os que não tem código por nome
+    estoque.forEach(item => {
+        const material = materiais.find(m => m.id === item.materialId);
+        if (!material || material.codigo) return; // Ignorar itens com código ou sem material
+        
+        const nome = material.nome.toLowerCase();
+        if (!itensPorNome[nome]) {
+            itensPorNome[nome] = {
+                id: gerarId(),
+                materialId: material.id,
+                codigo: "",
+                nome: material.nome,
+                quantidade: 0,
+                unidade: material.unidade,
+                unidadeMedida: material.unidadeMedida,
+                quantidadeMedida: material.quantidadeMedida,
+                preco: material.precoMedio,
+                dataAdicao: new Date().toISOString()
+            };
+        }
+        
+        // Somar quantidade normalizada
+        itensPorNome[nome].quantidade += item.quantidade;
+    });
+    
+    // Combinar os resultados
+    for (const codigo in itensPorCodigo) {
+        estoqueUnificado.push(itensPorCodigo[codigo]);
+    }
+    
+    for (const nome in itensPorNome) {
+        // Verificar se já não foi adicionado por código
+        const jaAdicionado = estoqueUnificado.some(item => 
+            item.nome.toLowerCase() === nome);
+        
+        if (!jaAdicionado) {
+            estoqueUnificado.push(itensPorNome[nome]);
+        }
+    }
+    
+    // Substituir o estoque original pelo unificado
+    estoque = estoqueUnificado;
+    return estoqueUnificado;
 }
 
 // Função para remover um material e todas suas referências
@@ -1441,19 +1747,35 @@ function removerMaterial(id) {
        return;
    }
    
-   // Remover do estoque
-   estoque = estoque.filter(item => item.materialId !== id);
+   // Obter o material para guardar código e nome para referência
+   const material = materiais.find(m => m.id === id);
+   if (!material) return;
+   
+   const codigo = material.codigo;
+   const nome = material.nome;
+   
+   // Remover do estoque todos itens relacionados por código ou nome
+   estoque = estoque.filter(item => {
+       const materialItem = materiais.find(m => m.id === item.materialId);
+       return !(materialItem && 
+               (materialItem.codigo === codigo || 
+                materialItem.nome.toLowerCase() === nome.toLowerCase()));
+   });
    
    // Remover das receitas - remover ingredientes que usam este material
    receitas.forEach(receita => {
-       receita.ingredientes = receita.ingredientes.filter(ing => ing.materialId !== id);
+       receita.ingredientes = receita.ingredientes.filter(ing => {
+           const materialIng = materiais.find(m => m.id === ing.materialId);
+           return !(materialIng && 
+                   (materialIng.codigo === codigo || 
+                    materialIng.nome.toLowerCase() === nome.toLowerCase()));
+       });
    });
    
-   // Remover do cadastro de materiais
-   const index = materiais.findIndex(m => m.id === id);
-   if (index !== -1) {
-       materiais.splice(index, 1);
-   }
+   // Remover do cadastro de materiais - todos com mesmo código ou nome
+   materiais = materiais.filter(m => 
+       !(m.codigo === codigo || m.nome.toLowerCase() === nome.toLowerCase())
+   );
    
    // Atualizar localStorage e recarregar interfaces
    atualizarLocalStorage();
@@ -1473,15 +1795,52 @@ function carregarMateriais() {
    
    if (materiais.length === 0) {
        const tr = document.createElement('tr');
-       tr.innerHTML = '<td colspan="8" style="text-align: center;">Nenhum material cadastrado.</td>';
+       tr.innerHTML = '<td colspan="9" style="text-align: center;">Nenhum material cadastrado.</td>';
        tbody.appendChild(tr);
        return;
    }
    
-   // MODIFICADO: Exibir cada material como uma entrada separada, ordenado por data decrescente
-   const materiaisOrdenados = [...materiais].sort((a, b) => new Date(b.dataCadastro) - new Date(a.dataCadastro));
+   // MODIFICADO: Agrupar materiais por código e nome para a visualização
+   const materiaisAgrupados = {};
    
-   materiaisOrdenados.forEach((material, index) => {
+   materiais.forEach(material => {
+       const chave = material.codigo || ('nome_' + material.nome.toLowerCase());
+       if (!materiaisAgrupados[chave]) {
+           materiaisAgrupados[chave] = {
+               material: material,
+               registros: []
+           };
+       }
+       materiaisAgrupados[chave].registros.push(material);
+   });
+   
+   // Ordenar grupos pelo material mais recente
+   const grupos = Object.values(materiaisAgrupados).sort((a, b) => {
+       // Obter o material mais recente de cada grupo
+       const materialA = a.registros.sort((x, y) => new Date(y.dataCadastro) - new Date(x.dataCadastro))[0];
+       const materialB = b.registros.sort((x, y) => new Date(y.dataCadastro) - new Date(x.dataCadastro))[0];
+       return new Date(materialB.dataCadastro) - new Date(materialA.dataCadastro);
+   });
+   
+   grupos.forEach(grupo => {
+       // Pegar o material mais recente do grupo
+       const material = grupo.registros.sort((a, b) => new Date(b.dataCadastro) - new Date(a.dataCadastro))[0];
+       
+       // Calcular o preço médio do grupo
+       let precoMedio = 0;
+       let todosPrecos = [];
+       grupo.registros.forEach(m => {
+           if (m.historicoPrecos && m.historicoPrecos.length > 0) {
+               todosPrecos = todosPrecos.concat(m.historicoPrecos);
+           }
+       });
+       
+       if (todosPrecos.length > 0) {
+           precoMedio = todosPrecos.reduce((total, item) => total + item.preco, 0) / todosPrecos.length;
+       } else {
+           precoMedio = material.ultimoPreco || 0;
+       }
+       
        const tr = document.createElement('tr');
        tr.innerHTML = `
            <td>${material.codigo || 'N/A'}</td>
@@ -1491,6 +1850,7 @@ function carregarMateriais() {
            <td>${material.quantidadeMedida}</td>
            <td>${formatarData(material.ultimaCompra)}</td>
            <td>${formatarMoeda(material.ultimoPreco)}</td>
+           <td>${formatarMoeda(precoMedio)}</td>
            <td>
                <button class="btn btn-primary btn-editar-material" data-id="${material.id}">Editar</button>
                <button class="btn btn-success btn-adicionar-estoque" data-id="${material.id}">+ Estoque</button>
@@ -1527,7 +1887,7 @@ function carregarMateriais() {
    });
 }
 
-// Função para editar um material
+// Função para editar um material - MODIFICADA
 function editarMaterial(index) {
    const material = materiais[index];
    if(!material) return;
@@ -1556,6 +1916,29 @@ function editarMaterial(index) {
        dataCompra.value = data.toISOString().split('T')[0];
    }
    
+   // Mostrar informações de preço médio
+   const infoPrecoMedio = document.getElementById('info-preco-medio');
+   if (infoPrecoMedio) {
+       // Contar todos os registros de preço para este material (por código)
+       let todosPrecos = [];
+       const materialCodigoIgual = materiais.filter(m => m.codigo === material.codigo);
+       
+       materialCodigoIgual.forEach(m => {
+           if (m.historicoPrecos && m.historicoPrecos.length > 0) {
+               todosPrecos = todosPrecos.concat(m.historicoPrecos);
+           }
+       });
+       
+       if (todosPrecos.length > 0) {
+           const precoMedio = todosPrecos.reduce((total, item) => total + item.preco, 0) / todosPrecos.length;
+           document.getElementById('valor-preco-medio').textContent = formatarMoeda(precoMedio);
+           document.getElementById('num-registros').textContent = todosPrecos.length;
+           infoPrecoMedio.classList.remove('hidden');
+       } else {
+           infoPrecoMedio.classList.add('hidden');
+       }
+   }
+   
    // Modificar o botão de submit
    const submitBtn = document.querySelector('#form-adicionar-material button[type="submit"]');
    if (submitBtn) {
@@ -1564,7 +1947,7 @@ function editarMaterial(index) {
    }
 }
 
-// Função para adicionar um material ao estoque
+// Função para adicionar um material ao estoque - MODIFICADA
 function adicionarAoEstoque(materialId) {
    const material = materiais.find(m => m.id === materialId);
    if (!material) return;
@@ -1584,6 +1967,28 @@ function adicionarAoEstoque(materialId) {
    document.getElementById('quantidade-medida-material').value = material.quantidadeMedida;
    document.getElementById('preco-material').value = material.ultimoPreco;
    
+   // Mostrar informações de preço médio
+   const infoPrecoMedio = document.getElementById('info-preco-medio');
+   if (infoPrecoMedio) {
+       // Calcular preço médio do material
+       const precoMedio = obterPrecoMedioPorCodigo(material.codigo);
+       if (precoMedio > 0) {
+           document.getElementById('valor-preco-medio').textContent = formatarMoeda(precoMedio);
+           
+           // Contar registros
+           let numRegistros = 0;
+           const materiaisComCodigo = materiais.filter(m => m.codigo === material.codigo);
+           materiaisComCodigo.forEach(m => {
+               if (m.historicoPrecos) numRegistros += m.historicoPrecos.length;
+           });
+           
+           document.getElementById('num-registros').textContent = numRegistros;
+           infoPrecoMedio.classList.remove('hidden');
+       } else {
+           infoPrecoMedio.classList.add('hidden');
+       }
+   }
+   
    // Data atual para compra
    const dataCompra = document.getElementById('data-compra-material');
    if (dataCompra) {
@@ -1592,7 +1997,7 @@ function adicionarAoEstoque(materialId) {
    }
 }
 
-// Função para carregar o estoque na tabela
+// Função para carregar o estoque na tabela - MODIFICADA
 function carregarEstoque() {
    const tbody = document.getElementById('itens-estoque');
    if (!tbody) return;
@@ -1601,26 +2006,28 @@ function carregarEstoque() {
    
    if (estoque.length === 0) {
        const tr = document.createElement('tr');
-       tr.innerHTML = '<td colspan="7" style="text-align: center;">Nenhum item no estoque.</td>';
+       tr.innerHTML = '<td colspan="5" style="text-align: center;">Nenhum item no estoque.</td>';
        tbody.appendChild(tr);
        return;
    }
    
-   estoque.forEach((item) => {
+   // Unificar estoque antes de exibir
+   const estoqueUnificado = unificarEstoque();
+   
+   estoqueUnificado.forEach((item) => {
        // Calcular a quantidade em unidade de medida (ex: ml restantes)
        const quantidadeTotalMedida = item.quantidade * (item.quantidadeMedida || 1);
        // Verificar se é um número fracionário
        const quantidadeFracionada = item.quantidade % 1 !== 0;
        
        const tr = document.createElement('tr');
+       tr.className = 'estoque-unificado';
        tr.innerHTML = `
            <td>${item.codigo || 'N/A'}</td>
            <td>${item.nome}</td>
            <td>${item.quantidade.toFixed(2)} ${quantidadeFracionada ? `(${Math.floor(item.quantidade)} + ${((item.quantidade % 1) * 100).toFixed(0)}%)` : ''}</td>
            <td>${item.unidade}</td>
            <td>${quantidadeTotalMedida.toFixed(0)} ${item.unidadeMedida || 'N/A'}</td>
-           <td>${formatarMoeda(item.preco || 0)}</td>
-           <td>${formatarData(item.dataAdicao)}</td>
        `;
        tbody.appendChild(tr);
    });
@@ -1693,8 +2100,53 @@ function buscarInformacoesProduto(codigo) {
        document.getElementById('quantidade-medida-material').value = materialExistente.quantidadeMedida;
        document.getElementById('preco-material').value = materialExistente.ultimoPreco;
        
+       // Mostrar informações de preço médio
+       const infoPrecoMedio = document.getElementById('info-preco-medio');
+       if (infoPrecoMedio) {
+           const precoMedio = obterPrecoMedioPorCodigo(codigo);
+           if (precoMedio > 0) {
+               document.getElementById('valor-preco-medio').textContent = formatarMoeda(precoMedio);
+               
+               // Contar registros
+               let numRegistros = 0;
+               const materiaisComCodigo = materiais.filter(m => m.codigo === codigo);
+               materiaisComCodigo.forEach(m => {
+                   if (m.historicoPrecos) numRegistros += m.historicoPrecos.length;
+               });
+               
+               document.getElementById('num-registros').textContent = numRegistros;
+               infoPrecoMedio.classList.remove('hidden');
+           } else {
+               infoPrecoMedio.classList.add('hidden');
+           }
+       }
+       
        mostrarNotificacao('notification-materiais', 'Produto encontrado no catálogo!', 'success');
    } else {
+       // Verificar se há um produto com nome similar
+       const query = document.getElementById('nome-material').value;
+       if (query && query.length > 2) {
+           const materialPorNome = encontrarMaterialPorNome(query);
+           if (materialPorNome) {
+               // Sugerir usar o material existente com nome similar
+               if (confirm(`Encontramos um material similar: "${materialPorNome.nome}". Deseja usar suas informações?`)) {
+                   document.getElementById('unidade-material').value = materialPorNome.unidade;
+                   document.getElementById('unidade-medida-material').value = materialPorNome.unidadeMedida;
+                   document.getElementById('quantidade-medida-material').value = materialPorNome.quantidadeMedida;
+                   document.getElementById('preco-material').value = materialPorNome.ultimoPreco;
+                   
+                   // Se não tem código, sugerir usar o mesmo código
+                   if (!codigo && materialPorNome.codigo) {
+                       document.getElementById('codigo-material').value = materialPorNome.codigo;
+                   }
+                   
+                   // Mostrar notificação
+                   mostrarNotificacao('notification-materiais', 'Usamos informações de um material similar já cadastrado.', 'info');
+                   return;
+               }
+           }
+       }
+       
        // Mostrar mensagem
        mostrarNotificacao('notification-materiais', 'Produto não encontrado no catálogo. Preencha os detalhes manualmente.', 'info');
    }
@@ -1911,6 +2363,32 @@ function adicionarBotaoSincronizacao() {
     }
 }
 
+// NOVA FUNÇÃO: Tratar eventos de busca pelo código do material
+function adicionarEventoCodigoMaterial() {
+    const codigoInput = document.getElementById('codigo-material');
+    if (!codigoInput) return;
+    
+    codigoInput.addEventListener('keypress', function(e) {
+        // Verificar se a tecla pressionada foi Enter
+        if (e.key === 'Enter') {
+            e.preventDefault(); // Impedir o envio do formulário
+            
+            const codigo = this.value.trim();
+            if (codigo) {
+                buscarInformacoesProduto(codigo);
+            }
+        }
+    });
+    
+    // Adicionar também um evento de perder o foco
+    codigoInput.addEventListener('blur', function() {
+        const codigo = this.value.trim();
+        if (codigo) {
+            buscarInformacoesProduto(codigo);
+        }
+    });
+}
+
 // Configurar eventos
 function setupEventListeners() {
     // Garantir que o modal esteja oculto ao iniciar
@@ -2024,6 +2502,9 @@ function setupEventListeners() {
         btnPararScanner.addEventListener('click', pararScanner);
     }
    
+    // Evento para busca de código do material
+    adicionarEventoCodigoMaterial();
+   
     // Evento para adicionar material/item
     const formAdicionarMaterial = document.getElementById('form-adicionar-material');
     if (formAdicionarMaterial) {
@@ -2074,6 +2555,12 @@ function setupEventListeners() {
            
             mostrarNotificacao('notification-materiais', 'Material adicionado com sucesso!', 'success');
            
+            // Ocultar info de preço médio
+            const infoPrecoMedio = document.getElementById('info-preco-medio');
+            if (infoPrecoMedio) {
+                infoPrecoMedio.classList.add('hidden');
+            }
+           
             // Mudar para a aba de listar materiais
             const tabButton = document.querySelector('[data-tab="listar-materiais"]');
             if (tabButton) {
@@ -2115,71 +2602,68 @@ function setupEventListeners() {
       });
     }
 }
-
-// Inicialização principal
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM Carregado!');
-    
-    // Verificar autenticação do Firebase
-    firebase.auth().onAuthStateChanged((user) => {
-        if (user) {
-            // Usuário está logado
-            currentUser = user;
-            
-            // Mostrar email do usuário
-            const userInfoEl = document.getElementById('user-info');
-            if (userInfoEl) {
-                userInfoEl.classList.remove('hidden');
-                document.getElementById('user-email').textContent = user.email;
-            }
-            
-            // Adicionar botão de sincronização
-            adicionarBotaoSincronizacao();
-            
-            // IMPORTANTE: Primeiro iniciar sincronização e só depois carregar dados
-            toggleModal(true, "Carregando...", "Verificando se há dados salvos na nuvem.");
-            
-            iniciarSincronizacao().then(() => {
-                toggleModal(false);
-                
-                // Iniciar relógio
-                atualizarDataHora();
-                setInterval(atualizarDataHora, 1000);
-                
-                // Configurar eventos
-                setupEventListeners();
-                setupAdditionalEvents();
-            });
-        } else {
-            // Usuário não está logado, mostrar tela de login
-            mostrarTelaLogin();
-        }
-    });
-});
 // PARTE 5: JAVASCRIPT (SEGUNDA PARTE - MATERIAIS E RECEITAS)
 
-// FUNÇÕES PARA RECEITAS
+// FUNÇÕES PARA RECEITAS - MODIFICADAS
 
-// Função para calcular o custo de uma receita
+// Função para calcular o custo de uma receita - MODIFICADA para usar preço médio
 function calcularCustoReceita(receita) {
    let custoTotal = 0;
    
    if (!receita || !receita.ingredientes) return 0;
    
    receita.ingredientes.forEach(ingrediente => {
-       // Encontrar o item do estoque com base no materialId do ingrediente
-       const itemEstoque = estoque.find(item => item.materialId === ingrediente.materialId);
-       if (itemEstoque && itemEstoque.preco) {
-           // Calculamos o custo com base na quantidade da unidade de medida
-           const precoUnitarioMedida = itemEstoque.preco / (itemEstoque.quantidadeMedida || 1);
-           custoTotal += precoUnitarioMedida * ingrediente.quantidade;
+       // Encontrar o material com base no materialId do ingrediente
+       const material = materiais.find(m => m.id === ingrediente.materialId);
+       if (!material) return;
+       
+       // Obter o preço médio para o código ou nome do material
+       let precoMedio = 0;
+       
+       if (material.codigo) {
+           // Primeiro tenta pelo código
+           precoMedio = obterPrecoMedioPorCodigo(material.codigo);
        }
+       
+       if (precoMedio === 0 && material.nome) {
+           // Se não encontrou pelo código ou preço é zero, tenta pelo nome
+           const materiaisMesmoNome = materiais.filter(m => 
+               m.nome.toLowerCase() === material.nome.toLowerCase());
+           
+           if (materiaisMesmoNome.length > 0) {
+               // Calcular preço médio de todos os registros com mesmo nome
+               let todosPrecos = [];
+               materiaisMesmoNome.forEach(m => {
+                   if (m.historicoPrecos && m.historicoPrecos.length > 0) {
+                       todosPrecos = todosPrecos.concat(m.historicoPrecos);
+                   }
+               });
+               
+               if (todosPrecos.length > 0) {
+                   precoMedio = todosPrecos.reduce((total, registro) => total + registro.preco, 0) / todosPrecos.length;
+               } else {
+                   // Se não tem histórico, usar o preço atual do material
+                   precoMedio = material.ultimoPreco || 0;
+               }
+           } else {
+               // Se não encontrou materiais com mesmo nome, usar o preço do material atual
+               precoMedio = material.ultimoPreco || 0;
+           }
+       }
+       
+       // Se ainda não temos preço, usar o último preço do material
+       if (precoMedio === 0) {
+           precoMedio = material.ultimoPreco || 0;
+       }
+       
+       // Calculamos o custo com base na quantidade especificada
+       custoTotal += precoMedio * ingrediente.quantidade / (material.quantidadeMedida || 1);
    });
    
    return custoTotal;
 }
 
-// Função para adicionar campo de ingrediente
+// Função para adicionar campo de ingrediente - MODIFICADA
 function adicionarCampoIngrediente(ingredienteData = null) {
    const container = document.getElementById('lista-ingredientes');
    if (!container) return;
@@ -2231,6 +2715,10 @@ function adicionarCampoIngrediente(ingredienteData = null) {
                </div>
            </div>
        </div>
+       <div class="ingrediente-preco-info">
+           <span>Preço médio: <span class="ingrediente-preco-medio">R$ 0,00</span></span>
+           <span>Custo: <span class="ingrediente-custo">R$ 0,00</span></span>
+       </div>
    `;
    container.appendChild(div);
    
@@ -2239,12 +2727,17 @@ function adicionarCampoIngrediente(ingredienteData = null) {
    const quantidadeInput = div.querySelector('.ingrediente-quantidade');
    const unidadeMedidaSelect = div.querySelector('.ingrediente-unidade-medida');
    const removerBtn = div.querySelector('.remover-ingrediente');
+   const precoMedioSpan = div.querySelector('.ingrediente-preco-medio');
+   const custoSpan = div.querySelector('.ingrediente-custo');
    
    // Preencher com dados se fornecidos
    if (ingredienteData) {
        select.value = ingredienteData.materialId;
        quantidadeInput.value = ingredienteData.quantidade;
        unidadeMedidaSelect.value = ingredienteData.unidadeMedida || 'g';
+       
+       // Atualizar preço médio e custo
+       atualizarPrecoMedioIngrediente(select, quantidadeInput, unidadeMedidaSelect, precoMedioSpan, custoSpan);
    }
    
    // Adicionar eventos
@@ -2256,13 +2749,25 @@ function adicionarCampoIngrediente(ingredienteData = null) {
                unidadeMedidaSelect.value = unidadeMedida;
            }
            
-           // Atualizar cálculos
+           // Atualizar preço médio e custo
+           atualizarPrecoMedioIngrediente(select, quantidadeInput, unidadeMedidaSelect, precoMedioSpan, custoSpan);
+           
+           // Atualizar cálculos da receita
            atualizarCalculosReceita();
        }
    });
    
-   quantidadeInput.addEventListener('input', atualizarCalculosReceita);
-   unidadeMedidaSelect.addEventListener('change', atualizarCalculosReceita);
+   quantidadeInput.addEventListener('input', function() {
+       // Atualizar preço médio e custo
+       atualizarPrecoMedioIngrediente(select, quantidadeInput, unidadeMedidaSelect, precoMedioSpan, custoSpan);
+       atualizarCalculosReceita();
+   });
+   
+   unidadeMedidaSelect.addEventListener('change', function() {
+       // Atualizar preço médio e custo
+       atualizarPrecoMedioIngrediente(select, quantidadeInput, unidadeMedidaSelect, precoMedioSpan, custoSpan);
+       atualizarCalculosReceita();
+   });
    
    removerBtn.addEventListener('click', function() {
        container.removeChild(div);
@@ -2270,39 +2775,152 @@ function adicionarCampoIngrediente(ingredienteData = null) {
    });
 }
 
-// NOVA função para obter opções de ingredientes
-function obterOpcoesIngredientes() {
-    // Agrupar materiais por código
-    const materiaisPorCodigo = {};
-    
-    materiais.forEach(material => {
-        if (!materiaisPorCodigo[material.codigo]) {
-            materiaisPorCodigo[material.codigo] = [];
-        }
-        materiaisPorCodigo[material.codigo].push(material);
-    });
-    
-    // Para cada código, pegar apenas o material mais recente
-    const materiaisUnicos = [];
-    Object.values(materiaisPorCodigo).forEach(grupo => {
-        // Ordenar por data decrescente e pegar o primeiro (mais recente)
-        grupo.sort((a, b) => new Date(b.dataCadastro) - new Date(a.dataCadastro));
-        materiaisUnicos.push(grupo[0]);
-    });
-    
-    // Gerar as opções HTML
-    return materiaisUnicos.map(material => `
-        <option value="${material.id}" 
-            data-unidade="${material.unidade}" 
-            data-preco="${material.ultimoPreco || 0}"
-            data-unidade-medida="${material.unidadeMedida || ''}"
-            data-quantidade-medida="${material.quantidadeMedida || 0}">
-            ${material.nome}
-        </option>
-    `).join('');
+// NOVA função para atualizar o preço médio e custo do ingrediente
+function atualizarPrecoMedioIngrediente(select, quantidadeInput, unidadeMedidaSelect, precoMedioSpan, custoSpan) {
+   const materialId = select.value;
+   if (!materialId) {
+       precoMedioSpan.textContent = 'R$ 0,00';
+       custoSpan.textContent = 'R$ 0,00';
+       return;
+   }
+   
+   const material = materiais.find(m => m.id === materialId);
+   if (!material) {
+       precoMedioSpan.textContent = 'R$ 0,00';
+       custoSpan.textContent = 'R$ 0,00';
+       return;
+   }
+   
+   // Obter preço médio
+   let precoMedio = 0;
+   
+   if (material.codigo) {
+       precoMedio = obterPrecoMedioPorCodigo(material.codigo);
+   }
+   
+   if (precoMedio === 0) {
+       // Tentar pelo nome
+       const materiaisMesmoNome = materiais.filter(m => 
+           m.nome.toLowerCase() === material.nome.toLowerCase());
+       
+       if (materiaisMesmoNome.length > 0) {
+           let todosPrecos = [];
+           materiaisMesmoNome.forEach(m => {
+               if (m.historicoPrecos && m.historicoPrecos.length > 0) {
+                   todosPrecos = todosPrecos.concat(m.historicoPrecos);
+               }
+           });
+           
+           if (todosPrecos.length > 0) {
+               precoMedio = todosPrecos.reduce((total, registro) => total + registro.preco, 0) / todosPrecos.length;
+           }
+       }
+   }
+   
+   // Se ainda não tem preço, usar o último preço do material
+   if (precoMedio === 0) {
+       precoMedio = material.ultimoPreco || 0;
+   }
+   
+   // Calcular o custo baseado na quantidade e unidade
+   const quantidade = parseFloat(quantidadeInput.value) || 0;
+   const unidadeMedida = unidadeMedidaSelect.value;
+   
+   // Normalizar unidades para calcular o custo
+   let quantidadeNormalizada = quantidade;
+   let materialUnidadeMedida = material.unidadeMedida.toLowerCase();
+   
+   // Converter KG para g, L para ml se necessário
+   if (unidadeMedida.toLowerCase() === 'kg' && materialUnidadeMedida === 'g') {
+       quantidadeNormalizada *= 1000;
+   } else if (unidadeMedida.toLowerCase() === 'l' && materialUnidadeMedida === 'ml') {
+       quantidadeNormalizada *= 1000;
+   }
+   // Converter g para kg, ml para l se necessário
+   else if (unidadeMedida.toLowerCase() === 'g' && materialUnidadeMedida === 'kg') {
+       quantidadeNormalizada /= 1000;
+   } else if (unidadeMedida.toLowerCase() === 'ml' && materialUnidadeMedida === 'l') {
+       quantidadeNormalizada /= 1000;
+   }
+   
+   // Calcular o custo em R$ por unidade de medida
+   const precoUnitarioMedida = precoMedio / (material.quantidadeMedida || 1);
+   const custo = precoUnitarioMedida * quantidadeNormalizada;
+   
+   // Atualizar os textos
+   precoMedioSpan.textContent = formatarMoeda(precoMedio);
+   custoSpan.textContent = formatarMoeda(custo);
 }
 
-// Função para atualizar os cálculos de preço da receita
+// Função para obter opções de ingredientes - MODIFICADA para mostrar materiais e estoque
+function obterOpcoesIngredientes() {
+    // Função para simplificar nome de materiais (remover acentos, minúsculas)
+    const simplificarNome = (nome) => {
+        return nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    };
+    
+    // Agrupar materiais por nome simplificado
+    const materiaisPorNome = {};
+    
+    // Primeiro adicionar itens que estão no estoque
+    estoque.forEach(item => {
+        const nomeSimplificado = simplificarNome(item.nome);
+        
+        if (!materiaisPorNome[nomeSimplificado]) {
+            materiaisPorNome[nomeSimplificado] = {
+                id: item.materialId,
+                nome: item.nome,
+                unidade: item.unidade,
+                unidadeMedida: item.unidadeMedida,
+                quantidadeMedida: item.quantidadeMedida,
+                preco: item.preco,
+                estoque: item.quantidade,
+                existe_estoque: true
+            };
+        }
+    });
+    
+    // Adicionar materiais que não estão no estoque
+    materiais.forEach(material => {
+        const nomeSimplificado = simplificarNome(material.nome);
+        
+        if (!materiaisPorNome[nomeSimplificado]) {
+            materiaisPorNome[nomeSimplificado] = {
+                id: material.id,
+                nome: material.nome,
+                unidade: material.unidade,
+                unidadeMedida: material.unidadeMedida,
+                quantidadeMedida: material.quantidadeMedida,
+                preco: material.precoMedio || material.ultimoPreco,
+                estoque: 0,
+                existe_estoque: false
+            };
+        }
+    });
+    
+    // Converter para array e ordenar por nome
+    const materiaisUnicos = Object.values(materiaisPorNome).sort((a, b) => a.nome.localeCompare(b.nome));
+    
+    // Gerar as opções HTML
+    return materiaisUnicos.map(material => {
+        // Calcular o preço médio
+        let precoMedio = material.preco;
+        
+        // Retornar a opção HTML
+        return `
+            <option value="${material.id}" 
+                data-unidade="${material.unidade}" 
+                data-preco="${precoMedio || 0}"
+                data-unidade-medida="${material.unidadeMedida || ''}"
+                data-quantidade-medida="${material.quantidadeMedida || 0}"
+                data-estoque="${material.estoque || 0}">
+                ${material.nome} ${material.existe_estoque ? '(Em estoque)' : ''}
+            </option>
+        `;
+    }).join('');
+}
+
+// Função para atualizar os cálculos de preço da receita - MODIFICADA
 function atualizarCalculosReceita() {
    let custoTotal = 0;
    
@@ -2310,14 +2928,65 @@ function atualizarCalculosReceita() {
    document.querySelectorAll('.ingrediente-item').forEach(item => {
        const select = item.querySelector('.ingrediente-select');
        if (select.value) {
+           const materialId = select.value;
            const quantidade = parseFloat(item.querySelector('.ingrediente-quantidade').value) || 0;
-           const selectedOption = select.options[select.selectedIndex];
-           const preco = parseFloat(selectedOption.getAttribute('data-preco')) || 0;
-           const quantidadeMedida = parseFloat(selectedOption.getAttribute('data-quantidade-medida')) || 1;
+           const unidadeMedida = item.querySelector('.ingrediente-unidade-medida').value;
+           
+           // Encontrar o material
+           const material = materiais.find(m => m.id === materialId);
+           if (!material) return;
+           
+           // Obter o preço médio
+           let precoMedio = 0;
+           
+           if (material.codigo) {
+               precoMedio = obterPrecoMedioPorCodigo(material.codigo);
+           }
+           
+           if (precoMedio === 0) {
+               // Tentar pelo nome
+               const materiaisMesmoNome = materiais.filter(m => 
+                   m.nome.toLowerCase() === material.nome.toLowerCase());
+               
+               if (materiaisMesmoNome.length > 0) {
+                   let todosPrecos = [];
+                   materiaisMesmoNome.forEach(m => {
+                       if (m.historicoPrecos && m.historicoPrecos.length > 0) {
+                           todosPrecos = todosPrecos.concat(m.historicoPrecos);
+                       }
+                   });
+                   
+                   if (todosPrecos.length > 0) {
+                       precoMedio = todosPrecos.reduce((total, registro) => total + registro.preco, 0) / todosPrecos.length;
+                   }
+               }
+           }
+           
+           // Se ainda não tem preço, usar o último preço do material
+           if (precoMedio === 0) {
+               precoMedio = material.ultimoPreco || 0;
+           }
+           
+           // Normalizar unidades para calcular o custo
+           let quantidadeNormalizada = quantidade;
+           let materialUnidadeMedida = material.unidadeMedida.toLowerCase();
+           
+           // Converter KG para g, L para ml se necessário
+           if (unidadeMedida.toLowerCase() === 'kg' && materialUnidadeMedida === 'g') {
+               quantidadeNormalizada *= 1000;
+           } else if (unidadeMedida.toLowerCase() === 'l' && materialUnidadeMedida === 'ml') {
+               quantidadeNormalizada *= 1000;
+           }
+           // Converter g para kg, ml para l se necessário
+           else if (unidadeMedida.toLowerCase() === 'g' && materialUnidadeMedida === 'kg') {
+               quantidadeNormalizada /= 1000;
+           } else if (unidadeMedida.toLowerCase() === 'ml' && materialUnidadeMedida === 'l') {
+               quantidadeNormalizada /= 1000;
+           }
            
            // Calcular custo proporcional
-           const precoUnitarioMedida = preco / quantidadeMedida;
-           custoTotal += precoUnitarioMedida * quantidade;
+           const precoUnitarioMedida = precoMedio / (material.quantidadeMedida || 1);
+           custoTotal += precoUnitarioMedida * quantidadeNormalizada;
        }
    });
    
@@ -2346,7 +3015,7 @@ function atualizarCalculosReceita() {
    }
 }
 
-// Função para editar receita
+// Função para editar receita - MODIFICADA
 function editarReceita(index) {
    const receita = receitas[index];
    if (!receita) return;
@@ -2393,7 +3062,7 @@ function removerReceita(index) {
    }
 }
 
-// Função para carregar receitas
+// Função para carregar receitas - MODIFICADA
 function carregarReceitas() {
    const container = document.getElementById('lista-receitas');
    if (!container) return;
@@ -2418,7 +3087,7 @@ function carregarReceitas() {
    }
    
    receitas.forEach((receita, index) => {
-       // Calcular o custo total da receita
+       // Calcular o custo total da receita usando preço médio
        const custoProducao = calcularCustoReceita(receita);
        const custosVariados = custoProducao * 0.1;
        const precoEstimado = (custoProducao + custosVariados) * 2.5;
@@ -2434,6 +3103,7 @@ function carregarReceitas() {
                <div class="recipe-price-item">
                    <div class="recipe-price-label">Custo de Produção</div>
                    <div class="recipe-price-value">${formatarMoeda(custoProducao)}</div>
+                   <div class="material-detalhes">(preço médio)</div>
                </div>
                
                <div class="recipe-price-item">
@@ -2450,6 +3120,18 @@ function carregarReceitas() {
                    <div class="recipe-price-label">Preço de Venda</div>
                    <div class="recipe-price-value highlight">${formatarMoeda(receita.precoVenda || 0)}</div>
                </div>
+           </div>
+           
+           <div class="recipe-ingredients" style="margin-top: 15px;">
+               <h4>Ingredientes:</h4>
+               <ul>
+                   ${receita.ingredientes.map(ing => {
+                       const material = materiais.find(m => m.id === ing.materialId);
+                       return material ? 
+                           `<li>${ing.quantidade} ${ing.unidadeMedida} de ${material.nome}</li>` : 
+                           '';
+                   }).join('')}
+               </ul>
            </div>
            
            <div style="margin-top: 15px;">
@@ -2526,7 +3208,7 @@ function addRecipeButtonEvents() {
    });
 }
 
-// FUNÇÕES PARA VENDAS
+// FUNÇÕES PARA VENDAS - MODIFICADAS
 
 // Função para carregar detalhes da receita na tela de vendas - MODIFICADA
 function carregarDetalhesReceitaVenda(receitaId) {
@@ -2545,7 +3227,7 @@ function carregarDetalhesReceitaVenda(receitaId) {
    
    tbodyIngredientes.innerHTML = '';
        
-   // Calcular custos da receita
+   // Calcular custos da receita usando preço médio
    const custoProducao = calcularCustoReceita(receita);
    const custosVariados = custoProducao * 0.1;
    
@@ -2564,7 +3246,7 @@ function carregarDetalhesReceitaVenda(receitaId) {
    const valorTotal = (receita.precoVenda * qtd) + frete + decoracao;
    document.getElementById('valor-total-venda').value = valorTotal.toFixed(2);
    
-   // NOVA SEÇÃO: Atualizar o resumo financeiro na tela de registro de venda
+   // Atualizar o resumo financeiro na tela de registro de venda
    atualizarResumoFinanceiroVenda(receita, qtd, custoProducao, custosVariados, frete, decoracao, despesasAdicionais, valorTotal);
    
    // Definir a data atual para o campo de data
@@ -2576,33 +3258,81 @@ function carregarDetalhesReceitaVenda(receitaId) {
    
    let todosProdutosDisponiveis = true;
    
+   // Unificar estoque antes de verificar disponibilidade
+   const estoqueUnificado = unificarEstoque();
+   
    // Listar ingredientes necessários
    receita.ingredientes.forEach(ingrediente => {
        const material = materiais.find(m => m.id === ingrediente.materialId);
-       const itemEstoque = estoque.find(item => item.materialId === ingrediente.materialId);
+       if (!material) return;
        
        const quantidadeNecessaria = ingrediente.quantidade * qtd;
        let statusEstoque = 'Não disponível';
        let disponivel = false;
        
-       if (itemEstoque) {
+       // Encontrar o material apropriado no estoque unificado
+       let materialEstoque = null;
+       
+       // Procurar primeiro por código
+       if (material.codigo) {
+           materialEstoque = estoqueUnificado.find(item => {
+               const itemMaterial = materiais.find(m => m.id === item.materialId);
+               return itemMaterial && itemMaterial.codigo === material.codigo;
+           });
+       }
+       
+       // Se não encontrou por código, tenta por nome
+       if (!materialEstoque) {
+           materialEstoque = estoqueUnificado.find(item => {
+               return item.nome.toLowerCase() === material.nome.toLowerCase();
+           });
+       }
+       
+       // Calcular preço médio do material
+       let precoMedio = 0;
+       if (material.codigo) {
+           precoMedio = obterPrecoMedioPorCodigo(material.codigo);
+       } else {
+           // Calcular pelo nome
+           const materiaisMesmoNome = materiais.filter(m => 
+               m.nome.toLowerCase() === material.nome.toLowerCase());
+           
+           if (materiaisMesmoNome.length > 0) {
+               let todosPrecos = [];
+               materiaisMesmoNome.forEach(m => {
+                   if (m.historicoPrecos && m.historicoPrecos.length > 0) {
+                       todosPrecos = todosPrecos.concat(m.historicoPrecos);
+                   }
+               });
+               
+               if (todosPrecos.length > 0) {
+                   precoMedio = todosPrecos.reduce((total, registro) => total + registro.preco, 0) / todosPrecos.length;
+               } else {
+                   precoMedio = material.ultimoPreco || 0;
+               }
+           } else {
+               precoMedio = material.ultimoPreco || 0;
+           }
+       }
+       
+       if (materialEstoque) {
            // Converter unidades para checagem de disponibilidade
            let quantidadeNormalizada = quantidadeNecessaria;
            
            // Normalizar unidades
-           if (ingrediente.unidadeMedida.toLowerCase() === 'kg' && itemEstoque.unidadeMedida.toLowerCase() === 'g') {
+           if (ingrediente.unidadeMedida.toLowerCase() === 'kg' && materialEstoque.unidadeMedida.toLowerCase() === 'g') {
                quantidadeNormalizada *= 1000;
-           } else if (ingrediente.unidadeMedida.toLowerCase() === 'l' && itemEstoque.unidadeMedida.toLowerCase() === 'ml') {
+           } else if (ingrediente.unidadeMedida.toLowerCase() === 'l' && materialEstoque.unidadeMedida.toLowerCase() === 'ml') {
                quantidadeNormalizada *= 1000;
-           } else if (ingrediente.unidadeMedida.toLowerCase() === 'g' && itemEstoque.unidadeMedida.toLowerCase() === 'kg') {
+           } else if (ingrediente.unidadeMedida.toLowerCase() === 'g' && materialEstoque.unidadeMedida.toLowerCase() === 'kg') {
                quantidadeNormalizada /= 1000;
-           } else if (ingrediente.unidadeMedida.toLowerCase() === 'ml' && itemEstoque.unidadeMedida.toLowerCase() === 'l') {
+           } else if (ingrediente.unidadeMedida.toLowerCase() === 'ml' && materialEstoque.unidadeMedida.toLowerCase() === 'l') {
                quantidadeNormalizada /= 1000;
            }
            
            // Calcular quantidade em unidades
-           const quantidadeEmUnidades = quantidadeNormalizada / itemEstoque.quantidadeMedida;
-           disponivel = itemEstoque.quantidade >= quantidadeEmUnidades;
+           const quantidadeEmUnidades = quantidadeNormalizada / materialEstoque.quantidadeMedida;
+           disponivel = materialEstoque.quantidade >= quantidadeEmUnidades;
            statusEstoque = disponivel ? 'Disponível' : 'Insuficiente';
        }
        
@@ -2614,8 +3344,9 @@ function carregarDetalhesReceitaVenda(receitaId) {
        tr.innerHTML = `
            <td>${material ? material.nome : 'Desconhecido'}</td>
            <td>${quantidadeNecessaria} ${ingrediente.unidadeMedida}</td>
-           <td>${itemEstoque ? itemEstoque.quantidade.toFixed(2) + ' ' + itemEstoque.unidade : 'N/A'}</td>
+           <td>${materialEstoque ? materialEstoque.quantidade.toFixed(2) + ' ' + materialEstoque.unidade : 'N/A'}</td>
            <td style="color: ${disponivel ? 'green' : 'red'}">${statusEstoque}</td>
+           <td>${formatarMoeda(precoMedio)}</td>
        `;
        
        tbodyIngredientes.appendChild(tr);
@@ -2634,7 +3365,7 @@ function carregarDetalhesReceitaVenda(receitaId) {
    }
 }
 
-// NOVA função para atualizar o resumo financeiro na tela de registro de venda
+// Função para atualizar o resumo financeiro na tela de registro de venda - MODIFICADA
 function atualizarResumoFinanceiroVenda(receita, quantidade, custoProducao, custosVariados, frete, decoracao, despesasAdicionais, valorTotal) {
     if (!receita) return;
     
@@ -2668,7 +3399,7 @@ function atualizarResumoFinanceiroVenda(receita, quantidade, custoProducao, cust
         resumoLucro.className = 'venda-resumo-valor lucro-negativo';
     }
 }
-    // PARTE 6: JAVASCRIPT (TERCEIRA PARTE - VENDAS E INICIALIZAÇÃO)
+    // PARTE 6.1: JAVASCRIPT - REGISTRAR VENDA
 
 // Função para registrar uma venda - MODIFICADA
 function registrarVenda(receitaId, quantidade, clienteNome, clienteTelefone, 
@@ -2684,13 +3415,38 @@ function registrarVenda(receitaId, quantidade, clienteNome, clienteTelefone,
   custoDecoracao = parseFloat(custoDecoracao) || 0;
   despesasAdicionais = parseFloat(despesasAdicionais) || 0;
   
+  // Unificar estoque antes de validar disponibilidade
+  unificarEstoque();
+  
   // Verificar disponibilidade de ingredientes
   let todosProdutosDisponiveis = true;
   
   for (const ingrediente of receita.ingredientes) {
-    const itemEstoque = estoque.find(item => item.materialId === ingrediente.materialId);
+    const material = materiais.find(m => m.id === ingrediente.materialId);
+    if (!material) {
+      todosProdutosDisponiveis = false;
+      break;
+    }
     
-    if (!itemEstoque) {
+    // Encontrar o material apropriado no estoque unificado
+    let materialEstoque = null;
+    
+    // Procurar primeiro por código
+    if (material.codigo) {
+      materialEstoque = estoque.find(item => {
+        const itemMaterial = materiais.find(m => m.id === item.materialId);
+        return itemMaterial && itemMaterial.codigo === material.codigo;
+      });
+    }
+    
+    // Se não encontrou por código, tenta por nome
+    if (!materialEstoque) {
+      materialEstoque = estoque.find(item => {
+        return item.nome.toLowerCase() === material.nome.toLowerCase();
+      });
+    }
+    
+    if (!materialEstoque) {
       todosProdutosDisponiveis = false;
       break;
     }
@@ -2700,20 +3456,20 @@ function registrarVenda(receitaId, quantidade, clienteNome, clienteTelefone,
     let quantidadeNormalizada = quantidadeNecessaria;
     
     // Normalizar unidades
-    if (ingrediente.unidadeMedida.toLowerCase() === 'kg' && itemEstoque.unidadeMedida.toLowerCase() === 'g') {
+    if (ingrediente.unidadeMedida.toLowerCase() === 'kg' && materialEstoque.unidadeMedida.toLowerCase() === 'g') {
       quantidadeNormalizada *= 1000;
-    } else if (ingrediente.unidadeMedida.toLowerCase() === 'l' && itemEstoque.unidadeMedida.toLowerCase() === 'ml') {
+    } else if (ingrediente.unidadeMedida.toLowerCase() === 'l' && materialEstoque.unidadeMedida.toLowerCase() === 'ml') {
       quantidadeNormalizada *= 1000;
-    } else if (ingrediente.unidadeMedida.toLowerCase() === 'g' && itemEstoque.unidadeMedida.toLowerCase() === 'kg') {
+    } else if (ingrediente.unidadeMedida.toLowerCase() === 'g' && materialEstoque.unidadeMedida.toLowerCase() === 'kg') {
       quantidadeNormalizada /= 1000;
-    } else if (ingrediente.unidadeMedida.toLowerCase() === 'ml' && itemEstoque.unidadeMedida.toLowerCase() === 'l') {
+    } else if (ingrediente.unidadeMedida.toLowerCase() === 'ml' && materialEstoque.unidadeMedida.toLowerCase() === 'l') {
       quantidadeNormalizada /= 1000;
     }
     
     // Calcular quantidade em unidades
-    const quantidadeEmUnidades = quantidadeNormalizada / itemEstoque.quantidadeMedida;
+    const quantidadeEmUnidades = quantidadeNormalizada / materialEstoque.quantidadeMedida;
     
-    if (itemEstoque.quantidade < quantidadeEmUnidades) {
+    if (materialEstoque.quantidade < quantidadeEmUnidades) {
       todosProdutosDisponiveis = false;
       break;
     }
@@ -2728,8 +3484,8 @@ function registrarVenda(receitaId, quantidade, clienteNome, clienteTelefone,
     removerItemEstoque(ingrediente.materialId, ingrediente.quantidade * quantidade, ingrediente.unidadeMedida);
   }
   
-  // CÁLCULOS FINANCEIROS CORRIGIDOS
-  // 1. Custo Produção e Variados
+  // CÁLCULOS FINANCEIROS USANDO PREÇO MÉDIO
+  // 1. Custo Produção e Variados (usando preço médio)
   const custoProducao = calcularCustoReceita(receita);
   const custosVariados = custoProducao * 0.1;
   
@@ -2749,7 +3505,7 @@ function registrarVenda(receitaId, quantidade, clienteNome, clienteTelefone,
   // 6. Lucro (Valor Total - Despesa - Reinvestir - Despesas Adicionais)
   const lucro = valorTotal - despesa - valorReinvestir - totalDespesasAdicionais;
   
-  // Criar registro de venda
+  // Criar registro de venda com um ID único para evitar duplicação
   const novaVenda = {
     id: gerarId(),
     receitaId: receitaId,
@@ -2777,8 +3533,14 @@ function registrarVenda(receitaId, quantidade, clienteNome, clienteTelefone,
     dataCriacao: new Date().toISOString()
   };
   
-  vendas.push(novaVenda);
-  atualizarLocalStorage();
+  // Verificar se já existe venda com o mesmo ID para evitar duplicação
+  const vendaExistente = vendas.find(v => v.id === novaVenda.id);
+  if (!vendaExistente) {
+    vendas.push(novaVenda);
+    atualizarLocalStorage();
+  } else {
+    console.warn("Tentativa de criar venda duplicada evitada:", novaVenda.id);
+  }
   
   return true;
 }
@@ -2818,10 +3580,35 @@ function editarVenda(vendaId, quantidade, clienteNome, clienteTelefone,
       // Agora removemos a nova quantidade
       let todosProdutosDisponiveis = true;
       
-      // Verificar disponibilidade
+      // Verificar disponibilidade - usando estoque unificado
+      unificarEstoque();
+      
       for (const ingrediente of receita.ingredientes) {
-        const itemEstoque = estoque.find(item => item.materialId === ingrediente.materialId);
-        if (!itemEstoque) {
+        const material = materiais.find(m => m.id === ingrediente.materialId);
+        if (!material) {
+          todosProdutosDisponiveis = false;
+          break;
+        }
+        
+        // Encontrar o material apropriado no estoque unificado
+        let materialEstoque = null;
+        
+        // Procurar primeiro por código
+        if (material.codigo) {
+          materialEstoque = estoque.find(item => {
+            const itemMaterial = materiais.find(m => m.id === item.materialId);
+            return itemMaterial && itemMaterial.codigo === material.codigo;
+          });
+        }
+        
+        // Se não encontrou por código, tenta por nome
+        if (!materialEstoque) {
+          materialEstoque = estoque.find(item => {
+            return item.nome.toLowerCase() === material.nome.toLowerCase();
+          });
+        }
+        
+        if (!materialEstoque) {
           todosProdutosDisponiveis = false;
           break;
         }
@@ -2830,19 +3617,19 @@ function editarVenda(vendaId, quantidade, clienteNome, clienteTelefone,
         let quantidadeNormalizada = quantidadeNecessaria;
         
         // Normalizar unidades
-        if (ingrediente.unidadeMedida.toLowerCase() === 'kg' && itemEstoque.unidadeMedida.toLowerCase() === 'g') {
+        if (ingrediente.unidadeMedida.toLowerCase() === 'kg' && materialEstoque.unidadeMedida.toLowerCase() === 'g') {
           quantidadeNormalizada *= 1000;
-        } else if (ingrediente.unidadeMedida.toLowerCase() === 'l' && itemEstoque.unidadeMedida.toLowerCase() === 'ml') {
+        } else if (ingrediente.unidadeMedida.toLowerCase() === 'l' && materialEstoque.unidadeMedida.toLowerCase() === 'ml') {
           quantidadeNormalizada *= 1000;
-        } else if (ingrediente.unidadeMedida.toLowerCase() === 'g' && itemEstoque.unidadeMedida.toLowerCase() === 'kg') {
+        } else if (ingrediente.unidadeMedida.toLowerCase() === 'g' && materialEstoque.unidadeMedida.toLowerCase() === 'kg') {
           quantidadeNormalizada /= 1000;
-        } else if (ingrediente.unidadeMedida.toLowerCase() === 'ml' && itemEstoque.unidadeMedida.toLowerCase() === 'l') {
+        } else if (ingrediente.unidadeMedida.toLowerCase() === 'ml' && materialEstoque.unidadeMedida.toLowerCase() === 'l') {
           quantidadeNormalizada /= 1000;
         }
         
-        const quantidadeEmUnidades = quantidadeNormalizada / itemEstoque.quantidadeMedida;
+        const quantidadeEmUnidades = quantidadeNormalizada / materialEstoque.quantidadeMedida;
         
-        if (itemEstoque.quantidade < quantidadeEmUnidades) {
+        if (materialEstoque.quantidade < quantidadeEmUnidades) {
           todosProdutosDisponiveis = false;
           break;
         }
@@ -2869,7 +3656,7 @@ function editarVenda(vendaId, quantidade, clienteNome, clienteTelefone,
         );
       }
       
-      // Recalcular custos baseados na nova quantidade
+      // Recalcular custos baseados na nova quantidade usando preço médio
       const custoProducao = calcularCustoReceita(receita);
       const custosVariados = custoProducao * 0.1;
       venda.custoProducao = custoProducao;
@@ -2895,7 +3682,7 @@ function editarVenda(vendaId, quantidade, clienteNome, clienteTelefone,
     venda.data = new Date(dataVenda).toISOString();
   }
   
-  // MODIFICAÇÃO: Atualizar valor total e recalcular lucro corretamente
+  // Atualizar valor total e recalcular lucro corretamente
   venda.valorTotal = valorTotal;
   // Lucro = Valor Total - Despesa - Reinvestir - Despesas Adicionais Total
   venda.lucro = valorTotal - venda.despesa - venda.valorReinvestir - venda.totalDespesasAdicionais;
@@ -2904,7 +3691,7 @@ function editarVenda(vendaId, quantidade, clienteNome, clienteTelefone,
   return true;
 }
 
-// Função para excluir uma venda
+// Função para excluir uma venda - MODIFICADA
 function excluirVenda(vendaId) {
   const index = vendas.findIndex(v => v.id === vendaId);
   if (index === -1) return false;
@@ -2929,6 +3716,7 @@ function excluirVenda(vendaId) {
   
   return true;
 }
+    // PARTE 6.2: JAVASCRIPT - MOSTRAR DETALHES DA VENDA
 
 // Função para mostrar detalhes de uma venda - MODIFICADA
 function mostrarDetalhesVenda(vendaId) {
@@ -2940,12 +3728,11 @@ function mostrarDetalhesVenda(vendaId) {
   
   if (!modal || !content) return;
   
-  // MODIFICAÇÃO: Cálculos financeiros corrigidos
+  // Cálculos financeiros usando preço médio
   const despesa = venda.despesa || (venda.custoProducao + venda.custosVariados);
   const valorReinvestir = despesa;
   
-  // Verificar se despesasAdicionaisComAcrescimo existe
-  // Para compatibilidade com vendas antigas
+  // Verificar se despesasAdicionaisComAcrescimo existe (para compatibilidade com vendas antigas)
   const despesasAdicionaisComAcrescimo = venda.despesasAdicionaisComAcrescimo || 
                                          (venda.despesasAdicionaisOriginal || venda.despesasAdicionais || 0) * 1.1;
   const totalDespesasAdicionais = venda.totalDespesasAdicionais || 
@@ -2968,6 +3755,7 @@ function mostrarDetalhesVenda(vendaId) {
         <div class="recipe-price-item">
           <div class="recipe-price-label">Custo de Produção</div>
           <div class="recipe-price-value">${formatarMoeda(venda.custoProducao)}</div>
+          <div class="material-detalhes">(preço médio)</div>
         </div>
         
         <div class="recipe-price-item">
@@ -3018,6 +3806,7 @@ function mostrarDetalhesVenda(vendaId) {
           <div class="venda-resumo-item">
             <div class="venda-resumo-label">Despesa</div>
             <div class="venda-resumo-valor">${formatarMoeda(despesa)}</div>
+            <div class="material-detalhes">(preço médio)</div>
           </div>
           
           <div class="venda-resumo-item">
@@ -3042,741 +3831,164 @@ function mostrarDetalhesVenda(vendaId) {
   modal.classList.remove('hidden');
 }
 
-// Configurar eventos adicionais para esta parte do código
-function setupAdditionalEvents() {
-  // Evento para adicionar receita
-  const formAdicionarReceita = document.getElementById('form-adicionar-receita');
-  if (formAdicionarReceita) {
-    formAdicionarReceita.addEventListener('submit', function(e) {
-      e.preventDefault();
+// Função para mostrar o formulário de edição de venda - MODIFICADA
+function mostrarFormEditarVenda(vendaId) {
+  const venda = vendas.find(v => v.id === vendaId);
+  if (!venda) return;
+  
+  // Preencher formulário de edição
+  document.getElementById('editar-venda-id').value = venda.id;
+  document.getElementById('editar-venda-receita-id').value = venda.receitaId;
+  document.getElementById('editar-cliente-nome').value = venda.cliente.nome;
+  document.getElementById('editar-cliente-telefone').value = venda.cliente.telefone || '';
+  document.getElementById('editar-cliente-endereco').value = venda.cliente.endereco || '';
+  document.getElementById('editar-observacoes-venda').value = venda.observacoes || '';
+  document.getElementById('editar-custo-frete').value = venda.custoFrete || 0;
+  document.getElementById('editar-custo-decoracao').value = venda.custoDecoracao || 0;
+  document.getElementById('editar-despesas-adicionais').value = venda.despesasAdicionaisOriginal || venda.despesasAdicionais || 0;
+  document.getElementById('editar-quantidade-venda').value = venda.quantidade;
+  document.getElementById('editar-valor-total-venda').value = venda.valorTotal;
+  
+  // Data da venda
+  const dataVendaEl = document.getElementById('editar-data-venda');
+  if (dataVendaEl) {
+    const data = new Date(venda.data);
+    dataVendaEl.value = data.toISOString().split('T')[0];
+  }
+  
+  // Buscar a receita para mostrar ingredientes
+  const receita = receitas.find(r => r.id === venda.receitaId);
+  if (receita) {
+    const ingredientesContainer = document.getElementById('editar-tabela-ingredientes-container');
+    const ingredientesLista = document.getElementById('editar-ingredientes-lista');
+    const avisoEstoque = document.getElementById('editar-aviso-estoque');
+    
+    if (ingredientesContainer && ingredientesLista && avisoEstoque) {
+      ingredientesContainer.classList.remove('hidden');
+      ingredientesLista.innerHTML = '';
       
-      const nome = document.getElementById('nome-receita').value;
-      const descricao = document.getElementById('descricao-receita').value;
-      const precoVenda = parseFloat(document.getElementById('preco-venda').value) || 0;
+      // Unificar estoque para verificar disponibilidade
+      const estoqueUnificado = unificarEstoque();
+      let todosProdutosDisponiveis = true;
       
-      // Validar preço de venda
-      if (isNaN(precoVenda) || precoVenda <= 0) {
-        alert('O preço de venda deve ser um número válido maior que zero.');
-        return;
-      }
-      
-      // Coletar ingredientes
-      const ingredientes = [];
-      document.querySelectorAll('.ingrediente-item').forEach(item => {
-        const select = item.querySelector('.ingrediente-select');
-        if (select.value) {
-          const quantidade = parseFloat(item.querySelector('.ingrediente-quantidade').value);
-          const unidadeMedidaSelect = item.querySelector('.ingrediente-unidade-medida');
-          const material = materiais.find(m => m.id === select.value);
+      // Listar ingredientes
+      receita.ingredientes.forEach(ingrediente => {
+        const material = materiais.find(m => m.id === ingrediente.materialId);
+        if (!material) return;
+        
+        const quantidadeNecessaria = ingrediente.quantidade * venda.quantidade;
+        let statusEstoque = 'Não disponível';
+        let disponivel = false;
+        
+        // Calcular preço médio do material
+        let precoMedio = 0;
+        if (material.codigo) {
+          precoMedio = obterPrecoMedioPorCodigo(material.codigo);
+        } else {
+          // Calcular pelo nome
+          const materiaisMesmoNome = materiais.filter(m => 
+            m.nome.toLowerCase() === material.nome.toLowerCase());
           
-          // Validar quantidade
-          if (isNaN(quantidade) || quantidade <= 0) {
-            alert('A quantidade do ingrediente deve ser um número válido maior que zero.');
-            return;
+          if (materiaisMesmoNome.length > 0) {
+            let todosPrecos = [];
+            materiaisMesmoNome.forEach(m => {
+              if (m.historicoPrecos && m.historicoPrecos.length > 0) {
+                todosPrecos = todosPrecos.concat(m.historicoPrecos);
+              }
+            });
+            
+            if (todosPrecos.length > 0) {
+              precoMedio = todosPrecos.reduce((total, registro) => total + registro.preco, 0) / todosPrecos.length;
+            } else {
+              precoMedio = material.ultimoPreco || 0;
+            }
+          } else {
+            precoMedio = material.ultimoPreco || 0;
           }
-          
-          ingredientes.push({
-            materialId: select.value,
-            nome: material ? material.nome : select.options[select.selectedIndex].text,
-            quantidade: quantidade,
-            unidadeMedida: unidadeMedidaSelect.value
+        }
+        
+        // Encontrar o material no estoque unificado
+        let materialEstoque = null;
+        
+        // Procurar primeiro por código
+        if (material.codigo) {
+          materialEstoque = estoqueUnificado.find(item => {
+            const itemMaterial = materiais.find(m => m.id === item.materialId);
+            return itemMaterial && itemMaterial.codigo === material.codigo;
           });
         }
-      });
-      
-      // Verificar se tem ingredientes
-      if (ingredientes.length === 0) {
-        alert('Adicione pelo menos um ingrediente à receita!');
-        return;
-      }
-      
-      // Verificar se é uma edição
-      const submitBtn = document.querySelector('#form-adicionar-receita button[type="submit"]');
-      const indexEdicao = submitBtn.getAttribute('data-edicao');
-      
-      if (indexEdicao !== null && indexEdicao !== undefined) {
-        // Edição de receita existente
-        receitas[indexEdicao].nome = nome;
-        receitas[indexEdicao].descricao = descricao;
-        receitas[indexEdicao].ingredientes = ingredientes;
-        receitas[indexEdicao].precoVenda = precoVenda;
         
-        // Resetar o botão
-        submitBtn.textContent = 'Salvar Receita';
-        submitBtn.removeAttribute('data-edicao');
-        
-        mostrarNotificacao('notification-estoque', 'Receita atualizada com sucesso!', 'success');
-      } else {
-        // Nova receita
-        const novaReceita = {
-          id: gerarId(),
-          nome: nome,
-          descricao: descricao,
-          ingredientes: ingredientes,
-          precoVenda: precoVenda,
-          dataCriacao: new Date().toISOString()
-        };
-        
-        receitas.push(novaReceita);
-        mostrarNotificacao('notification-estoque', 'Receita adicionada com sucesso!', 'success');
-      }
-      
-      // Atualizar localStorage e interface
-      atualizarLocalStorage();
-      carregarReceitas();
-      
-      // Limpar o formulário
-      this.reset();
-      document.getElementById('lista-ingredientes').innerHTML = '';
-      document.getElementById('custo-producao').textContent = formatarMoeda(0);
-      document.getElementById('custos-variados').textContent = formatarMoeda(0);
-      document.getElementById('preco-estimado').textContent = formatarMoeda(0);
-      
-      // Adicionar um campo vazio de ingrediente
-      adicionarCampoIngrediente();
-      
-      // Mudar para a aba de listar receitas
-      const tabButton = document.querySelector('[data-tab="listar-receitas"]');
-      if (tabButton) {
-        tabButton.click();
-      }
-    });
-  }
-  
-  // Evento para adicionar ingrediente à receita
-  const btnAdicionarIngrediente = document.getElementById('adicionar-ingrediente');
-  if (btnAdicionarIngrediente) {
-    btnAdicionarIngrediente.addEventListener('click', function() {
-      adicionarCampoIngrediente();
-    });
-  }
-  
-  // Evento para selecionar receita para venda
-  const selecionarReceitaVenda = document.getElementById('selecionar-receita-venda');
-  if (selecionarReceitaVenda) {
-    selecionarReceitaVenda.addEventListener('change', function() {
-      const receitaId = this.value;
-      if (receitaId) {
-        // Definir a data atual para o campo de data
-        const dataVendaEl = document.getElementById('data-venda');
-        if (dataVendaEl && !dataVendaEl.value) {
-          const hoje = new Date();
-          dataVendaEl.value = hoje.toISOString().split('T')[0];
+        // Se não encontrou por código, tenta por nome
+        if (!materialEstoque) {
+          materialEstoque = estoqueUnificado.find(item => 
+            item.nome.toLowerCase() === material.nome.toLowerCase());
         }
         
-        carregarDetalhesReceitaVenda(receitaId);
-      } else {
-        document.getElementById('detalhes-receita-venda').classList.add('hidden');
-      }
-    });
-  }
-
-  // Evento para atualizar valor total quando quantidade ou custos adicionais mudam
-  const qtdVenda = document.getElementById('quantidade-venda');
-  const custoFrete = document.getElementById('custo-frete');
-  const custoDecoracao = document.getElementById('custo-decoracao');
-  const despesasAdicionais = document.getElementById('despesas-adicionais');
-  
-  [qtdVenda, custoFrete, custoDecoracao, despesasAdicionais].forEach(input => {
-    if (input) {
-      input.addEventListener('input', atualizarValorTotalVenda);
-    }
-  });
-  
-  // MODIFICADO: Atualização do valor total com resumo financeiro
-  function atualizarValorTotalVenda() {
-    const receitaId = document.getElementById('selecionar-receita-venda').value;
-    if (!receitaId) return;
-    
-    const receita = receitas.find(r => r.id === receitaId);
-    if (!receita) return;
-    
-    const qtd = parseInt(document.getElementById('quantidade-venda').value) || 1;
-    const frete = parseFloat(document.getElementById('custo-frete').value) || 0;
-    const decoracao = parseFloat(document.getElementById('custo-decoracao').value) || 0;
-    const despesasAdicionais = parseFloat(document.getElementById('despesas-adicionais').value) || 0;
-    
-    // Cálculo do valor total - incluindo frete e decoração
-    const valorTotal = (receita.precoVenda * qtd) + frete + decoracao;
-    document.getElementById('valor-total-venda').value = valorTotal.toFixed(2);
-    
-    // Calcular custos da receita
-    const custoProducao = calcularCustoReceita(receita);
-    const custosVariados = custoProducao * 0.1;
-    
-    // Atualizar também o resumo financeiro
-    atualizarResumoFinanceiroVenda(
-      receita, 
-      qtd, 
-      custoProducao, 
-      custosVariados, 
-      frete, 
-      decoracao, 
-      despesasAdicionais, 
-      valorTotal
-    );
-    
-    // Atualizar a lista de ingredientes necessários com a nova quantidade
-    carregarDetalhesReceitaVenda(receitaId);
-  }
-  
-  // Evento para registrar venda
-  const formRegistrarVenda = document.getElementById('form-registrar-venda');
-  if (formRegistrarVenda) {
-    formRegistrarVenda.addEventListener('submit', function(e) {
-      e.preventDefault();
-      
-      const receitaId = document.getElementById('selecionar-receita-venda').value;
-      if (!receitaId) {
-        alert('Selecione uma receita primeiro!');
-        return;
-      }
-      
-      const quantidade = parseInt(document.getElementById('quantidade-venda').value) || 1;
-      
-      // Validar quantidade
-      if (isNaN(quantidade) || quantidade <= 0) {
-        alert('A quantidade deve ser um número válido maior que zero.');
-        return;
-      }
-      
-      const clienteNome = document.getElementById('cliente-nome').value;
-      
-      // Validar nome do cliente
-      if (!clienteNome.trim()) {
-        alert('O nome do cliente é obrigatório.');
-        return;
-      }
-      
-      const clienteTelefone = document.getElementById('cliente-telefone').value;
-      const clienteEndereco = document.getElementById('cliente-endereco').value;
-      const observacoes = document.getElementById('observacoes-venda').value;
-      const custoFrete = parseFloat(document.getElementById('custo-frete').value) || 0;
-      const custoDecoracao = parseFloat(document.getElementById('custo-decoracao').value) || 0;
-      const despesasAdicionais = parseFloat(document.getElementById('despesas-adicionais').value) || 0;
-      
-      // Data da venda
-      let dataVenda = null;
-      const dataVendaEl = document.getElementById('data-venda');
-      if (dataVendaEl && dataVendaEl.value) {
-        dataVenda = new Date(dataVendaEl.value).toISOString();
-      } else {
-        // Se não tem data definida, usar a data atual
-        dataVenda = new Date().toISOString();
-      }
-      
-      // Processar venda
-      toggleModal(true, "Processando venda...", "Aguarde enquanto processamos a venda e atualizamos o estoque.");
-      
-      setTimeout(() => {
-        const resultado = registrarVenda(
-          receitaId, 
-          quantidade, 
-          clienteNome, 
-          clienteTelefone, 
-          clienteEndereco, 
-          custoFrete, 
-          custoDecoracao, 
-          despesasAdicionais,
-          observacoes,
-          dataVenda
-        );
-        
-        toggleModal(false);
-        
-        if (resultado) {
-          mostrarNotificacao('notification-vendas', 'Venda registrada com sucesso!', 'success');
+        if (materialEstoque) {
+          // Converter unidades para checagem de disponibilidade
+          let quantidadeNormalizada = quantidadeNecessaria;
           
-          // Atualizar interfaces
-          carregarEstoque();
-          carregarVendas();
-          
-          // Limpar formulário
-          this.reset();
-          document.getElementById('detalhes-receita-venda').classList.add('hidden');
-          
-          // Mudar para a aba de listar vendas
-          const tabButton = document.querySelector('[data-tab="listar-vendas"]');
-          if (tabButton) {
-            tabButton.click();
+          // Normalizar unidades
+          if (ingrediente.unidadeMedida.toLowerCase() === 'kg' && materialEstoque.unidadeMedida.toLowerCase() === 'g') {
+            quantidadeNormalizada *= 1000;
+          } else if (ingrediente.unidadeMedida.toLowerCase() === 'l' && materialEstoque.unidadeMedida.toLowerCase() === 'ml') {
+            quantidadeNormalizada *= 1000;
+          } else if (ingrediente.unidadeMedida.toLowerCase() === 'g' && materialEstoque.unidadeMedida.toLowerCase() === 'kg') {
+            quantidadeNormalizada /= 1000;
+          } else if (ingrediente.unidadeMedida.toLowerCase() === 'ml' && materialEstoque.unidadeMedida.toLowerCase() === 'l') {
+            quantidadeNormalizada /= 1000;
           }
-        } else {
-          mostrarNotificacao('notification-vendas', 'Erro ao registrar venda. Verifique o estoque de ingredientes.', 'error');
+          
+          // Calcular quantidade em unidades
+          const quantidadeEmUnidades = quantidadeNormalizada / materialEstoque.quantidadeMedida;
+          disponivel = materialEstoque.quantidade >= quantidadeEmUnidades;
+          statusEstoque = disponivel ? 'Disponível' : 'Insuficiente';
         }
-      }, 1000);
-    });
-  }
-  
-  // Eventos para os novos botões de edição e exclusão
-  
-  // Botão de fechar modal de edição
-  const btnFecharEditarVenda = document.getElementById('fechar-editar-venda');
-  if (btnFecharEditarVenda) {
-    btnFecharEditarVenda.addEventListener('click', function() {
-      document.getElementById('editar-venda-modal').classList.add('hidden');
-    });
-  }
-  
-  // Formulário de edição de venda
-  const formEditarVenda = document.getElementById('form-editar-venda');
-  if (formEditarVenda) {
-    formEditarVenda.addEventListener('submit', function(e) {
-      e.preventDefault();
-      
-      const vendaId = document.getElementById('editar-venda-id').value;
-      const quantidade = parseInt(document.getElementById('editar-quantidade-venda').value);
-      const clienteNome = document.getElementById('editar-cliente-nome').value;
-      const clienteTelefone = document.getElementById('editar-cliente-telefone').value;
-      const clienteEndereco = document.getElementById('editar-cliente-endereco').value;
-      const custoFrete = parseFloat(document.getElementById('editar-custo-frete').value);
-      const custoDecoracao = parseFloat(document.getElementById('editar-custo-decoracao').value);
-      const despesasAdicionais = parseFloat(document.getElementById('editar-despesas-adicionais').value);
-      const observacoes = document.getElementById('editar-observacoes-venda').value;
-      const dataVenda = document.getElementById('editar-data-venda').value;
-      const valorTotal = parseFloat(document.getElementById('editar-valor-total-venda').value);
-      
-      // Validar campos obrigatórios
-      if (!clienteNome.trim()) {
-        alert('O nome do cliente é obrigatório.');
-        return;
-      }
-      
-      if (isNaN(quantidade) || quantidade <= 0) {
-        alert('A quantidade deve ser um número válido maior que zero.');
-        return;
-      }
-      
-      if (isNaN(valorTotal) || valorTotal < 0) {
-        alert('O valor total deve ser um número válido.');
-        return;
-      }
-      
-      // Processar a edição
-      toggleModal(true, "Atualizando venda...", "Aguarde enquanto processamos as alterações.");
-      
-      setTimeout(() => {
-        const resultado = editarVenda(
-          vendaId,
-          quantidade,
-          clienteNome,
-          clienteTelefone,
-          clienteEndereco,
-          custoFrete,
-          custoDecoracao,
-          despesasAdicionais,
-          observacoes,
-          dataVenda,
-          valorTotal
-        );
         
-        toggleModal(false);
-        
-        if (resultado) {
-          document.getElementById('editar-venda-modal').classList.add('hidden');
-          mostrarNotificacao('notification-vendas', 'Venda atualizada com sucesso!', 'success');
-          carregarEstoque();
-          carregarVendas();
-        } else {
-          mostrarNotificacao('notification-vendas', 'Erro ao atualizar a venda. Verifique o estoque disponível.', 'error');
+        if (!disponivel) {
+          todosProdutosDisponiveis = false;
         }
-      }, 1000);
-    });
-  }
-  
-  // Eventos para atualizar resumo financeiro ao editar
-  const editarQtdVenda = document.getElementById('editar-quantidade-venda');
-  const editarCustoFrete = document.getElementById('editar-custo-frete');
-  const editarCustoDecoracao = document.getElementById('editar-custo-decoracao');
-  const editarDespesasAdicionais = document.getElementById('editar-despesas-adicionais');
-  const editarValorTotal = document.getElementById('editar-valor-total-venda');
-  
-  [editarQtdVenda, editarCustoFrete, editarCustoDecoracao, editarDespesasAdicionais, editarValorTotal].forEach(input => {
-    if (input) {
-      input.addEventListener('input', atualizarResumoFinanceiroEdicao);
-    }
-  });
-  
-  // NOVA função para atualizar o resumo financeiro na tela de edição
-  function atualizarResumoFinanceiroEdicao() {
-    const vendaId = document.getElementById('editar-venda-id').value;
-    const venda = vendas.find(v => v.id === vendaId);
-    if (!venda) return;
-    
-    const receita = receitas.find(r => r.id === venda.receitaId);
-    if (!receita) return;
-    
-    const quantidade = parseInt(document.getElementById('editar-quantidade-venda').value) || venda.quantidade;
-    const frete = parseFloat(document.getElementById('editar-custo-frete').value) || 0;
-    const decoracao = parseFloat(document.getElementById('editar-custo-decoracao').value) || 0;
-    const despesasAdicionais = parseFloat(document.getElementById('editar-despesas-adicionais').value) || 0;
-    const valorTotal = parseFloat(document.getElementById('editar-valor-total-venda').value) || venda.valorTotal;
-    
-    // Cálculos financeiros
-    let custoProducao = venda.custoProducao;
-    let custosVariados = venda.custosVariados;
-    
-    // Se a quantidade mudou, recalcular os custos
-    if (quantidade !== venda.quantidade) {
-      // Proporcional à quantidade
-      const fatorProporcional = quantidade / venda.quantidade;
-      custoProducao = venda.custoProducao * fatorProporcional;
-      custosVariados = venda.custosVariados * fatorProporcional;
-    }
-    
-    // Despesa (Custo Produção + Custo Variado)
-    const despesa = custoProducao + custosVariados;
-    
-    // Reinvestir (igual à Despesa)
-    const valorReinvestir = despesa;
-    
-    // Despesas Adicionais com acréscimo de 10%
-    const despesasAdicionaisComAcrescimo = despesasAdicionais * 1.1;
-    const totalDespesasAdicionais = despesasAdicionaisComAcrescimo + frete + decoracao;
-    
-    // Lucro (Valor Total - Despesa - Reinvestir - Despesas Adicionais)
-    const lucro = valorTotal - despesa - valorReinvestir - totalDespesasAdicionais;
-    
-    // Atualizar os elementos na interface
-    document.getElementById('editar-resumo-valor-total').textContent = formatarMoeda(valorTotal);
-    document.getElementById('editar-resumo-despesa').textContent = formatarMoeda(despesa);
-    document.getElementById('editar-resumo-reinvestir').textContent = formatarMoeda(valorReinvestir);
-    document.getElementById('editar-resumo-desp-adic').textContent = formatarMoeda(totalDespesasAdicionais);
-    
-    const resumoLucro = document.getElementById('editar-resumo-lucro');
-    resumoLucro.textContent = formatarMoeda(lucro);
-    
-    // Adicionar classe para colorir o lucro
-    if (lucro >= 0) {
-      resumoLucro.className = 'venda-resumo-valor lucro-positivo';
-    } else {
-      resumoLucro.className = 'venda-resumo-valor lucro-negativo';
-    }
-  }
-  
-  // Função para preencher o formulário de edição de venda - MODIFICADA
-  function mostrarFormEditarVenda(vendaId) {
-    const venda = vendas.find(v => v.id === vendaId);
-    if (!venda) return;
-    
-    // Preencher formulário de edição
-    document.getElementById('editar-venda-id').value = venda.id;
-    document.getElementById('editar-cliente-nome').value = venda.cliente.nome;
-    document.getElementById('editar-cliente-telefone').value = venda.cliente.telefone || '';
-    document.getElementById('editar-cliente-endereco').value = venda.cliente.endereco || '';
-    document.getElementById('editar-observacoes-venda').value = venda.observacoes || '';
-    document.getElementById('editar-custo-frete').value = venda.custoFrete || 0;
-    document.getElementById('editar-custo-decoracao').value = venda.custoDecoracao || 0;
-    document.getElementById('editar-despesas-adicionais').value = venda.despesasAdicionaisOriginal || 0;
-    document.getElementById('editar-quantidade-venda').value = venda.quantidade;
-    document.getElementById('editar-valor-total-venda').value = venda.valorTotal;
-    
-    // Data da venda
-    const dataVendaEl = document.getElementById('editar-data-venda');
-    if (dataVendaEl) {
-      const data = new Date(venda.data);
-      dataVendaEl.value = data.toISOString().split('T')[0];
-    }
-    
-    // Atualizar resumo financeiro
-    atualizarResumoFinanceiroEdicao();
-    
-    // Mostrar o modal
-    document.getElementById('editar-venda-modal').classList.remove('hidden');
-  }
-  
-  // Botões para confirmar/cancelar exclusão
-  const btnCancelarExclusao = document.getElementById('cancelar-exclusao');
-  if (btnCancelarExclusao) {
-    btnCancelarExclusao.addEventListener('click', function() {
-      document.getElementById('confirmar-exclusao-modal').classList.add('hidden');
-    });
-  }
-  
-  const btnConfirmarExclusao = document.getElementById('confirmar-exclusao');
-  if (btnConfirmarExclusao) {
-    btnConfirmarExclusao.addEventListener('click', function() {
-      const vendaId = document.getElementById('excluir-venda-id').value;
-      
-      toggleModal(true, "Excluindo venda...", "Aguarde enquanto excluímos a venda e restauramos o estoque.");
-      
-      setTimeout(() => {
-        const resultado = excluirVenda(vendaId);
         
-        toggleModal(false);
-        document.getElementById('confirmar-exclusao-modal').classList.add('hidden');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${material ? material.nome : 'Desconhecido'}</td>
+          <td>${quantidadeNecessaria} ${ingrediente.unidadeMedida}</td>
+          <td>${materialEstoque ? materialEstoque.quantidade.toFixed(2) + ' ' + materialEstoque.unidade : 'N/A'}</td>
+          <td style="color: ${disponivel ? 'green' : 'red'}">${statusEstoque}</td>
+          <td>${formatarMoeda(precoMedio)}</td>
+        `;
         
-        if (resultado) {
-          mostrarNotificacao('notification-vendas', 'Venda excluída com sucesso!', 'success');
-          carregarEstoque();
-          carregarVendas();
-        } else {
-          mostrarNotificacao('notification-vendas', 'Erro ao excluir a venda.', 'error');
-        }
-      }, 1000);
-    });
-  }
-  
-  // Evento para filtrar vendas
-  const btnFiltrarVendas = document.getElementById('btn-filtrar-vendas');
-  if (btnFiltrarVendas) {
-    btnFiltrarVendas.addEventListener('click', filtrarVendas);
-  }
-  
-  const btnLimparFiltros = document.getElementById('btn-limpar-filtros');
-  if (btnLimparFiltros) {
-    btnLimparFiltros.addEventListener('click', function() {
-      document.getElementById('filtro-data-inicio').value = '';
-      document.getElementById('filtro-data-fim').value = '';
-      document.getElementById('filtro-receita').value = '';
-      
-      // Recarregar todas as vendas
-      carregarVendas();
-    });
-  }
-  
-  // MODIFICADO: Função de filtrar vendas com novos cálculos
-  function filtrarVendas() {
-    const dataInicio = document.getElementById('filtro-data-inicio').value;
-    const dataFim = document.getElementById('filtro-data-fim').value;
-    const receitaId = document.getElementById('filtro-receita').value;
-    
-    const vendasFiltradas = vendas.filter(venda => {
-      // Filtrar por data
-      let passaFiltroData = true;
-      if (dataInicio) {
-        const dataVenda = new Date(venda.data);
-        const dataInicioDate = new Date(dataInicio);
-        passaFiltroData = passaFiltroData && dataVenda >= dataInicioDate;
-      }
-      
-      if (dataFim) {
-        const dataVenda = new Date(venda.data);
-        const dataFimDate = new Date(dataFim);
-        // Adicionar 1 dia para incluir o dia final completo
-        dataFimDate.setDate(dataFimDate.getDate() + 1);
-        passaFiltroData = passaFiltroData && dataVenda < dataFimDate;
-      }
-      
-      // Filtrar por receita
-      let passaFiltroReceita = true;
-      if (receitaId) {
-        passaFiltroReceita = venda.receitaId === receitaId;
-      }
-      
-      return passaFiltroData && passaFiltroReceita;
-    });
-    
-    // Renderizar vendas filtradas
-    const container = document.getElementById('lista-vendas');
-    if (!container) return;
-    
-    container.innerHTML = '';
-    
-    if (vendasFiltradas.length === 0) {
-      container.innerHTML = '<p>Nenhuma venda encontrada com os filtros selecionados.</p>';
-      return;
-    }
-    
-    // Ordenar vendas da mais recente para a mais antiga
-    const vendasOrdenadas = [...vendasFiltradas].sort((a, b) => new Date(b.data) - new Date(a.data));
-    
-    vendasOrdenadas.forEach((venda) => {
-      // MODIFICADO: Calcular valores financeiros com nova lógica
-      const despesa = venda.despesa || (venda.custoProducao + venda.custosVariados);
-      const valorReinvestir = despesa;
-      
-      // Compatibilidade com vendas antigas
-      const despesasAdicionaisComAcrescimo = venda.despesasAdicionaisComAcrescimo || 
-                                          ((venda.despesasAdicionaisOriginal || venda.despesasAdicionais || 0) * 1.1);
-      const totalDespesasAdicionais = venda.totalDespesasAdicionais || 
-                                    (despesasAdicionaisComAcrescimo + (venda.custoFrete || 0) + (venda.custoDecoracao || 0));
-      
-      // CORRIGIDO: Recalcular lucro corretamente
-      const lucro = venda.valorTotal - despesa - valorReinvestir - totalDespesasAdicionais;
-      
-      const card = document.createElement('div');
-      card.className = 'sale-card';
-      card.innerHTML = `
-        <div class="sale-header">
-          <div class="sale-title">${venda.receitaNome}</div>
-          <div class="sale-date">${formatarData(venda.data)}</div>
-        </div>
-        <div>Cliente: ${venda.cliente.nome}</div>
-        <div>Quantidade: ${venda.quantidade}</div>
-        <div>Valor Total: ${formatarMoeda(venda.valorTotal)}</div>
-        
-        <div class="venda-resumo-financeiro" style="margin-top: 10px;">
-          <div class="venda-resumo-grid">
-            <div class="venda-resumo-item">
-              <div class="venda-resumo-label">Valor Total</div>
-              <div class="venda-resumo-valor">${formatarMoeda(venda.valorTotal)}</div>
-            </div>
-            <div class="venda-resumo-item">
-              <div class="venda-resumo-label">Despesa</div>
-              <div class="venda-resumo-valor">${formatarMoeda(despesa)}</div>
-            </div>
-            <div class="venda-resumo-item">
-              <div class="venda-resumo-label">Reinvestir</div>
-              <div class="venda-resumo-valor">${formatarMoeda(valorReinvestir)}</div>
-            </div>
-            <div class="venda-resumo-item">
-              <div class="venda-resumo-label">Total Desp. Adic.</div>
-              <div class="venda-resumo-valor">${formatarMoeda(totalDespesasAdicionais)}</div>
-            </div>
-            <div class="venda-resumo-item">
-              <div class="venda-resumo-label">Lucro</div>
-              <div class="venda-resumo-valor ${lucro >= 0 ? 'lucro-positivo' : 'lucro-negativo'}">${formatarMoeda(lucro)}</div>
-            </div>
-          </div>
-        </div>
-        
-        <div style="margin-top: 10px;">
-          <button class="btn btn-secondary btn-detalhes-venda" data-id="${venda.id}">Ver Detalhes</button>
-          <button class="btn btn-primary btn-editar-venda" data-id="${venda.id}">Editar</button>
-          <button class="btn btn-danger btn-excluir-venda" data-id="${venda.id}">Excluir</button>
-        </div>
-      `;
-      container.appendChild(card);
-    });
-    
-    // Adicionar eventos aos botões
-    document.querySelectorAll('.btn-detalhes-venda').forEach(btn => {
-      btn.addEventListener('click', function() {
-        const id = this.getAttribute('data-id');
-        mostrarDetalhesVenda(id);
+        ingredientesLista.appendChild(tr);
       });
-    });
-    
-    document.querySelectorAll('.btn-editar-venda').forEach(btn => {
-      btn.addEventListener('click', function() {
-        const id = this.getAttribute('data-id');
-        mostrarFormEditarVenda(id);
-      });
-    });
-    
-    document.querySelectorAll('.btn-excluir-venda').forEach(btn => {
-      btn.addEventListener('click', function() {
-        const id = this.getAttribute('data-id');
-        confirmarExclusaoVenda(id);
-      });
-    });
+      
+      // Mostrar aviso de estoque
+      if (!todosProdutosDisponiveis) {
+        avisoEstoque.className = 'notification notification-warning';
+        avisoEstoque.textContent = 'Atenção: Alguns ingredientes não estão disponíveis em quantidade suficiente caso precise aumentar a quantidade.';
+        avisoEstoque.classList.remove('hidden');
+      } else {
+        avisoEstoque.className = 'notification notification-success';
+        avisoEstoque.textContent = 'Todos os ingredientes estão disponíveis.';
+        avisoEstoque.classList.remove('hidden');
+      }
+    }
   }
   
-  // Evento para fechar o modal de detalhes de venda
-  const btnFecharDetalhesVenda = document.getElementById('fechar-detalhes-venda');
-  if (btnFecharDetalhesVenda) {
-    btnFecharDetalhesVenda.addEventListener('click', function() {
-      document.getElementById('venda-details-modal').classList.add('hidden');
-    });
-  }
+  // Atualizar resumo financeiro
+  atualizarResumoFinanceiroEdicao();
   
-  // Adicionar um campo de ingrediente inicial na tela de receitas
-  if (document.getElementById('lista-ingredientes')) {
-    adicionarCampoIngrediente();
-  }
+  // Mostrar o modal
+  document.getElementById('editar-venda-modal').classList.remove('hidden');
 }
 
-// MODIFICADO: Inicializar dados com nova lógica de cálculos
-function inicializarDados() {
-  // Garantir que o modal esteja oculto ao iniciar
-  const modalElement = document.getElementById('processing-modal');
-  if (modalElement) {
-    modalElement.classList.add('hidden');
-  }
-  
-  // Inicializar IDs para itens de estoque e materiais
-  estoque.forEach((item) => {
-    if (!item.id) {
-      item.id = gerarId();
-    }
-    if (!item.materialId && item.codigo) {
-      // Tentar encontrar material correspondente
-      const material = materiais.find(m => m.codigo === item.codigo);
-      if (material) {
-        item.materialId = material.id;
-      }
-    }
-  });
-  
-  materiais.forEach((material) => {
-    if (!material.id) {
-      material.id = gerarId();
-    }
-    
-    // Garantir que o histórico de preços existe
-    if (!material.historicoPrecos) {
-      material.historicoPrecos = [{
-        data: material.dataCadastro || new Date().toISOString(),
-        preco: material.ultimoPreco || 0
-      }];
-    }
-  });
-  
-  receitas.forEach(receita => {
-    if (!receita.id) {
-      receita.id = gerarId();
-    }
-    
-    // Remover ingredientes que não têm materialId válido
-    if (receita.ingredientes) {
-      receita.ingredientes = receita.ingredientes.filter(ing => {
-        return ing.materialId && materiais.some(m => m.id === ing.materialId);
-      });
-    } else {
-      receita.ingredientes = [];
-    }
-    
-    // Garantir que precoVenda existe
-    if (!receita.precoVenda) {
-      const custoProducao = calcularCustoReceita(receita);
-      const custosVariados = custoProducao * 0.1;
-      receita.precoVenda = (custoProducao + custosVariados) * 2.5;
-    }
-  });
-  
-  // MODIFICADO: Atualizar vendas antigas para o novo modelo de cálculo
-  vendas.forEach(venda => {
-    if (!venda.id) {
-      venda.id = gerarId();
-    }
-    
-    // Para compatibilidade com vendas antigas
-    const custoProducao = venda.custoProducao || 0;
-    const custosVariados = venda.custosVariados || 0;
-    
-    // Despesa = custo produção + custo variado
-    const despesa = custoProducao + custosVariados;
-    
-    // Renomear campo de despesas adicionais para compatibilidade
-    if (venda.despesasAdicionais !== undefined && venda.despesasAdicionaisOriginal === undefined) {
-      venda.despesasAdicionaisOriginal = venda.despesasAdicionais;
-      delete venda.despesasAdicionais; // Remover campo antigo
-    }
-    
-    // Calcular despesas adicionais com acréscimo de 10%
-    venda.despesasAdicionaisComAcrescimo = (venda.despesasAdicionaisOriginal || 0) * 1.1;
-    
-    // Total despesas adicionais (despesa adicional com acréscimo + frete + decoração)
-    venda.totalDespesasAdicionais = venda.despesasAdicionaisComAcrescimo + (venda.custoFrete || 0) + (venda.custoDecoracao || 0);
-    
-    // Atualizar campos de cálculo financeiro
-    venda.despesa = despesa;
-    venda.valorReinvestir = despesa;
-    
-    // CORRIGIDO: Novo cálculo de lucro
-    // Lucro = Valor Total - Despesa - Reinvestir - Despesas Adicionais Total
-    venda.lucro = venda.valorTotal - despesa - despesa - venda.totalDespesasAdicionais;
-  });
-  
-  atualizarLocalStorage();
-}
-
+// Função para confirmar exclusão de venda
 function confirmarExclusaoVenda(vendaId) {
   document.getElementById('excluir-venda-id').value = vendaId;
   document.getElementById('confirmar-exclusao-modal').classList.remove('hidden');
 }
+    // PARTE 6.3: JAVASCRIPT - CARREGAR VENDAS E SETUP
 
-// Carregar a lista de vendas - MODIFICADA
+// Função para carregar a lista de vendas - MODIFICADA
 function carregarVendas() {
   const container = document.getElementById('lista-vendas');
   if (!container) return;
@@ -3791,8 +4003,21 @@ function carregarVendas() {
   // Ordenar vendas da mais recente para a mais antiga
   const vendasOrdenadas = [...vendas].sort((a, b) => new Date(b.data) - new Date(a.data));
   
-  vendasOrdenadas.forEach((venda) => {
-    // Cálculo dos valores financeiros
+  // Verificar e eliminar duplicatas baseado em dataCriacao e receitaId
+  const vendasUnicas = [];
+  const vendasIds = new Set();
+  
+  for (const venda of vendasOrdenadas) {
+    // Criar uma chave única baseada em dados críticos
+    const vendaKey = `${venda.receitaId}_${venda.cliente.nome}_${venda.data}_${venda.quantidade}`;
+    if (!vendasIds.has(vendaKey)) {
+      vendasIds.add(vendaKey);
+      vendasUnicas.push(venda);
+    }
+  }
+  
+  vendasUnicas.forEach((venda) => {
+    // Cálculo dos valores financeiros usando preço médio
     const despesa = venda.despesa || (venda.custoProducao + venda.custosVariados);
     const valorReinvestir = despesa;
     
@@ -3824,6 +4049,7 @@ function carregarVendas() {
           <div class="venda-resumo-item">
             <div class="venda-resumo-label">Despesa</div>
             <div class="venda-resumo-valor">${formatarMoeda(despesa)}</div>
+            <div class="material-detalhes">(preço médio)</div>
           </div>
           <div class="venda-resumo-item">
             <div class="venda-resumo-label">Reinvestir</div>
@@ -3872,6 +4098,316 @@ function carregarVendas() {
   });
 }
 
+// Função para atualizar o resumo financeiro na tela de edição
+function atualizarResumoFinanceiroEdicao() {
+  const vendaId = document.getElementById('editar-venda-id').value;
+  const venda = vendas.find(v => v.id === vendaId);
+  if (!venda) return;
+  
+  const receitaId = document.getElementById('editar-venda-receita-id').value;
+  const receita = receitas.find(r => r.id === receitaId);
+  if (!receita) return;
+  
+  const quantidade = parseInt(document.getElementById('editar-quantidade-venda').value) || venda.quantidade;
+  const frete = parseFloat(document.getElementById('editar-custo-frete').value) || 0;
+  const decoracao = parseFloat(document.getElementById('editar-custo-decoracao').value) || 0;
+  const despesasAdicionais = parseFloat(document.getElementById('editar-despesas-adicionais').value) || 0;
+  const valorTotal = parseFloat(document.getElementById('editar-valor-total-venda').value) || venda.valorTotal;
+  
+  // Recalcular custos usando preço médio se a quantidade mudou
+  let custoProducao = venda.custoProducao;
+  let custosVariados = venda.custosVariados;
+  
+  if (quantidade !== venda.quantidade) {
+    // Recalcular custos baseado na nova quantidade
+    const fatorProporcional = quantidade / venda.quantidade;
+    custoProducao = calcularCustoReceita(receita); // Usar preço médio atual
+    custosVariados = custoProducao * 0.1;
+  }
+  
+  // Despesa (Custo Produção + Custo Variado)
+  const despesa = custoProducao + custosVariados;
+  
+  // Reinvestir (igual à Despesa)
+  const valorReinvestir = despesa;
+  
+  // Despesas Adicionais com acréscimo de 10%
+  const despesasAdicionaisComAcrescimo = despesasAdicionais * 1.1;
+  const totalDespesasAdicionais = despesasAdicionaisComAcrescimo + frete + decoracao;
+  
+  // Lucro (Valor Total - Despesa - Reinvestir - Despesas Adicionais)
+  const lucro = valorTotal - despesa - valorReinvestir - totalDespesasAdicionais;
+  
+  // Atualizar os elementos na interface
+  document.getElementById('editar-resumo-valor-total').textContent = formatarMoeda(valorTotal);
+  document.getElementById('editar-resumo-despesa').textContent = formatarMoeda(despesa);
+  document.getElementById('editar-resumo-reinvestir').textContent = formatarMoeda(valorReinvestir);
+  document.getElementById('editar-resumo-desp-adic').textContent = formatarMoeda(totalDespesasAdicionais);
+  
+  const resumoLucro = document.getElementById('editar-resumo-lucro');
+  resumoLucro.textContent = formatarMoeda(lucro);
+  
+  // Adicionar classe para colorir o lucro
+  resumoLucro.className = lucro >= 0 ? 'venda-resumo-valor lucro-positivo' : 'venda-resumo-valor lucro-negativo';
+}
+
+// Função para filtrar vendas - MODIFICADA
+function filtrarVendas() {
+  const dataInicio = document.getElementById('filtro-data-inicio').value;
+  const dataFim = document.getElementById('filtro-data-fim').value;
+  const receitaId = document.getElementById('filtro-receita').value;
+  
+  const vendasFiltradas = vendas.filter(venda => {
+    // Filtrar por data
+    let passaFiltroData = true;
+    if (dataInicio) {
+      const dataVenda = new Date(venda.data);
+      const dataInicioDate = new Date(dataInicio);
+      passaFiltroData = passaFiltroData && dataVenda >= dataInicioDate;
+    }
+    
+    if (dataFim) {
+      const dataVenda = new Date(venda.data);
+      const dataFimDate = new Date(dataFim);
+      // Adicionar 1 dia para incluir o dia final completo
+      dataFimDate.setDate(dataFimDate.getDate() + 1);
+      passaFiltroData = passaFiltroData && dataVenda < dataFimDate;
+    }
+    
+    // Filtrar por receita
+    let passaFiltroReceita = true;
+    if (receitaId) {
+      passaFiltroReceita = venda.receitaId === receitaId;
+    }
+    
+    return passaFiltroData && passaFiltroReceita;
+  });
+  
+  // Renderizar vendas filtradas
+  const container = document.getElementById('lista-vendas');
+  if (!container) return;
+  
+  container.innerHTML = '';
+  
+  if (vendasFiltradas.length === 0) {
+    container.innerHTML = '<p>Nenhuma venda encontrada com os filtros selecionados.</p>';
+    return;
+  }
+  
+  // Ordenar vendas da mais recente para a mais antiga e remover duplicatas
+  const vendasOrdenadas = [...vendasFiltradas].sort((a, b) => new Date(b.data) - new Date(a.data));
+  const vendasUnicas = [];
+  const vendasIds = new Set();
+  
+  for (const venda of vendasOrdenadas) {
+    // Criar uma chave única baseada em dados críticos
+    const vendaKey = `${venda.receitaId}_${venda.cliente.nome}_${venda.data}_${venda.quantidade}`;
+    if (!vendasIds.has(vendaKey)) {
+      vendasIds.add(vendaKey);
+      vendasUnicas.push(venda);
+    }
+  }
+  
+  vendasUnicas.forEach((venda) => {
+    // MODIFICADO: Calcular valores financeiros com nova lógica
+    const despesa = venda.despesa || (venda.custoProducao + venda.custosVariados);
+    const valorReinvestir = despesa;
+    
+    // Compatibilidade com vendas antigas
+    const despesasAdicionaisComAcrescimo = venda.despesasAdicionaisComAcrescimo || 
+                                        ((venda.despesasAdicionaisOriginal || venda.despesasAdicionais || 0) * 1.1);
+    const totalDespesasAdicionais = venda.totalDespesasAdicionais || 
+                                  (despesasAdicionaisComAcrescimo + (venda.custoFrete || 0) + (venda.custoDecoracao || 0));
+    
+    // CORRIGIDO: Recalcular lucro corretamente
+    const lucro = venda.valorTotal - despesa - valorReinvestir - totalDespesasAdicionais;
+    
+    const card = document.createElement('div');
+    card.className = 'sale-card';
+    card.innerHTML = `
+      <div class="sale-header">
+        <div class="sale-title">${venda.receitaNome}</div>
+        <div class="sale-date">${formatarData(venda.data)}</div>
+      </div>
+      <div>Cliente: ${venda.cliente.nome}</div>
+      <div>Quantidade: ${venda.quantidade}</div>
+      
+      <div class="venda-resumo-financeiro" style="margin-top: 10px;">
+        <div class="venda-resumo-grid">
+          <div class="venda-resumo-item">
+            <div class="venda-resumo-label">Valor Total</div>
+            <div class="venda-resumo-valor">${formatarMoeda(venda.valorTotal)}</div>
+          </div>
+          <div class="venda-resumo-item">
+            <div class="venda-resumo-label">Despesa</div>
+            <div class="venda-resumo-valor">${formatarMoeda(despesa)}</div>
+            <div class="material-detalhes">(preço médio)</div>
+          </div>
+          <div class="venda-resumo-item">
+            <div class="venda-resumo-label">Reinvestir</div>
+            <div class="venda-resumo-valor">${formatarMoeda(valorReinvestir)}</div>
+          </div>
+          <div class="venda-resumo-item">
+            <div class="venda-resumo-label">Total Desp. Adic.</div>
+            <div class="venda-resumo-valor">${formatarMoeda(totalDespesasAdicionais)}</div>
+          </div>
+          <div class="venda-resumo-item">
+            <div class="venda-resumo-label">Lucro</div>
+            <div class="venda-resumo-valor ${lucro >= 0 ? 'lucro-positivo' : 'lucro-negativo'}">${formatarMoeda(lucro)}</div>
+          </div>
+        </div>
+      </div>
+      
+      <div style="margin-top: 10px;">
+        <button class="btn btn-secondary btn-detalhes-venda" data-id="${venda.id}">Ver Detalhes</button>
+        <button class="btn btn-primary btn-editar-venda" data-id="${venda.id}">Editar</button>
+        <button class="btn btn-danger btn-excluir-venda" data-id="${venda.id}">Excluir</button>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+  
+  // Adicionar eventos aos botões
+  document.querySelectorAll('.btn-detalhes-venda').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const id = this.getAttribute('data-id');
+      mostrarDetalhesVenda(id);
+    });
+  });
+  
+  document.querySelectorAll('.btn-editar-venda').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const id = this.getAttribute('data-id');
+      mostrarFormEditarVenda(id);
+    });
+  });
+  
+  document.querySelectorAll('.btn-excluir-venda').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const id = this.getAttribute('data-id');
+      confirmarExclusaoVenda(id);
+    });
+  });
+}
+
+// MODIFICADO: Inicializar dados com nova lógica de cálculos
+function inicializarDados() {
+  // Garantir que o modal esteja oculto ao iniciar
+  const modalElement = document.getElementById('processing-modal');
+  if (modalElement) {
+    modalElement.classList.add('hidden');
+  }
+  
+  // Inicializar IDs para itens de estoque e materiais
+  estoque.forEach((item) => {
+    if (!item.id) {
+      item.id = gerarId();
+    }
+    if (!item.materialId && item.codigo) {
+      // Tentar encontrar material correspondente
+      const material = materiais.find(m => m.codigo === item.codigo);
+      if (material) {
+        item.materialId = material.id;
+      }
+    }
+  });
+  
+  materiais.forEach((material) => {
+    if (!material.id) {
+      material.id = gerarId();
+    }
+    
+    // Garantir que o histórico de preços existe
+    if (!material.historicoPrecos) {
+      material.historicoPrecos = [{
+        data: material.dataCadastro || new Date().toISOString(),
+        preco: material.ultimoPreco || 0
+      }];
+    }
+    
+    // Calcular preço médio
+    material.precoMedio = calcularPrecoMedio(material);
+  });
+  
+  receitas.forEach(receita => {
+    if (!receita.id) {
+      receita.id = gerarId();
+    }
+    
+    // Remover ingredientes que não têm materialId válido
+    if (receita.ingredientes) {
+      receita.ingredientes = receita.ingredientes.filter(ing => {
+        return ing.materialId && materiais.some(m => m.id === ing.materialId);
+      });
+    } else {
+      receita.ingredientes = [];
+    }
+    
+    // Garantir que precoVenda existe
+    if (!receita.precoVenda) {
+      const custoProducao = calcularCustoReceita(receita);
+      const custosVariados = custoProducao * 0.1;
+      receita.precoVenda = (custoProducao + custosVariados) * 2.5;
+    }
+  });
+  
+  // Unificar estoque - agrupar itens similares
+  unificarEstoque();
+  
+  // MODIFICADO: Atualizar vendas antigas para o novo modelo de cálculo
+  // e eliminar possíveis duplicatas
+  const vendasUnicas = [];
+  const vendasProcessadas = new Set();
+  
+  vendas.forEach(venda => {
+    if (!venda.id) {
+      venda.id = gerarId();
+    }
+    
+    // Verificar se é uma venda duplicada
+    const vendaKey = `${venda.receitaId}_${venda.cliente.nome}_${venda.data}_${venda.quantidade}`;
+    if (vendasProcessadas.has(vendaKey)) {
+      return; // Pular esta venda
+    }
+    
+    vendasProcessadas.add(vendaKey);
+    
+    // Para compatibilidade com vendas antigas
+    const custoProducao = venda.custoProducao || 0;
+    const custosVariados = venda.custosVariados || 0;
+    
+    // Despesa = custo produção + custo variado
+    const despesa = custoProducao + custosVariados;
+    
+    // Renomear campo de despesas adicionais para compatibilidade
+    if (venda.despesasAdicionais !== undefined && venda.despesasAdicionaisOriginal === undefined) {
+      venda.despesasAdicionaisOriginal = venda.despesasAdicionais;
+      delete venda.despesasAdicionais; // Remover campo antigo
+    }
+    
+    // Calcular despesas adicionais com acréscimo de 10%
+    venda.despesasAdicionaisComAcrescimo = (venda.despesasAdicionaisOriginal || 0) * 1.1;
+    
+    // Total despesas adicionais (despesa adicional com acréscimo + frete + decoração)
+    venda.totalDespesasAdicionais = venda.despesasAdicionaisComAcrescimo + (venda.custoFrete || 0) + (venda.custoDecoracao || 0);
+    
+    // Atualizar campos de cálculo financeiro
+    venda.despesa = despesa;
+    venda.valorReinvestir = despesa;
+    
+    // Novo cálculo de lucro
+    // Lucro = Valor Total - Despesa - Reinvestir - Despesas Adicionais Total
+    venda.lucro = venda.valorTotal - despesa - despesa - venda.totalDespesasAdicionais;
+    
+    vendasUnicas.push(venda);
+  });
+  
+  // Substituir o array de vendas pelo array unificado
+  vendas = vendasUnicas;
+  
+  atualizarLocalStorage();
+}
+
 // CORRIGIDO: Inicialização principal única do aplicativo
 document.addEventListener('DOMContentLoaded', function() {
   console.log('DOM Carregado!');
@@ -3911,6 +4447,9 @@ document.addEventListener('DOMContentLoaded', function() {
       // Iniciar relógio
       atualizarDataHora();
       setInterval(atualizarDataHora, 1000);
+      
+      // Adicionar botão de sincronização
+      adicionarBotaoSincronizacao();
     } else {
       // Usuário não está logado, mostrar tela de login
       mostrarTelaLogin();
