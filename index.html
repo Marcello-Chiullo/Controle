@@ -1997,21 +1997,15 @@ function setupEventListeners() {
     }
     
     // Eventos de login
-    const btnLogin = document.getElementById('btn-login');
-    if (btnLogin) {
-      btnLogin.onclick = function(e) {
-        e.preventDefault(); // Evita comportamento padrão
+    document.getElementById('btn-login').addEventListener('click', function(e) {
+        e.preventDefault();
         fazerLogin();
-      };
-    }
+    });
     
-    const btnCadastrar = document.getElementById('btn-cadastrar');
-    if (btnCadastrar) {
-      btnCadastrar.onclick = function(e) {
-        e.preventDefault(); // Evita comportamento padrão
+    document.getElementById('btn-cadastrar').addEventListener('click', function(e) {
+        e.preventDefault();
         fazerCadastro();
-      };
-    }
+    });
 }  
 // PARTE 5: JAVASCRIPT (SEGUNDA PARTE - MATERIAIS E RECEITAS)
 
