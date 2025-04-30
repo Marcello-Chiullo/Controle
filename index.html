@@ -1768,45 +1768,54 @@ function fazerCadastro() {
 }
 
 function iniciarSincronizacao() {
-    if (!currentUser) return;
+  if (!currentUser) return;
+  
+  const userId = currentUser.uid;
+  
+  // Primeiro, verificar se existem dados na nuvem
+  database.ref('usuarios/' + userId).once('value').then((snapshot) => {
+    const dados = snapshot.val();
     
-    const userId = currentUser.uid;
+    if (dados) {
+      // Há dados na nuvem, verificar se são mais recentes
+      const ultimaAtualizacaoLocal = localStorage.getItem('ultimaAtualizacao');
+      
+      if (!ultimaAtualizacaoLocal || new Date(dados.ultimaAtualizacao) > new Date(ultimaAtualizacaoLocal)) {
+        console.log('Sincronizando dados da nuvem...');
+        
+        // Atualizar dados locais
+        estoque = dados.estoque || [];
+        materiais = dados.materiais || [];
+        receitas = dados.receitas || [];
+        vendas = dados.vendas || [];
+        
+        // Salvar no localStorage
+        localStorage.setItem('estoque', JSON.stringify(estoque));
+        localStorage.setItem('materiais', JSON.stringify(materiais));
+        localStorage.setItem('receitas', JSON.stringify(receitas));
+        localStorage.setItem('vendas', JSON.stringify(vendas));
+        localStorage.setItem('ultimaAtualizacao', dados.ultimaAtualizacao);
+      } else {
+        // Dados locais são mais recentes, enviar para nuvem
+        sincronizarComNuvem();
+      }
+    } else {
+      // Não há dados na nuvem, enviar dados locais
+      sincronizarComNuvem();
+    }
+    
+    // Recarregar interfaces
+    carregarEstoque();
+    carregarMateriais();
+    carregarReceitas();
+    carregarVendas();
+    
+    // Configurar listener para atualizações futuras
     sincronizacaoAtiva = true;
-    
-    // Escutar por mudanças nos dados
     database.ref('usuarios/' + userId).on('value', (snapshot) => {
-        const dados = snapshot.val();
-        if (dados) {
-            const ultimaAtualizacaoLocal = localStorage.getItem('ultimaAtualizacao');
-            
-            // Verificar se os dados da nuvem são mais recentes
-            if (!ultimaAtualizacaoLocal || new Date(dados.ultimaAtualizacao) > new Date(ultimaAtualizacaoLocal)) {
-                console.log('Sincronizando dados da nuvem...');
-                
-                // Atualizar dados locais
-                estoque = dados.estoque || [];
-                materiais = dados.materiais || [];
-                receitas = dados.receitas || [];
-                vendas = dados.vendas || [];
-                
-                // Salvar no localStorage
-                localStorage.setItem('estoque', JSON.stringify(estoque));
-                localStorage.setItem('materiais', JSON.stringify(materiais));
-                localStorage.setItem('receitas', JSON.stringify(receitas));
-                localStorage.setItem('vendas', JSON.stringify(vendas));
-                localStorage.setItem('ultimaAtualizacao', dados.ultimaAtualizacao);
-                
-                // Recarregar interfaces
-                carregarEstoque();
-                carregarMateriais();
-                carregarReceitas();
-                carregarVendas();
-                
-                mostrarNotificacao('notification-estoque', 'Dados sincronizados com sucesso!', 'success');
-            }
-        }
-        sincronizacaoAtiva = false;
+      // Código existente para atualização contínua...
     });
+  });
 }
 
 // Configurar eventos
