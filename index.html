@@ -1999,7 +1999,7 @@ function setupEventListeners() {
     // Eventos de login
     const btnLogin = document.getElementById('btn-login');
     if (btnLogin) {
-      btnLogin.addEventListener('click', function(e) {
+      btnLogin.onclick = function(e) {
         e.preventDefault(); // Evita comportamento padrão
         fazerLogin();
       });
@@ -2007,7 +2007,7 @@ function setupEventListeners() {
     
     const btnCadastrar = document.getElementById('btn-cadastrar');
     if (btnCadastrar) {
-      btnCadastrar.addEventListener('click', function(e) {
+     btnCadastrar.onclick = function(e) {
         e.preventDefault(); // Evita comportamento padrão
         fazerCadastro();
       });
