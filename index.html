@@ -574,7 +574,167 @@
             <li><a href="#vendas" class="nav-link" data-page="vendas">Vendas</a></li>
         </ul>
     </nav>
-    <!-- PARTE 3: PÁGINA DE RECEITAS -->
+    <!-- PARTE 3: PÁGINA DOS APP -->
+<!-- Página de Estoque -->
+<div class="page-content" id="estoque-page">
+    <h2>Gestão de Estoque</h2>
+    <div class="card">
+        <h3>Itens em Estoque</h3>
+        <input type="text" id="pesquisar-estoque" class="form-control" placeholder="Pesquisar estoque..." style="margin-bottom: 20px;">
+        <table id="tabela-estoque">
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Nome</th>
+                    <th>Quantidade</th>
+                    <th>Unidade</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody id="itens-estoque">
+                <!-- Os itens serão adicionados aqui dinamicamente -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Página de Materiais -->
+<div class="page-content" id="materiais-page">
+    <h2>Gestão de Materiais</h2>
+    
+    <div class="tab-buttons">
+        <button class="tab-button active" data-tab="listar-materiais">Listar Materiais</button>
+        <button class="tab-button" data-tab="adicionar-item">Adicionar Item</button>
+    </div>
+    
+    <!-- Tab: Listar Materiais -->
+    <div class="tab-content active" id="listar-materiais">
+        <div class="card">
+            <h3>Materiais Cadastrados</h3>
+            <input type="text" id="pesquisar-materiais" class="form-control" placeholder="Pesquisar material..." style="margin-bottom: 20px;">
+            
+            <table id="tabela-materiais">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Nome</th>
+                        <th>Unidade</th>
+                        <th>Un. Medida</th>
+                        <th>Qtd/Unidade</th>
+                        <th>Última Compra</th>
+                        <th>Último Preço</th>
+                        <th>Preço Médio</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="itens-materiais">
+                    <!-- Os itens serão adicionados aqui dinamicamente -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Tab: Adicionar Item -->
+    <div class="tab-content" id="adicionar-item">
+        <div class="card">
+            <h3>Adicionar Item ao Catálogo</h3>
+            
+            <form id="form-adicionar-material">
+                <div class="form-row">
+                    <div class="form-col">
+                        <div class="form-group">
+                            <label for="codigo-material">Código:</label>
+                            <input type="text" id="codigo-material" class="form-control" placeholder="Código do produto">
+                        </div>
+                    </div>
+                    <div class="form-col">
+                        <div class="form-group">
+                            <label for="scanner-btn">&nbsp;</label>
+                            <button type="button" id="scanner-btn" class="btn btn-secondary form-control">Escanear Código</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="nome-material">Nome do Material:</label>
+                    <input type="text" id="nome-material" class="form-control" required>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-col">
+                        <div class="form-group">
+                            <label for="quantidade-material">Quantidade:</label>
+                            <input type="number" id="quantidade-material" class="form-control" min="0.01" step="0.01" value="1" required>
+                        </div>
+                    </div>
+                    <div class="form-col">
+                        <div class="form-group">
+                            <label for="unidade-material">Unidade:</label>
+                            <select id="unidade-material" class="form-control" required>
+                                <option value="Pacote">Pacote</option>
+                                <option value="Caixa">Caixa</option>
+                                <option value="Unidade">Unidade</option>
+                                <option value="Kg">Quilograma</option>
+                                <option value="L">Litro</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-col">
+                        <div class="form-group">
+                            <label for="unidade-medida-material">Unidade de Medida:</label>
+                            <select id="unidade-medida-material" class="form-control" required>
+                                <option value="g">Gramas (g)</option>
+                                <option value="kg">Quilogramas (kg)</option>
+                                <option value="ml">Mililitros (ml)</option>
+                                <option value="l">Litros (l)</option>
+                                <option value="un">Unidades</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-col">
+                        <div class="form-group">
+                            <label for="quantidade-medida-material">Quantidade por Unidade:</label>
+                            <input type="number" id="quantidade-medida-material" class="form-control" min="0.01" step="0.01" required>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="info-preco-medio" class="notification notification-info hidden">
+                    <p>Preço médio atual: <span id="valor-preco-medio">R$ 0,00</span> (com base em <span id="num-registros">0</span> registros)</p>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-col">
+                        <div class="form-group">
+                            <label for="preco-material">Preço (R$):</label>
+                            <input type="number" id="preco-material" class="form-control" min="0.01" step="0.01" required>
+                        </div>
+                    </div>
+                    <div class="form-col">
+                        <div class="form-group">
+                            <label for="data-compra-material">Data da Compra:</label>
+                            <input type="date" id="data-compra-material" class="form-control">
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 20px;">
+                    <button type="submit" class="btn btn-primary">Adicionar ao Estoque</button>
+                </div>
+            </form>
+            
+            <div class="scanner-container hidden" id="scanner-container">
+                <h3>Escanear Código</h3>
+                <div id="reader"></div>
+                <div id="scanner-result"></div>
+                <button type="button" id="stop-scanner" class="btn btn-danger">Parar Scanner</button>
+            </div>
+        </div>
+    </div>
+</div>
 <div class="page-content" id="receitas-page">
     <h2>Gestão de Receitas</h2>
     
