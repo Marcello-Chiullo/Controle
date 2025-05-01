@@ -1393,6 +1393,485 @@ function encontrarMaterialPorNome(nome) {
     // Retorna o material mais recente
     return materiaisComNome[0];
 }
+
+// Função para atualizar data/hora atual
+function atualizarDataHora() {
+   const elemento = document.getElementById('date-time');
+   if (!elemento) return;
+   
+   const agora = new Date();
+   const dataFormatada = agora.toLocaleDateString('pt-BR');
+   const horaFormatada = agora.toLocaleTimeString('pt-BR');
+   elemento.textContent = `${dataFormatada} ${horaFormatada}`;
+}
+
+// Função para iniciar sincronização
+function iniciarSincronizacao(skipSync = false) {
+   if (!currentUser) return Promise.reject('Usuário não autenticado');
+   
+   const userId = currentUser.uid;
+   
+   toggleModal(true, "Verificando dados...", "Buscando informações na nuvem.");
+   
+   return database.ref('usuarios/' + userId).once('value').then((snapshot) => {
+       const dados = snapshot.val();
+       
+       if (dados) {
+           console.log('Dados encontrados na nuvem:', dados);
+           
+           // Verificar se tem dados válidos
+           if (dados.estoque || dados.materiais || dados.receitas || dados.vendas) {
+               // Atualizar dados locais com dados da nuvem
+               estoque = dados.estoque || [];
+               materiais = dados.materiais || [];
+               receitas = dados.receitas || [];
+               vendas = dados.vendas || [];
+               
+               // Salvar no localStorage sem acionar sincronização
+               localStorage.setItem('estoque', JSON.stringify(estoque));
+               localStorage.setItem('materiais', JSON.stringify(materiais));
+               localStorage.setItem('receitas', JSON.stringify(receitas));
+               localStorage.setItem('vendas', JSON.stringify(vendas));
+               localStorage.setItem('ultimaAtualizacao', dados.ultimaAtualizacao);
+               
+               mostrarNotificacao('notification-estoque', 'Dados carregados da nuvem!', 'success');
+           } else if (!skipSync) {
+               // Dados vazios na nuvem, mas temos dados locais para enviar
+               if (estoque.length > 0 || materiais.length > 0 || receitas.length > 0 || vendas.length > 0) {
+                   sincronizarComNuvem();
+               }
+           }
+       } else if (!skipSync) {
+           // Não há dados na nuvem, talvez temos dados locais para enviar
+           if (estoque.length > 0 || materiais.length > 0 || receitas.length > 0 || vendas.length > 0) {
+               sincronizarComNuvem();
+           }
+       }
+       
+       toggleModal(false);
+       
+       // Recarregar interfaces
+       carregarEstoque();
+       carregarMateriais();
+       carregarReceitas();
+       carregarVendas();
+       
+       // Configurar listener para atualizações futuras (de outros dispositivos)
+       database.ref('usuarios/' + userId).on('value', (snapshot) => {
+           const dadosNovos = snapshot.val();
+           if (dadosNovos && dadosNovos.ultimaAtualizacao) {
+               const ultimaAtualizacaoLocal = localStorage.getItem('ultimaAtualizacao');
+               
+               // Só atualizar se os dados da nuvem forem mais recentes e não forem os que acabamos de enviar
+               if (ultimaAtualizacaoLocal && 
+                   new Date(dadosNovos.ultimaAtualizacao) > new Date(ultimaAtualizacaoLocal) && 
+                   dadosNovos.ultimaAtualizacao !== new Date(ultimaAtualizacaoLocal).toISOString()) {
+                   
+                   console.log('Recebendo atualização da nuvem...');
+                   
+                   // Atualizar dados locais
+                   estoque = dadosNovos.estoque || [];
+                   materiais = dadosNovos.materiais || [];
+                   receitas = dadosNovos.receitas || [];
+                   vendas = dadosNovos.vendas || [];
+                   
+                   // Salvar no localStorage sem acionar nova sincronização
+                   localStorage.setItem('estoque', JSON.stringify(estoque));
+                   localStorage.setItem('materiais', JSON.stringify(materiais));
+                   localStorage.setItem('receitas', JSON.stringify(receitas));
+                   localStorage.setItem('vendas', JSON.stringify(vendas));
+                   localStorage.setItem('ultimaAtualizacao', dadosNovos.ultimaAtualizacao);
+                   
+                   // Recarregar interfaces
+                   carregarEstoque();
+                   carregarMateriais();
+                   carregarReceitas();
+                   carregarVendas();
+                   
+                   mostrarNotificacao('notification-estoque', 'Dados atualizados da nuvem!', 'info');
+               }
+           }
+       });
+       
+       return dados;
+   }).catch(error => {
+       toggleModal(false);
+       console.error('Erro ao verificar dados na nuvem:', error);
+       mostrarNotificacao('notification-estoque', 'Erro ao verificar dados na nuvem', 'error');
+       return null;
+   });
+}
+
+// Funções de Autenticação e Login
+function mostrarTelaLogin() {
+   document.getElementById('login-modal').classList.remove('hidden');
+}
+
+function esconderTelaLogin() {
+    document.getElementById('login-modal').classList.add('hidden');
+}
+
+function fazerLogin() {
+    const email = document.getElementById('login-email').value;
+    const senha = document.getElementById('login-senha').value;
+    
+    if (!email || !senha) {
+        mostrarNotificacao('login-notification', 'Preencha email e senha', 'error');
+        return;
+    }
+    
+    toggleModal(true, "Fazendo login...", "Por favor aguarde...");
+    
+    firebase.auth().signInWithEmailAndPassword(email, senha)
+        .then((userCredential) => {
+            // Login bem-sucedido
+            currentUser = userCredential.user;
+            
+            // Mostrar email do usuário logado
+            const userInfoEl = document.getElementById('user-info');
+            if (userInfoEl) {
+                userInfoEl.classList.remove('hidden');
+                document.getElementById('user-email').textContent = currentUser.email;
+            }
+            
+            // Esconder a tela de login
+            esconderTelaLogin();
+            
+            // Adicionar botão de sincronização
+            adicionarBotaoSincronizacao();
+            
+            toggleModal(false);
+        })
+        .catch((error) => {
+            toggleModal(false);
+            mostrarNotificacao('login-notification', 'Erro ao fazer login: ' + error.message, 'error');
+        });
+}
+
+function fazerCadastro() {
+    const email = document.getElementById('login-email').value;
+    const senha = document.getElementById('login-senha').value;
+    
+    if (!email || !senha || senha.length < 6) {
+        mostrarNotificacao('login-notification', 'Email válido e senha com pelo menos 6 caracteres são necessários', 'error');
+        return;
+    }
+    
+    toggleModal(true, "Criando conta...", "Por favor aguarde...");
+    
+    firebase.auth().createUserWithEmailAndPassword(email, senha)
+        .then((userCredential) => {
+            currentUser = userCredential.user;
+            
+            // Mostrar email do usuário logado
+            const userInfoEl = document.getElementById('user-info');
+            if (userInfoEl) {
+                userInfoEl.classList.remove('hidden');
+                document.getElementById('user-email').textContent = currentUser.email;
+            }
+            
+            // Esconder a tela de login
+            esconderTelaLogin();
+            
+            // Adicionar botão de sincronização
+            adicionarBotaoSincronizacao();
+            
+            toggleModal(false);
+            mostrarNotificacao('notification-estoque', 'Conta criada com sucesso!', 'success');
+        })
+        .catch((error) => {
+            toggleModal(false);
+            mostrarNotificacao('login-notification', 'Erro ao criar conta: ' + error.message, 'error');
+        });
+}
+
+// Adicionar botão de sincronização manual
+function adicionarBotaoSincronizacao() {
+    const userInfo = document.getElementById('user-info');
+    if (userInfo) {
+        // Verificar se já existe um botão
+        if (!document.getElementById('btn-sync')) {
+            const botaoSync = document.createElement('button');
+            botaoSync.id = 'btn-sync';
+            botaoSync.className = 'btn btn-primary';
+            botaoSync.style.marginLeft = '10px';
+            botaoSync.innerHTML = 'Sincronizar';
+            botaoSync.addEventListener('click', function() {
+                sincronizarComNuvem();
+            });
+            
+            userInfo.appendChild(botaoSync);
+        }
+    }
+}
+
+// NOVA FUNÇÃO: Tratar eventos de busca pelo código do material
+function adicionarEventoCodigoMaterial() {
+    const codigoInput = document.getElementById('codigo-material');
+    if (!codigoInput) return;
+    
+    codigoInput.addEventListener('keypress', function(e) {
+        // Verificar se a tecla pressionada foi Enter
+        if (e.key === 'Enter') {
+            e.preventDefault(); // Impedir o envio do formulário
+            
+            const codigo = this.value.trim();
+            if (codigo) {
+                buscarInformacoesProduto(codigo);
+            }
+        }
+    });
+    
+    // Adicionar também um evento de perder o foco
+    codigoInput.addEventListener('blur', function() {
+        const codigo = this.value.trim();
+        if (codigo) {
+            buscarInformacoesProduto(codigo);
+        }
+    });
+}
+
+// FUNÇÃO CORRIGIDA: Configurar eventos de navegação
+function setupEventListeners() {
+    console.log("Configurando eventos de navegação");
+    
+    // Garantir que o modal esteja oculto ao iniciar
+    const modalElement = document.getElementById('processing-modal');
+    if (modalElement) {
+        modalElement.classList.add('hidden');
+    }
+
+    // Eventos de navegação - CORRIGIDOS
+    const navLinks = document.querySelectorAll('.nav-link');
+    console.log("Encontrados " + navLinks.length + " links de navegação");
+    
+    if (navLinks.length > 0) {
+        navLinks.forEach(link => {
+            // Remover evento anterior (se existir) para evitar duplicação
+            link.removeEventListener('click', navegarParaPagina);
+            // Adicionar evento de navegação
+            link.addEventListener('click', navegarParaPagina);
+        });
+    } else {
+        console.error("Nenhum link de navegação encontrado");
+    }
+   
+    // Eventos das abas - CORRIGIDOS
+    const tabButtons = document.querySelectorAll('.tab-button');
+    console.log("Encontrados " + tabButtons.length + " botões de abas");
+    
+    if (tabButtons.length > 0) {
+        tabButtons.forEach(button => {
+            // Remover evento anterior (se existir)
+            button.removeEventListener('click', alternarAba);
+            // Adicionar evento para alternar abas
+            button.addEventListener('click', alternarAba);
+        });
+    }
+   
+    // Eventos de pesquisa
+    ['pesquisar-estoque', 'pesquisar-materiais', 'pesquisar-receita', 'pesquisar-vendas'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('input', function() {
+                const termo = this.value.toLowerCase();
+                let itens;
+                
+                switch(id) {
+                    case 'pesquisar-estoque':
+                        itens = document.querySelectorAll('#tabela-estoque tbody tr');
+                        itens.forEach(tr => {
+                            const nome = tr.children[1].textContent.toLowerCase();
+                            const codigo = tr.children[0].textContent.toLowerCase();
+                            tr.style.display = (nome.includes(termo) || codigo.includes(termo)) ? '' : 'none';
+                        });
+                        break;
+                    case 'pesquisar-materiais':
+                        itens = document.querySelectorAll('#tabela-materiais tbody tr');
+                        itens.forEach(tr => {
+                            const nome = tr.children[1].textContent.toLowerCase();
+                            const codigo = tr.children[0].textContent.toLowerCase();
+                            tr.style.display = (nome.includes(termo) || codigo.includes(termo)) ? '' : 'none';
+                        });
+                        break;
+                    case 'pesquisar-receita':
+                        itens = document.querySelectorAll('.recipe-card');
+                        itens.forEach(card => {
+                            const nome = card.querySelector('h3').textContent.toLowerCase();
+                            card.style.display = nome.includes(termo) ? '' : 'none';
+                        });
+                        break;
+                    case 'pesquisar-vendas':
+                        itens = document.querySelectorAll('.sale-card');
+                        itens.forEach(card => {
+                            const nome = card.querySelector('.sale-title').textContent.toLowerCase();
+                            const cliente = card.querySelector('div:nth-child(2)').textContent.toLowerCase();
+                            card.style.display = (nome.includes(termo) || cliente.includes(termo)) ? '' : 'none';
+                        });
+                        break;
+                }
+            });
+        }
+    });
+   
+    // Eventos para scanner de QR/código de barras
+    const btnIniciarScanner = document.getElementById('iniciar-scanner');
+    if (btnIniciarScanner) {
+        btnIniciarScanner.addEventListener('click', iniciarScanner);
+    }
+   
+    const btnPararScanner = document.getElementById('parar-scanner');
+    if (btnPararScanner) {
+        btnPararScanner.addEventListener('click', pararScanner);
+    }
+   
+    // Evento para busca de código do material
+    adicionarEventoCodigoMaterial();
+   
+    // Evento para adicionar material/item
+    const formAdicionarMaterial = document.getElementById('form-adicionar-material');
+    if (formAdicionarMaterial) {
+        formAdicionarMaterial.addEventListener('submit', function(e) {
+            e.preventDefault();
+           
+            const codigo = document.getElementById('codigo-material').value;
+            const nome = document.getElementById('nome-material').value;
+            const quantidade = document.getElementById('quantidade-material').value;
+            const unidade = document.getElementById('unidade-material').value;
+            const unidadeMedida = document.getElementById('unidade-medida-material').value;
+            const quantidadeMedida = document.getElementById('quantidade-medida-material').value;
+            const preco = document.getElementById('preco-material').value;
+           
+            // Data de compra - se disponível
+            let dataCompra = null;
+            const dataCompraEl = document.getElementById('data-compra-material');
+            if (dataCompraEl && dataCompraEl.value) {
+                dataCompra = new Date(dataCompraEl.value).toISOString();
+            }
+           
+            // Adicionar ou atualizar o material no catálogo
+            const materialId = adicionarOuAtualizarMaterial(codigo, nome, unidade, unidadeMedida, quantidadeMedida, preco, dataCompra);
+            
+            if (materialId === null) {
+                return; // Erro na validação
+            }
+           
+            // Adicionar ao estoque
+            const resultado = adicionarItemEstoque(materialId, quantidade, preco);
+            
+            if (!resultado) {
+                return; // Erro na validação
+            }
+           
+            // Atualizar localStorage e interface
+            atualizarLocalStorage();
+            carregarMateriais();
+            carregarEstoque();
+           
+            // Resetar o botão de submit caso esteja em modo de edição
+            const submitBtn = document.querySelector('#form-adicionar-material button[type="submit"]');
+            submitBtn.textContent = 'Adicionar ao Estoque';
+            submitBtn.removeAttribute('data-edicao');
+           
+            // Limpar o formulário
+            this.reset();
+           
+            mostrarNotificacao('notification-materiais', 'Material adicionado com sucesso!', 'success');
+           
+            // Ocultar info de preço médio
+            const infoPrecoMedio = document.getElementById('info-preco-medio');
+            if (infoPrecoMedio) {
+                infoPrecoMedio.classList.add('hidden');
+            }
+           
+            // Mudar para a aba de listar materiais
+            const tabButton = document.querySelector('[data-tab="listar-materiais"]');
+            if (tabButton) {
+                tabButton.click();
+            }
+        });
+    }
+    
+    // Evento de logout
+    const btnLogout = document.getElementById('btn-logout');
+    if (btnLogout) {
+        btnLogout.addEventListener('click', function() {
+            firebase.auth().signOut().then(() => {
+                // Sign-out successful.
+                currentUser = null;
+                localStorage.clear();
+                location.reload();
+            }).catch((error) => {
+                // An error happened.
+                console.error('Erro ao fazer logout:', error);
+            });
+        });
+    }
+    
+    // Eventos de login
+    const btnLogin = document.getElementById('btn-login');
+    if (btnLogin) {
+      btnLogin.addEventListener('click', function(e) {
+        e.preventDefault();
+        fazerLogin();
+      });
+    }
+    
+    const btnCadastrar = document.getElementById('btn-cadastrar');
+    if (btnCadastrar) {
+      btnCadastrar.addEventListener('click', function(e) {
+        e.preventDefault();
+        fazerCadastro();
+      });
+    }
+    
+    console.log("Eventos de navegação configurados com sucesso");
+}
+
+// NOVAS FUNÇÕES DE NAVEGAÇÃO (PARA FACILITAR DEPURAÇÃO E IMPLEMENTAÇÃO)
+
+// Função para navegação principal
+function navegarParaPagina(e) {
+    e.preventDefault();
+    
+    const pagina = this.getAttribute('data-page');
+    console.log("Navegando para a página:", pagina);
+    
+    // Atualizar navegação
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    this.classList.add('active');
+    
+    // Mostrar página correspondente
+    document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+    const pageElement = document.getElementById(`${pagina}-page`);
+    if (pageElement) {
+        pageElement.classList.add('active');
+    } else {
+        console.error("Página não encontrada:", pagina + "-page");
+    }
+}
+
+// Função para alternar abas
+function alternarAba() {
+    const tabId = this.getAttribute('data-tab');
+    console.log("Alterando para a aba:", tabId);
+    
+    // Atualizar botões de abas
+    const parentTab = this.parentElement;
+    parentTab.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    
+    // Mostrar conteúdo da aba
+    const parentContent = parentTab.parentElement;
+    parentContent.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    
+    const contentTab = document.getElementById(tabId);
+    if (contentTab) {
+        contentTab.classList.add('active');
+    } else {
+        console.error("Conteúdo da aba não encontrado:", tabId);
+    }
+}
 // PARTE 5: JAVASCRIPT (GERENCIAMENTO DE MATERIAIS E ESTOQUE)
 
 // Função para adicionar ou atualizar um material no catálogo - MODIFICADA
@@ -3990,7 +4469,10 @@ function inicializarEventosModaisVenda() {
 // Função para carregar a lista de vendas - MODIFICADA
 function carregarVendas() {
   const container = document.getElementById('lista-vendas');
-  if (!container) return;
+  if (!container) {
+    console.error("Container de vendas não encontrado");
+    return;
+  }
   
   container.innerHTML = '';
   
@@ -4374,6 +4856,8 @@ function filtrarVendas() {
 
 // MODIFICADO: Inicializar dados com nova lógica de cálculos
 function inicializarDados() {
+  console.log("Inicializando dados...");
+  
   // Garantir que o modal esteja oculto ao iniciar
   const modalElement = document.getElementById('processing-modal');
   if (modalElement) {
@@ -4488,14 +4972,17 @@ function inicializarDados() {
   vendas = vendasUnicas;
   
   atualizarLocalStorage();
+  console.log("Dados inicializados com sucesso!");
 }
 
 // CORRIGIDO: Inicialização principal única do aplicativo
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('DOM Carregado!');
+  console.log('DOM Carregado! Inicializando aplicativo...');
   
   // Verificar autenticação do Firebase
   firebase.auth().onAuthStateChanged((user) => {
+    console.log("Estado de autenticação alterado:", user ? "Usuário logado" : "Usuário não logado");
+    
     if (user) {
       // Usuário está logado
       currentUser = user;
@@ -4507,39 +4994,201 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('user-email').textContent = user.email;
       }
       
-      // Carregar dados e iniciar sincronização
+      console.log("Carregando dados do localStorage...");
+      // Carregar dados do localStorage
       estoque = JSON.parse(localStorage.getItem('estoque')) || [];
       materiais = JSON.parse(localStorage.getItem('materiais')) || [];
       receitas = JSON.parse(localStorage.getItem('receitas')) || [];
       vendas = JSON.parse(localStorage.getItem('vendas')) || [];
       
+      // Inicializar os dados
       inicializarDados();
+      
+      console.log("Configurando eventos na aplicação...");
+      // IMPORTANTE: Configurar eventos ANTES da inicialização de sincronização
+      // para garantir que os elementos DOM estejam atualizados
+      setupEventListeners();
+      
+      // Configurar eventos adicionais APÓS a configuração principal
+      setTimeout(() => {
+        setupAdditionalEvents();
+        setupVendasEvents();
+        inicializarEventosModaisVenda();
+        
+        // Iniciar relógio
+        atualizarDataHora();
+        setInterval(atualizarDataHora, 1000);
+        
+        // Adicionar botão de sincronização
+        adicionarBotaoSincronizacao();
+        
+        console.log("Eventos configurados com sucesso!");
+      }, 50);
+      
+      // Iniciar sincronização APÓS configurar eventos
+      console.log("Iniciando sincronização com o Firebase...");
       iniciarSincronizacao();
       
-      // Carregar interfaces
-      carregarEstoque();
-      carregarMateriais();
-      carregarReceitas();
-      carregarVendas();
-      
-      // Configurar eventos
-      setupEventListeners();
-      setupAdditionalEvents();
-      setupVendasEvents();
-      inicializarEventosModaisVenda();
-      
-      // Iniciar relógio
-      atualizarDataHora();
-      setInterval(atualizarDataHora, 1000);
-      
-      // Adicionar botão de sincronização
-      adicionarBotaoSincronizacao();
+      // Ativar a primeira aba manualmente para garantir que a página correta seja mostrada
+      console.log("Ativando a navegação inicial...");
+      const primeiraAba = document.querySelector('.nav-link');
+      if (primeiraAba) {
+        // Simular um clique na primeira aba para garantir que a navegação funcione
+        setTimeout(() => {
+          primeiraAba.click();
+          console.log("Primeira aba ativada:", primeiraAba.getAttribute('data-page'));
+        }, 100);
+      }
     } else {
       // Usuário não está logado, mostrar tela de login
+      console.log("Mostrando tela de login...");
       mostrarTelaLogin();
+      
+      // Configurar eventos de login mesmo se o usuário não estiver logado
+      setupEventListeners();
     }
   });
 });
+
+// Verificar se todas as funções necessárias estão definidas
+function verificarFuncoesNecessarias() {
+  const funcoesNecessarias = [
+    'setupEventListeners',
+    'carregarEstoque',
+    'carregarMateriais',
+    'carregarReceitas',
+    'carregarVendas',
+    'setupAdditionalEvents',
+    'setupVendasEvents',
+    'inicializarEventosModaisVenda'
+  ];
+  
+  let todasDefinidas = true;
+  funcoesNecessarias.forEach(funcao => {
+    if (typeof window[funcao] !== 'function') {
+      console.error(`Função necessária não definida: ${funcao}`);
+      todasDefinidas = false;
+    }
+  });
+  
+  return todasDefinidas;
+}
+
+// Chamada adicional para garantir que a navegação principal funcionará
+window.addEventListener('load', function() {
+  console.log("Página completamente carregada!");
+  
+  // Verificar se todas as funções necessárias estão definidas
+  if (verificarFuncoesNecessarias()) {
+    console.log("Todas as funções necessárias estão definidas.");
+  }
+  
+  // Garantir que a navegação principal esteja funcionando
+  const navLinks = document.querySelectorAll('.nav-link');
+  if (navLinks.length > 0) {
+    console.log(`Encontrados ${navLinks.length} links de navegação após carregamento completo.`);
+    
+    // Verificar se os eventos de clique estão funcionando
+    navLinks.forEach(link => {
+      // Verificar se já tem evento de clique
+      const temEvento = link._hasClickEvent;
+      if (!temEvento) {
+        console.log("Readicionando evento de navegação para:", link.getAttribute('data-page'));
+        link.addEventListener('click', navegarParaPagina);
+        link._hasClickEvent = true;
+      }
+    });
+    
+    // Se o usuário estiver logado e nenhuma página estiver ativa,
+    // ativar a primeira aba novamente após um breve delay
+    const paginasAtivas = document.querySelectorAll('.page-content.active');
+    if (currentUser && paginasAtivas.length === 0) {
+      console.log("Nenhuma página ativa encontrada, ativando a primeira aba...");
+      setTimeout(() => {
+        const primeiraAba = document.querySelector('.nav-link');
+        if (primeiraAba) {
+          primeiraAba.click();
+        }
+      }, 200);
+    }
+  }
+});
+
+// Nova função para corrigir problemas de navegação em navegadores móveis
+function corrigirNavegacaoMovel() {
+  // Em dispositivos móveis, os eventos de clique podem ser tratados diferentemente
+  // Esta função verifica se estamos em um dispositivo móvel e ajusta o comportamento
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  
+  if (isMobile) {
+    console.log("Dispositivo móvel detectado, ajustando comportamento de navegação");
+    
+    // Em dispositivos móveis, podemos precisar usar touchstart em vez de click
+    document.querySelectorAll('.nav-link').forEach(link => {
+      link.addEventListener('touchstart', function(e) {
+        // Prevenir comportamento padrão que pode causar problemas em alguns navegadores móveis
+        e.preventDefault();
+        
+        // Obter a página de destino
+        const pagina = this.getAttribute('data-page');
+        console.log("Toque na navegação para:", pagina);
+        
+        // Atualizar navegação
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        this.classList.add('active');
+        
+        // Mostrar página correspondente
+        document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+        const pageElement = document.getElementById(`${pagina}-page`);
+        if (pageElement) {
+          pageElement.classList.add('active');
+        }
+      });
+    });
+    
+    // Fazer o mesmo para os botões de abas
+    document.querySelectorAll('.tab-button').forEach(button => {
+      button.addEventListener('touchstart', function(e) {
+        e.preventDefault();
+        
+        const tabId = this.getAttribute('data-tab');
+        console.log("Toque na aba:", tabId);
+        
+        // Atualizar botões de abas
+        const parentTab = this.parentElement;
+        parentTab.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        
+        // Mostrar conteúdo da aba
+        const parentContent = parentTab.parentElement;
+        parentContent.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        
+        const contentTab = document.getElementById(tabId);
+        if (contentTab) {
+          contentTab.classList.add('active');
+        }
+      });
+    });
+  }
+}
+
+// Chamar a função para corrigir navegação móvel quando a página estiver totalmente carregada
+window.addEventListener('load', function() {
+  setTimeout(corrigirNavegacaoMovel, 300);
+});
+
+// Verificar periodicamente se a navegação está funcionando
+setInterval(function() {
+  // Verificar se alguma página está visível
+  const paginasAtivas = document.querySelectorAll('.page-content.active');
+  if (paginasAtivas.length === 0 && currentUser) {
+    console.log("Nenhuma página ativa detectada, corrigindo navegação...");
+    const primeiraAba = document.querySelector('.nav-link');
+    if (primeiraAba) {
+      primeiraAba.click();
+    }
+  }
+}, 2000); // Verificar a cada 2 segundos
 </script>
 </body>
 </html>
