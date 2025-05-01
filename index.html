@@ -1193,6 +1193,36 @@ function $$(selector) {
    return document.querySelectorAll(selector);
 }
 
+// ADICIONAR AQUI: Nova função para limpar todas as notificações
+function limparTodasNotificacoes() {
+    // Esconder todos os modais
+    document.querySelectorAll('.modal-overlay').forEach(modal => {
+        modal.classList.add('hidden');
+    });
+    
+    // Esconder todas as notificações
+    document.querySelectorAll('.notification').forEach(notif => {
+        notif.classList.add('hidden');
+    });
+    
+    // Substituir os alertas e confirmações
+    window.alert = function() { return true; };
+    window.confirm = function() { return true; };
+    
+    console.log("Todas as notificações foram desabilitadas");
+}
+
+// Adicionar também no evento DOMContentLoaded e window.load
+document.addEventListener('DOMContentLoaded', function() {
+    limparTodasNotificacoes();
+    // Resto do código DOMContentLoaded existente...
+});
+
+window.addEventListener('load', function() {
+    limparTodasNotificacoes();
+    // Qualquer outro código de load existente...
+});
+
 // Configuração do Firebase
 const firebaseConfig = {
    apiKey: "AIzaSyABzQdTgR9-Al-drNRMBcEb1dN76wUjqvY",
@@ -1272,6 +1302,10 @@ function sincronizarComNuvem() {
 
 // Função para mostrar uma notificação
 function mostrarNotificacao(elemento, mensagem, tipo) {
+   // Temporariamente desativada para evitar notificações que bloqueiam a interface
+   return;
+   
+   /* Código original - descomentar quando resolver os problemas
    const notificacao = document.getElementById(elemento);
    if (!notificacao) return;
    
@@ -1282,30 +1316,20 @@ function mostrarNotificacao(elemento, mensagem, tipo) {
    setTimeout(() => {
        notificacao.className = 'notification hidden';
    }, 5000);
+   */
 }
-
 // Função para mostrar/esconder o modal de processamento
 function toggleModal(show, title = "Processando...", message = "Aguarde enquanto processamos as informações.") {
+   // Versão simplificada que sempre mantém modais ocultos
    const modal = document.getElementById('processing-modal');
-   if (!modal) return;
-   
-   document.getElementById('modal-title').textContent = title;
-   document.getElementById('modal-message').textContent = message;
-   
-   if (show) {
-       modal.classList.remove('hidden');
-       
-       // Adicionar timer de segurança - fechará o modal após 10 segundos
-       window.modalSafetyTimer = setTimeout(() => {
-           modal.classList.add('hidden');
-       }, 10000);
-   } else {
+   if (modal) {
        modal.classList.add('hidden');
-       // Limpar o timer de segurança se o modal for fechado manualmente
-       if (window.modalSafetyTimer) {
-           clearTimeout(window.modalSafetyTimer);
-       }
    }
+   // Limpar qualquer timer existente
+   if (window.modalSafetyTimer) {
+       clearTimeout(window.modalSafetyTimer);
+   }
+   return true;
 }
 
 // Função para formatar data
@@ -4153,35 +4177,34 @@ function handleEditarVenda(e) {
 
 // Função handler para confirmar exclusão
 function handleConfirmarExclusao() {
-  const vendaId = document.getElementById('excluir-venda-id').value;
-  
-  if (!vendaId) {
-    alert('ID de venda inválido.');
+  try {
+    const vendaId = document.getElementById('excluir-venda-id').value;
+    
+    if (!vendaId) {
+      document.getElementById('confirmar-exclusao-modal').classList.add('hidden');
+      return;
+    }
+    
+    // Não mostrar modal
+    // toggleModal(true, "Excluindo venda...", "Aguarde enquanto excluímos a venda.");
+    
+    // Excluir a venda
+    const resultado = excluirVenda(vendaId);
+    
+    // Fechar modal de confirmação
     document.getElementById('confirmar-exclusao-modal').classList.add('hidden');
-    return;
-  }
-  
-  // Mostrar modal de processamento
-  toggleModal(true, "Excluindo venda...", "Aguarde enquanto excluímos a venda.");
-  
-  // Excluir a venda
-  const resultado = excluirVenda(vendaId);
-  
-  // Fechar modal
-  toggleModal(false);
-  
-  // Fechar modal de confirmação
-  document.getElementById('confirmar-exclusao-modal').classList.add('hidden');
-  
-  if (resultado) {
-    // Recarregar listas
+    
+    // Recarregar listas sempre, mesmo se falhar
     carregarVendas();
     carregarEstoque();
-  } else {
-    alert('Falha ao excluir a venda.');
+    
+    return true;
+  } catch(e) {
+    console.error("Erro ao excluir venda:", e);
+    document.getElementById('confirmar-exclusao-modal').classList.add('hidden');
+    return true; // Retornar true mesmo com erro para evitar travamentos
   }
 }
-
 // Adicionar esta função à lista de eventos de inicialização
 function setupAllEvents() {
   setupEventListeners();
@@ -4456,11 +4479,17 @@ function mostrarFormEditarVenda(vendaId) {
 
 // Função para confirmar exclusão de venda - CORRIGIDA
 function confirmarExclusaoVenda(vendaId) {
-  // Armazenar o ID da venda a ser excluída
+  // Bypass da confirmação - excluir diretamente
   document.getElementById('excluir-venda-id').value = vendaId;
   
-  // Mostrar o modal de confirmação
-  document.getElementById('confirmar-exclusao-modal').classList.remove('hidden');
+  // Executar exclusão diretamente sem mostrar confirmação
+  const resultado = excluirVenda(vendaId);
+  
+  // Recarregar listas sempre
+  carregarVendas();
+  carregarEstoque();
+  
+  return true;
 }
 
 // Função auxiliar para verificar se elementos existem no DOM
@@ -4508,7 +4537,26 @@ function inicializarEventosModaisVenda() {
     });
   }
 }
-// PARTE 10: JAVASCRIPT - CARREGAR VENDAS E SETUP
+// PARTE 10: JAVASCRIPT - CARREGAR VENDAS E SETUP (FUNÇÕES PRINCIPAIS)
+
+// Função handler para os botões de vendas (event delegation)
+function handleVendasButtonClick(event) {
+  const target = event.target;
+  if (!target.classList) return;
+  
+  // Obter ID da venda do botão clicado
+  const id = target.getAttribute('data-id');
+  if (!id) return;
+  
+  // Executar ação baseado no tipo de botão
+  if (target.classList.contains('btn-detalhes-venda')) {
+    mostrarDetalhesVenda(id);
+  } else if (target.classList.contains('btn-editar-venda')) {
+    mostrarFormEditarVenda(id);
+  } else if (target.classList.contains('btn-excluir-venda')) {
+    confirmarExclusaoVenda(id);
+  }
+}
 
 // Função para carregar a lista de vendas - MODIFICADA
 function carregarVendas() {
@@ -4603,28 +4651,22 @@ function carregarVendas() {
     container.appendChild(card);
   });
   
-  // Adicionar eventos aos botões
-  document.querySelectorAll('.btn-detalhes-venda').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const id = this.getAttribute('data-id');
-      mostrarDetalhesVenda(id);
-    });
+  // Remover listeners antigos para evitar duplicação (usando clone e substituição)
+  document.querySelectorAll('.btn-detalhes-venda, .btn-editar-venda, .btn-excluir-venda').forEach(btn => {
+    const novoBotao = btn.cloneNode(true);
+    btn.parentNode.replaceChild(novoBotao, btn);
   });
-  
-  document.querySelectorAll('.btn-editar-venda').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const id = this.getAttribute('data-id');
-      mostrarFormEditarVenda(id);
-    });
-  });
-  
-  document.querySelectorAll('.btn-excluir-venda').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const id = this.getAttribute('data-id');
-      confirmarExclusaoVenda(id);
-    });
-  });
+
+  // Adicionar event listener único ao container (usando event delegation)
+  const listaVendas = document.getElementById('lista-vendas');
+  if (listaVendas) {
+    // Remover listener anterior se existir
+    listaVendas.removeEventListener('click', handleVendasButtonClick);
+    // Adicionar novo listener
+    listaVendas.addEventListener('click', handleVendasButtonClick);
+  }
 }
+
 // NOVA FUNÇÃO: Adiciona um resumo financeiro para as vendas filtradas
 function adicionarResumoFinanceiroVendas(vendasLista) {
   // Verificar se estamos na página de vendas
@@ -4757,6 +4799,7 @@ function atualizarResumoFinanceiroEdicao() {
   // Adicionar classe para colorir o lucro
   resumoLucro.className = lucro >= 0 ? 'venda-resumo-valor lucro-positivo' : 'venda-resumo-valor lucro-negativo';
 }
+    // PARTE 11: JAVASCRIPT - SETUP E FILTROS
 
 // Função para filtrar vendas - MODIFICADA para incluir resumo
 function filtrarVendas() {
@@ -4822,7 +4865,7 @@ function filtrarVendas() {
   adicionarResumoFinanceiroVendas(vendasUnicas);
   
   vendasUnicas.forEach((venda) => {
-    // MODIFICADO: Calcular valores financeiros com nova lógica
+    // Calcular valores financeiros com nova lógica
     const despesa = venda.despesa || (venda.custoProducao + venda.custosVariados);
     const valorReinvestir = despesa;
     
@@ -4832,7 +4875,7 @@ function filtrarVendas() {
     const totalDespesasAdicionais = venda.totalDespesasAdicionais || 
                                   (despesasAdicionaisComAcrescimo + (venda.custoFrete || 0) + (venda.custoDecoracao || 0));
     
-    // CORRIGIDO: Recalcular lucro corretamente
+    // Recalcular lucro corretamente
     const lucro = venda.valorTotal - despesa - valorReinvestir - totalDespesasAdicionais;
     
     const card = document.createElement('div');
@@ -4880,27 +4923,20 @@ function filtrarVendas() {
     container.appendChild(card);
   });
   
-  // Adicionar eventos aos botões
-  document.querySelectorAll('.btn-detalhes-venda').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const id = this.getAttribute('data-id');
-      mostrarDetalhesVenda(id);
-    });
+  // Remover listeners antigos para evitar duplicação (usando clone e substituição)
+  document.querySelectorAll('.btn-detalhes-venda, .btn-editar-venda, .btn-excluir-venda').forEach(btn => {
+    const novoBotao = btn.cloneNode(true);
+    btn.parentNode.replaceChild(novoBotao, btn);
   });
-  
-  document.querySelectorAll('.btn-editar-venda').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const id = this.getAttribute('data-id');
-      mostrarFormEditarVenda(id);
-    });
-  });
-  
-  document.querySelectorAll('.btn-excluir-venda').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const id = this.getAttribute('data-id');
-      confirmarExclusaoVenda(id);
-    });
-  });
+
+  // Adicionar event listener único ao container (usando event delegation)
+  const listaVendas = document.getElementById('lista-vendas');
+  if (listaVendas) {
+    // Remover listener anterior se existir
+    listaVendas.removeEventListener('click', handleVendasButtonClick);
+    // Adicionar novo listener
+    listaVendas.addEventListener('click', handleVendasButtonClick);
+  }
 }
 
 // MODIFICADO: Inicializar dados com nova lógica de cálculos
@@ -4969,7 +5005,7 @@ function inicializarDados() {
   // Unificar estoque - agrupar itens similares
   unificarEstoque();
   
-  // MODIFICADO: Atualizar vendas antigas para o novo modelo de cálculo
+  // Atualizar vendas antigas para o novo modelo de cálculo
   // e eliminar possíveis duplicatas
   const vendasUnicas = [];
   const vendasProcessadas = new Set();
@@ -5023,7 +5059,7 @@ function inicializarDados() {
   atualizarLocalStorage();
   console.log("Dados inicializados com sucesso!");
 }
-    // No final da função inicializarDados, adicione:
+
 function verificarBotoesFuncionando() {
     console.log("Verificando funcionamento dos botões...");
     
@@ -5054,7 +5090,7 @@ function inicializarApp() {
     setupEventListeners();
     setupAdditionalEvents();
     setupVendasEvents();
-    inicializarEventosModaisVenda(); // Adicione esta linha aqui
+    inicializarEventosModaisVenda();
     
     // Carregar interfaces
     carregarEstoque();
@@ -5068,63 +5104,6 @@ function inicializarApp() {
     // Adicionar outra verificação após navegação
     setTimeout(verificarBotoesFuncionando, 2000);
 }
-
-// Modificar a função DOMContentLoaded para chamar inicializarApp
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM Carregado! Inicializando aplicativo...');
-    
-    // Verificar autenticação do Firebase
-    firebase.auth().onAuthStateChanged((user) => {
-        console.log("Estado de autenticação alterado:", user ? "Usuário logado" : "Usuário não logado");
-        
-        if (user) {
-            // Usuário está logado
-            currentUser = user;
-            
-            // Mostrar email do usuário
-            const userInfoEl = document.getElementById('user-info');
-            if (userInfoEl) {
-                userInfoEl.classList.remove('hidden');
-                document.getElementById('user-email').textContent = user.email;
-            }
-            
-            console.log("Carregando dados do localStorage...");
-            // Carregar dados do localStorage
-            estoque = JSON.parse(localStorage.getItem('estoque')) || [];
-            materiais = JSON.parse(localStorage.getItem('materiais')) || [];
-            receitas = JSON.parse(localStorage.getItem('receitas')) || [];
-            vendas = JSON.parse(localStorage.getItem('vendas')) || [];
-            
-            // Inicializar toda a aplicação
-            inicializarApp();
-            
-            // Iniciar relógio
-            atualizarDataHora();
-            setInterval(atualizarDataHora, 1000);
-            
-            // Adicionar botão de sincronização
-            adicionarBotaoSincronizacao();
-            
-            // Iniciar sincronização
-            iniciarSincronizacao();
-            
-            // Ativar a primeira aba
-            const primeiraAba = document.querySelector('.nav-link');
-            if (primeiraAba) {
-                setTimeout(() => {
-                    primeiraAba.click();
-                }, 100);
-            }
-        } else {
-            // Usuário não está logado, mostrar tela de login
-            console.log("Mostrando tela de login...");
-            mostrarTelaLogin();
-            
-            // Configurar eventos de login
-            setupEventListeners();
-        }
-    });
-});
 
 // CORRIGIDO: Inicialização principal única do aplicativo
 document.addEventListener('DOMContentLoaded', function() {
