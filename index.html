@@ -1154,7 +1154,7 @@
         <input type="hidden" id="excluir-venda-id">
         <div style="margin-top: 20px; text-align: right;">
             <button id="cancelar-exclusao" class="btn btn-secondary">Cancelar</button>
-            <button id="confirmar-exclusao" class="btn btn-danger">Excluir</button>
+            <button id="confirmar-exclusao" class="btn btn-danger" onclick="handleConfirmarExclusao()">Excluir</button>
         </div>
     </div>
 </div>
@@ -1260,11 +1260,11 @@ function sincronizarComNuvem() {
        ultimaAtualizacao: new Date().toISOString()
    }).then(() => {
        toggleModal(false);
-       mostrarNotificacao('notification-estoque', 'Dados sincronizados com a nuvem!', 'success');
+       alert('Dados sincronizados com a nuvem!');
        return true;
    }).catch(error => {
        toggleModal(false);
-       mostrarNotificacao('notification-estoque', 'Erro ao sincronizar: ' + error.message, 'error');
+       alert('Erro ao sincronizar: ' + error.message);
        console.error('Erro na sincronização:', error);
        return false;
    });
@@ -1434,7 +1434,7 @@ function iniciarSincronizacao(skipSync = false) {
                localStorage.setItem('vendas', JSON.stringify(vendas));
                localStorage.setItem('ultimaAtualizacao', dados.ultimaAtualizacao);
                
-               mostrarNotificacao('notification-estoque', 'Dados carregados da nuvem!', 'success');
+               alert('Dados carregados da nuvem!');
            } else if (!skipSync) {
                // Dados vazios na nuvem, mas temos dados locais para enviar
                if (estoque.length > 0 || materiais.length > 0 || receitas.length > 0 || vendas.length > 0) {
@@ -1488,7 +1488,7 @@ function iniciarSincronizacao(skipSync = false) {
                    carregarReceitas();
                    carregarVendas();
                    
-                   mostrarNotificacao('notification-estoque', 'Dados atualizados da nuvem!', 'info');
+                   alert('Dados atualizados da nuvem!');
                }
            }
        });
@@ -1497,7 +1497,7 @@ function iniciarSincronizacao(skipSync = false) {
    }).catch(error => {
        toggleModal(false);
        console.error('Erro ao verificar dados na nuvem:', error);
-       mostrarNotificacao('notification-estoque', 'Erro ao verificar dados na nuvem', 'error');
+       alert('Erro ao verificar dados na nuvem');
        return null;
    });
 }
@@ -1516,7 +1516,7 @@ function fazerLogin() {
     const senha = document.getElementById('login-senha').value;
     
     if (!email || !senha) {
-        mostrarNotificacao('login-notification', 'Preencha email e senha', 'error');
+        alert('Preencha email e senha');
         return;
     }
     
@@ -1544,7 +1544,7 @@ function fazerLogin() {
         })
         .catch((error) => {
             toggleModal(false);
-            mostrarNotificacao('login-notification', 'Erro ao fazer login: ' + error.message, 'error');
+            alert('Erro ao fazer login: ' + error.message);
         });
 }
 
@@ -1553,7 +1553,7 @@ function fazerCadastro() {
     const senha = document.getElementById('login-senha').value;
     
     if (!email || !senha || senha.length < 6) {
-        mostrarNotificacao('login-notification', 'Email válido e senha com pelo menos 6 caracteres são necessários', 'error');
+        alert('Email válido e senha com pelo menos 6 caracteres são necessários');
         return;
     }
     
@@ -1577,11 +1577,11 @@ function fazerCadastro() {
             adicionarBotaoSincronizacao();
             
             toggleModal(false);
-            mostrarNotificacao('notification-estoque', 'Conta criada com sucesso!', 'success');
+            alert('Conta criada com sucesso!');
         })
         .catch((error) => {
             toggleModal(false);
-            mostrarNotificacao('login-notification', 'Erro ao criar conta: ' + error.message, 'error');
+            alert('Erro ao criar conta: ' + error.message);
         });
 }
 
@@ -1776,7 +1776,7 @@ function setupEventListeners() {
             // Limpar o formulário
             this.reset();
            
-            mostrarNotificacao('notification-materiais', 'Material adicionado com sucesso!', 'success');
+            alert('Material adicionado com sucesso!');
            
             // Ocultar info de preço médio
             const infoPrecoMedio = document.getElementById('info-preco-medio');
@@ -2220,7 +2220,6 @@ function unificarEstoque() {
     estoque = estoqueUnificado;
     return estoqueUnificado;
 }
-
 // Função para remover um material e todas suas referências
 function removerMaterial(id) {
     // Usar confirm e verificar explicitamente se o resultado é true
@@ -2264,10 +2263,9 @@ function removerMaterial(id) {
     carregarEstoque();
     carregarReceitas();
     
-    mostrarNotificacao('notification-materiais', 'Material removido com sucesso!', 'success');
+    // Remover a notificação que pode estar causando problemas
     return true;
 }
-
 // Função para carregar materiais na tabela - CORRIGIDA para não unificar materiais
 function carregarMateriais() {
    const tbody = document.getElementById('itens-materiais');
@@ -2595,7 +2593,7 @@ function buscarInformacoesProduto(codigo) {
        }
        
        // CORRIGIDO: Apenas mostrar notificação, sem bloquear a edição
-       mostrarNotificacao('notification-materiais', 'Produto encontrado no catálogo!', 'success');
+       alert('Produto encontrado no catálogo!');
    } else {
        // Verificar se há um produto com nome similar
        const query = document.getElementById('nome-material').value;
@@ -2615,14 +2613,14 @@ function buscarInformacoesProduto(codigo) {
                    }
                    
                    // Mostrar notificação
-                   mostrarNotificacao('notification-materiais', 'Usamos informações de um material similar já cadastrado.', 'info');
+                  alert('Usamos informações de um material similar já cadastrado.');
                    return;
                }
            }
        }
        
        // Mostrar mensagem temporária
-       mostrarNotificacao('notification-materiais', 'Produto não encontrado no catálogo. Preencha os detalhes manualmente.', 'info');
+       alert('Produto não encontrado no catálogo. Preencha os detalhes manualmente.');
    }
 }
 
@@ -3129,7 +3127,7 @@ function removerReceita(index) {
        receitas.splice(index, 1);
        atualizarLocalStorage();
        carregarReceitas();
-       mostrarNotificacao('notification-estoque', 'Receita removida com sucesso!', 'success');
+       alert('Receita removida com sucesso!');
    }
 }
 
@@ -3486,107 +3484,118 @@ function atualizarResumoFinanceiroVenda(receita, quantidade, custoProducao, cust
     }
 }
 
-// Adicionar função de configuração para botão de adicionar ingrediente
+// Adicione esta nova função para configurar o formulário de adicionar receita separadamente
+function setupFormAddReceitaEvent() {
+    const formAdicionarReceita = document.getElementById('form-adicionar-receita');
+    if (formAdicionarReceita) {
+        // Remover evento anterior para evitar duplicação
+        formAdicionarReceita.removeEventListener('submit', handleFormAddReceita);
+        // Adicionar novo evento
+        formAdicionarReceita.addEventListener('submit', handleFormAddReceita);
+    }
+}
+
+// Função handler para o formulário de adicionar receita
+function handleFormAddReceita(e) {
+    e.preventDefault();
+    
+    const nome = document.getElementById('nome-receita').value;
+    const descricao = document.getElementById('descricao-receita').value;
+    const precoVenda = parseFloat(document.getElementById('preco-venda').value);
+    
+    if (!nome || isNaN(precoVenda) || precoVenda <= 0) {
+        alert('Preencha o nome e o preço de venda corretamente.');
+        return;
+    }
+    
+    // Coletar ingredientes
+    const ingredientes = [];
+    let ingredientesValidos = true;
+    
+    document.querySelectorAll('.ingrediente-item').forEach(item => {
+        const materialId = item.querySelector('.ingrediente-select').value;
+        const quantidade = parseFloat(item.querySelector('.ingrediente-quantidade').value);
+        const unidadeMedida = item.querySelector('.ingrediente-unidade-medida').value;
+        
+        if (!materialId || isNaN(quantidade) || quantidade <= 0) {
+            ingredientesValidos = false;
+            return;
+        }
+        
+        ingredientes.push({
+            materialId: materialId,
+            quantidade: quantidade,
+            unidadeMedida: unidadeMedida
+        });
+    });
+    
+    if (!ingredientesValidos || ingredientes.length === 0) {
+        alert('Adicione pelo menos um ingrediente com quantidade válida.');
+        return;
+    }
+    
+    // Verificar se é edição ou nova receita
+    const submitBtn = document.querySelector('#form-adicionar-receita button[type="submit"]');
+    const indexEdicao = submitBtn.getAttribute('data-edicao');
+    
+    if (indexEdicao !== null && indexEdicao !== undefined) {
+        // Edição de receita existente
+        const receitaIndex = parseInt(indexEdicao);
+        if (!isNaN(receitaIndex) && receitas[receitaIndex]) {
+            receitas[receitaIndex].nome = nome;
+            receitas[receitaIndex].descricao = descricao;
+            receitas[receitaIndex].ingredientes = ingredientes;
+            receitas[receitaIndex].precoVenda = precoVenda;
+            
+            // Resetar o botão
+            submitBtn.textContent = 'Salvar Receita';
+            submitBtn.removeAttribute('data-edicao');
+        }
+    } else {
+        // Nova receita
+        const novaReceita = {
+            id: gerarId(),
+            nome: nome,
+            descricao: descricao,
+            ingredientes: ingredientes,
+            precoVenda: precoVenda,
+            dataCriacao: new Date().toISOString()
+        };
+        
+        receitas.push(novaReceita);
+    }
+    
+    // Limpar o formulário
+    this.reset();
+    document.getElementById('lista-ingredientes').innerHTML = '';
+    
+    // Atualizar o localStorage e a interface
+    atualizarLocalStorage();
+    carregarReceitas();
+    
+    // Mudar para a aba de listar receitas
+    const tabButton = document.querySelector('[data-tab="listar-receitas"]');
+    if (tabButton) {
+        tabButton.click();
+    }
+}
+
+// Função para adicionar função de configuração para botão de adicionar ingrediente
 function setupAdditionalEvents() {
     // Evento para adicionar ingrediente
     const btnAdicionarIngrediente = document.getElementById('adicionar-ingrediente');
     if (btnAdicionarIngrediente) {
+        btnAdicionarIngrediente.removeEventListener('click', function() {
+            adicionarCampoIngrediente();
+        });
         btnAdicionarIngrediente.addEventListener('click', function() {
             adicionarCampoIngrediente();
         });
     }
     
-    // Evento para o formulário de adicionar receita
-    const formAdicionarReceita = document.getElementById('form-adicionar-receita');
-    if (formAdicionarReceita) {
-        formAdicionarReceita.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const nome = document.getElementById('nome-receita').value;
-            const descricao = document.getElementById('descricao-receita').value;
-            const precoVenda = parseFloat(document.getElementById('preco-venda').value);
-            
-            if (!nome || isNaN(precoVenda) || precoVenda <= 0) {
-                mostrarNotificacao('notification-estoque', 'Preencha o nome e o preço de venda corretamente.', 'error');
-                return;
-            }
-            
-            // Coletar ingredientes
-            const ingredientes = [];
-            let ingredientesValidos = true;
-            
-            document.querySelectorAll('.ingrediente-item').forEach(item => {
-                const materialId = item.querySelector('.ingrediente-select').value;
-                const quantidade = parseFloat(item.querySelector('.ingrediente-quantidade').value);
-                const unidadeMedida = item.querySelector('.ingrediente-unidade-medida').value;
-                
-                if (!materialId || isNaN(quantidade) || quantidade <= 0) {
-                    ingredientesValidos = false;
-                    return;
-                }
-                
-                ingredientes.push({
-                    materialId: materialId,
-                    quantidade: quantidade,
-                    unidadeMedida: unidadeMedida
-                });
-            });
-            
-            if (!ingredientesValidos || ingredientes.length === 0) {
-                mostrarNotificacao('notification-estoque', 'Adicione pelo menos um ingrediente com quantidade válida.', 'error');
-                return;
-            }
-            
-            // Verificar se é edição ou nova receita
-            const submitBtn = document.querySelector('#form-adicionar-receita button[type="submit"]');
-            const indexEdicao = submitBtn.getAttribute('data-edicao');
-            
-            if (indexEdicao !== null && indexEdicao !== undefined) {
-                // Edição de receita existente
-                const receitaIndex = parseInt(indexEdicao);
-                if (!isNaN(receitaIndex) && receitas[receitaIndex]) {
-                    receitas[receitaIndex].nome = nome;
-                    receitas[receitaIndex].descricao = descricao;
-                    receitas[receitaIndex].ingredientes = ingredientes;
-                    receitas[receitaIndex].precoVenda = precoVenda;
-                    
-                    // Resetar o botão
-                    submitBtn.textContent = 'Salvar Receita';
-                    submitBtn.removeAttribute('data-edicao');
-                    
-                    mostrarNotificacao('notification-estoque', 'Receita atualizada com sucesso!', 'success');
-                }
-            } else {
-                // Nova receita
-                const novaReceita = {
-                    id: gerarId(),
-                    nome: nome,
-                    descricao: descricao,
-                    ingredientes: ingredientes,
-                    precoVenda: precoVenda,
-                    dataCriacao: new Date().toISOString()
-                };
-                
-                receitas.push(novaReceita);
-                mostrarNotificacao('notification-estoque', 'Receita adicionada com sucesso!', 'success');
-            }
-            
-            // Limpar o formulário
-            this.reset();
-            document.getElementById('lista-ingredientes').innerHTML = '';
-            
-            // Atualizar o localStorage e a interface
-            atualizarLocalStorage();
-            carregarReceitas();
-            
-            // Mudar para a aba de listar receitas
-            const tabButton = document.querySelector('[data-tab="listar-receitas"]');
-            if (tabButton) {
-                tabButton.click();
-            }
-        });
-    }
-    
+    // Configurar o formulário de adicionar receita
+    setupFormAddReceitaEvent();
+
     // Evento para selecionar receita na tela de vendas
     const selectReceitaVenda = document.getElementById('selecionar-receita-venda');
     if (selectReceitaVenda) {
@@ -3957,115 +3966,26 @@ function setupVendasEvents() {
   // Evento para o formulário de registrar venda
   const formRegistrarVenda = document.getElementById('form-registrar-venda');
   if (formRegistrarVenda) {
-    formRegistrarVenda.addEventListener('submit', function(e) {
-      e.preventDefault();
-      
-      const receitaId = document.getElementById('selecionar-receita-venda').value;
-      
-      if (!receitaId) {
-        mostrarNotificacao('notification-vendas', 'Selecione uma receita para continuar.', 'error');
-        return;
-      }
-      
-      // Coletar dados do formulário
-      const quantidade = document.getElementById('quantidade-venda').value;
-      const clienteNome = document.getElementById('cliente-nome').value;
-      const clienteTelefone = document.getElementById('cliente-telefone').value;
-      const clienteEndereco = document.getElementById('cliente-endereco').value;
-      const custoFrete = document.getElementById('custo-frete').value;
-      const custoDecoracao = document.getElementById('custo-decoracao').value;
-      const despesasAdicionais = document.getElementById('despesas-adicionais').value;
-      const observacoes = document.getElementById('observacoes-venda').value;
-      const dataVenda = document.getElementById('data-venda').value;
-      
-      // Mostrar modal de processamento
-      toggleModal(true, "Registrando venda...", "Aguarde enquanto processamos a venda.");
-      
-      // Registrar a venda
-      const resultado = registrarVenda(
-        receitaId, quantidade, clienteNome, clienteTelefone, 
-        clienteEndereco, custoFrete, custoDecoracao, despesasAdicionais, 
-        observacoes, dataVenda
-      );
-      
-      // Fechar modal
-      toggleModal(false);
-      
-      if (resultado) {
-        // Limpar o formulário
-        this.reset();
-        document.getElementById('detalhes-receita-venda').classList.add('hidden');
-        
-        // Mostrar mensagem de sucesso
-        mostrarNotificacao('notification-vendas', 'Venda registrada com sucesso!', 'success');
-        
-        // Recarregar listas
-        carregarVendas();
-        carregarEstoque();
-        
-        // Mudar para a aba de listar vendas
-        const tabButton = document.querySelector('[data-tab="listar-vendas"]');
-        if (tabButton) {
-          tabButton.click();
-        }
-      } else {
-        mostrarNotificacao('notification-vendas', 'Falha ao registrar a venda. Verifique o estoque.', 'error');
-      }
-    });
+    // Remover evento anterior se existir
+    formRegistrarVenda.removeEventListener('submit', handleRegistrarVenda);
+    // Adicionar novo evento
+    formRegistrarVenda.addEventListener('submit', handleRegistrarVenda);
   }
   
   // Evento para o formulário de editar venda
   const formEditarVenda = document.getElementById('form-editar-venda');
   if (formEditarVenda) {
-    formEditarVenda.addEventListener('submit', function(e) {
-      e.preventDefault();
-      
-      // Coletar dados do formulário
-      const vendaId = document.getElementById('editar-venda-id').value;
-      const quantidade = document.getElementById('editar-quantidade-venda').value;
-      const clienteNome = document.getElementById('editar-cliente-nome').value;
-      const clienteTelefone = document.getElementById('editar-cliente-telefone').value;
-      const clienteEndereco = document.getElementById('editar-cliente-endereco').value;
-      const custoFrete = document.getElementById('editar-custo-frete').value;
-      const custoDecoracao = document.getElementById('editar-custo-decoracao').value;
-      const despesasAdicionais = document.getElementById('editar-despesas-adicionais').value;
-      const observacoes = document.getElementById('editar-observacoes-venda').value;
-      const dataVenda = document.getElementById('editar-data-venda').value;
-      const valorTotal = document.getElementById('editar-valor-total-venda').value;
-      
-      // Mostrar modal de processamento
-      toggleModal(true, "Atualizando venda...", "Aguarde enquanto atualizamos a venda.");
-      
-      // Editar a venda
-      const resultado = editarVenda(
-        vendaId, quantidade, clienteNome, clienteTelefone, 
-        clienteEndereco, custoFrete, custoDecoracao, despesasAdicionais, 
-        observacoes, dataVenda, valorTotal
-      );
-      
-      // Fechar modal
-      toggleModal(false);
-      
-      if (resultado) {
-        // Fechar o modal de edição
-        document.getElementById('editar-venda-modal').classList.add('hidden');
-        
-        // Mostrar mensagem de sucesso
-        mostrarNotificacao('notification-vendas', 'Venda atualizada com sucesso!', 'success');
-        
-        // Recarregar listas
-        carregarVendas();
-        carregarEstoque();
-      } else {
-        mostrarNotificacao('notification-vendas', 'Falha ao atualizar a venda. Verifique o estoque.', 'error');
-      }
-    });
+    // Remover evento anterior se existir
+    formEditarVenda.removeEventListener('submit', handleEditarVenda);
+    // Adicionar novo evento
+    formEditarVenda.addEventListener('submit', handleEditarVenda);
   }
   
   // Evento para inputs do formulário de editar venda
   ['editar-quantidade-venda', 'editar-custo-frete', 'editar-custo-decoracao', 'editar-despesas-adicionais', 'editar-valor-total-venda'].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
+      el.removeEventListener('input', atualizarResumoFinanceiroEdicao);
       el.addEventListener('input', atualizarResumoFinanceiroEdicao);
     }
   });
@@ -4073,6 +3993,9 @@ function setupVendasEvents() {
   // Eventos para os botões de fechar modais
   const botaoFecharDetalhes = document.getElementById('fechar-detalhes-venda');
   if (botaoFecharDetalhes) {
+    botaoFecharDetalhes.removeEventListener('click', function() {
+      document.getElementById('venda-details-modal').classList.add('hidden');
+    });
     botaoFecharDetalhes.addEventListener('click', function() {
       document.getElementById('venda-details-modal').classList.add('hidden');
     });
@@ -4080,51 +4003,27 @@ function setupVendasEvents() {
   
   const botaoFecharEditar = document.getElementById('fechar-editar-venda');
   if (botaoFecharEditar) {
+    botaoFecharEditar.removeEventListener('click', function() {
+      document.getElementById('editar-venda-modal').classList.add('hidden');
+    });
     botaoFecharEditar.addEventListener('click', function() {
       document.getElementById('editar-venda-modal').classList.add('hidden');
     });
   }
   
-  // CORRIGIDO: Evento para confirmar exclusão
+  // Evento para confirmar exclusão
   const btnConfirmarExclusao = document.getElementById('confirmar-exclusao');
   if (btnConfirmarExclusao) {
-    btnConfirmarExclusao.addEventListener('click', function() {
-      const vendaId = document.getElementById('excluir-venda-id').value;
-      
-      if (!vendaId) {
-        mostrarNotificacao('notification-vendas', 'ID de venda inválido.', 'error');
-        document.getElementById('confirmar-exclusao-modal').classList.add('hidden');
-        return;
-      }
-      
-      // Mostrar modal de processamento
-      toggleModal(true, "Excluindo venda...", "Aguarde enquanto excluímos a venda.");
-      
-      // Excluir a venda
-      const resultado = excluirVenda(vendaId);
-      
-      // Fechar modal
-      toggleModal(false);
-      
-      // Fechar modal de confirmação
-      document.getElementById('confirmar-exclusao-modal').classList.add('hidden');
-      
-      if (resultado) {
-        // Mostrar mensagem de sucesso
-        mostrarNotificacao('notification-vendas', 'Venda excluída com sucesso!', 'success');
-        
-        // Recarregar listas
-        carregarVendas();
-        carregarEstoque();
-      } else {
-        mostrarNotificacao('notification-vendas', 'Falha ao excluir a venda.', 'error');
-      }
-    });
+    btnConfirmarExclusao.removeEventListener('click', handleConfirmarExclusao);
+    btnConfirmarExclusao.addEventListener('click', handleConfirmarExclusao);
   }
   
-  // CORRIGIDO: Evento para cancelar exclusão
+  // Evento para cancelar exclusão
   const btnCancelarExclusao = document.getElementById('cancelar-exclusao');
   if (btnCancelarExclusao) {
+    btnCancelarExclusao.removeEventListener('click', function() {
+      document.getElementById('confirmar-exclusao-modal').classList.add('hidden');
+    });
     btnCancelarExclusao.addEventListener('click', function() {
       document.getElementById('confirmar-exclusao-modal').classList.add('hidden');
     });
@@ -4133,11 +4032,19 @@ function setupVendasEvents() {
   // Eventos para os botões de filtrar vendas
   const btnFiltrarVendas = document.getElementById('btn-filtrar-vendas');
   if (btnFiltrarVendas) {
+    btnFiltrarVendas.removeEventListener('click', filtrarVendas);
     btnFiltrarVendas.addEventListener('click', filtrarVendas);
   }
   
   const btnLimparFiltros = document.getElementById('btn-limpar-filtros');
   if (btnLimparFiltros) {
+    btnLimparFiltros.removeEventListener('click', function() {
+      document.getElementById('filtro-data-inicio').value = '';
+      document.getElementById('filtro-data-fim').value = '';
+      document.getElementById('filtro-receita').value = '';
+      
+      carregarVendas();
+    });
     btnLimparFiltros.addEventListener('click', function() {
       document.getElementById('filtro-data-inicio').value = '';
       document.getElementById('filtro-data-fim').value = '';
@@ -4148,11 +4055,139 @@ function setupVendasEvents() {
   }
 }
 
+// Função de handler para registrar venda
+function handleRegistrarVenda(e) {
+  e.preventDefault();
+  
+  const receitaId = document.getElementById('selecionar-receita-venda').value;
+  
+  if (!receitaId) {
+    alert('Selecione uma receita para continuar.');
+    return;
+  }
+  
+  // Coletar dados do formulário
+  const quantidade = document.getElementById('quantidade-venda').value;
+  const clienteNome = document.getElementById('cliente-nome').value;
+  const clienteTelefone = document.getElementById('cliente-telefone').value;
+  const clienteEndereco = document.getElementById('cliente-endereco').value;
+  const custoFrete = document.getElementById('custo-frete').value;
+  const custoDecoracao = document.getElementById('custo-decoracao').value;
+  const despesasAdicionais = document.getElementById('despesas-adicionais').value;
+  const observacoes = document.getElementById('observacoes-venda').value;
+  const dataVenda = document.getElementById('data-venda').value;
+  
+  // Mostrar modal de processamento
+  toggleModal(true, "Registrando venda...", "Aguarde enquanto processamos a venda.");
+  
+  // Registrar a venda
+  const resultado = registrarVenda(
+    receitaId, quantidade, clienteNome, clienteTelefone, 
+    clienteEndereco, custoFrete, custoDecoracao, despesasAdicionais, 
+    observacoes, dataVenda
+  );
+  
+  // Fechar modal
+  toggleModal(false);
+  
+  if (resultado) {
+    // Limpar o formulário
+    this.reset();
+    document.getElementById('detalhes-receita-venda').classList.add('hidden');
+    
+    // Recarregar listas
+    carregarVendas();
+    carregarEstoque();
+    
+    // Mudar para a aba de listar vendas
+    const tabButton = document.querySelector('[data-tab="listar-vendas"]');
+    if (tabButton) {
+      tabButton.click();
+    }
+  } else {
+    alert('Falha ao registrar a venda. Verifique o estoque.');
+  }
+}
+
+// Função handler para editar venda
+function handleEditarVenda(e) {
+  e.preventDefault();
+  
+  // Coletar dados do formulário
+  const vendaId = document.getElementById('editar-venda-id').value;
+  const quantidade = document.getElementById('editar-quantidade-venda').value;
+  const clienteNome = document.getElementById('editar-cliente-nome').value;
+  const clienteTelefone = document.getElementById('editar-cliente-telefone').value;
+  const clienteEndereco = document.getElementById('editar-cliente-endereco').value;
+  const custoFrete = document.getElementById('editar-custo-frete').value;
+  const custoDecoracao = document.getElementById('editar-custo-decoracao').value;
+  const despesasAdicionais = document.getElementById('editar-despesas-adicionais').value;
+  const observacoes = document.getElementById('editar-observacoes-venda').value;
+  const dataVenda = document.getElementById('editar-data-venda').value;
+  const valorTotal = document.getElementById('editar-valor-total-venda').value;
+  
+  // Mostrar modal de processamento
+  toggleModal(true, "Atualizando venda...", "Aguarde enquanto atualizamos a venda.");
+  
+  // Editar a venda
+  const resultado = editarVenda(
+    vendaId, quantidade, clienteNome, clienteTelefone, 
+    clienteEndereco, custoFrete, custoDecoracao, despesasAdicionais, 
+    observacoes, dataVenda, valorTotal
+  );
+  
+  // Fechar modal
+  toggleModal(false);
+  
+  if (resultado) {
+    // Fechar o modal de edição
+    document.getElementById('editar-venda-modal').classList.add('hidden');
+    
+    // Recarregar listas
+    carregarVendas();
+    carregarEstoque();
+  } else {
+    alert('Falha ao atualizar a venda. Verifique o estoque.');
+  }
+}
+
+// Função handler para confirmar exclusão
+function handleConfirmarExclusao() {
+  const vendaId = document.getElementById('excluir-venda-id').value;
+  
+  if (!vendaId) {
+    alert('ID de venda inválido.');
+    document.getElementById('confirmar-exclusao-modal').classList.add('hidden');
+    return;
+  }
+  
+  // Mostrar modal de processamento
+  toggleModal(true, "Excluindo venda...", "Aguarde enquanto excluímos a venda.");
+  
+  // Excluir a venda
+  const resultado = excluirVenda(vendaId);
+  
+  // Fechar modal
+  toggleModal(false);
+  
+  // Fechar modal de confirmação
+  document.getElementById('confirmar-exclusao-modal').classList.add('hidden');
+  
+  if (resultado) {
+    // Recarregar listas
+    carregarVendas();
+    carregarEstoque();
+  } else {
+    alert('Falha ao excluir a venda.');
+  }
+}
+
 // Adicionar esta função à lista de eventos de inicialização
 function setupAllEvents() {
   setupEventListeners();
   setupAdditionalEvents();
   setupVendasEvents();
+  inicializarEventosModaisVenda(); // Adicione esta linha
 }
 // PARTE 9: JAVASCRIPT - MOSTRAR DETALHES DA VENDA
 
@@ -4436,47 +4471,39 @@ function elementosExistem(ids) {
 // Função para inicializar todos os eventos relacionados aos modais de venda
 function inicializarEventosModaisVenda() {
   // Verificar se os elementos existem antes de adicionar os eventos
-  if (elementosExistem(['fechar-detalhes-venda'])) {
-    document.getElementById('fechar-detalhes-venda').addEventListener('click', function() {
+  if (document.getElementById('fechar-detalhes-venda')) {
+    const btnFecharDetalhes = document.getElementById('fechar-detalhes-venda');
+    btnFecharDetalhes.removeEventListener('click', function() {
+      document.getElementById('venda-details-modal').classList.add('hidden');
+    });
+    btnFecharDetalhes.addEventListener('click', function() {
       document.getElementById('venda-details-modal').classList.add('hidden');
     });
   }
   
-  if (elementosExistem(['fechar-editar-venda'])) {
-    document.getElementById('fechar-editar-venda').addEventListener('click', function() {
+  if (document.getElementById('fechar-editar-venda')) {
+    const btnFecharEditar = document.getElementById('fechar-editar-venda');
+    btnFecharEditar.removeEventListener('click', function() {
+      document.getElementById('editar-venda-modal').classList.add('hidden');
+    });
+    btnFecharEditar.addEventListener('click', function() {
       document.getElementById('editar-venda-modal').classList.add('hidden');
     });
   }
   
-  // CORRIGIDO: Certifique-se de que os eventos de exclusão estão funcionando
-  if (elementosExistem(['confirmar-exclusao', 'cancelar-exclusao'])) {
+  // Certifique-se de que os eventos de exclusão estão funcionando
+  if (document.getElementById('confirmar-exclusao') && document.getElementById('cancelar-exclusao')) {
     // Evento para confirmar exclusão
-    document.getElementById('confirmar-exclusao').addEventListener('click', function() {
-      const vendaId = document.getElementById('excluir-venda-id').value;
-      
-      if (vendaId) {
-        // Mostrar modal de processamento
-        toggleModal(true, "Excluindo venda...", "Aguarde enquanto processamos a exclusão.");
-        
-        // Excluir a venda
-        const resultado = excluirVenda(vendaId);
-        
-        toggleModal(false);
-        
-        // Fechar o modal de confirmação
-        document.getElementById('confirmar-exclusao-modal').classList.add('hidden');
-        
-        if (resultado) {
-          mostrarNotificacao('notification-vendas', 'Venda excluída com sucesso!', 'success');
-          carregarVendas();
-        } else {
-          mostrarNotificacao('notification-vendas', 'Erro ao excluir a venda.', 'error');
-        }
-      }
-    });
+    const btnConfirmar = document.getElementById('confirmar-exclusao');
+    btnConfirmar.removeEventListener('click', handleConfirmarExclusao);
+    btnConfirmar.addEventListener('click', handleConfirmarExclusao);
     
     // Evento para cancelar exclusão
-    document.getElementById('cancelar-exclusao').addEventListener('click', function() {
+    const btnCancelar = document.getElementById('cancelar-exclusao');
+    btnCancelar.removeEventListener('click', function() {
+      document.getElementById('confirmar-exclusao-modal').classList.add('hidden');
+    });
+    btnCancelar.addEventListener('click', function() {
       document.getElementById('confirmar-exclusao-modal').classList.add('hidden');
     });
   }
@@ -4598,11 +4625,16 @@ function carregarVendas() {
     });
   });
 }
-
 // NOVA FUNÇÃO: Adiciona um resumo financeiro para as vendas filtradas
 function adicionarResumoFinanceiroVendas(vendasLista) {
+  // Verificar se estamos na página de vendas
+  const vendasPage = document.getElementById('vendas-page');
+  if (!vendasPage || !vendasPage.classList.contains('active')) {
+    return; // Não adicionar resumo se não estivermos na página de vendas
+  }
+  
   // Verificar se o container de filtros existe
-  const filtroContainer = document.querySelector('.form-row');
+  const filtroContainer = document.querySelector('#vendas-page .form-row');
   if (!filtroContainer) return;
   
   // Verificar se o resumo já existe e removê-lo
@@ -5022,7 +5054,7 @@ function inicializarApp() {
     setupEventListeners();
     setupAdditionalEvents();
     setupVendasEvents();
-    inicializarEventosModaisVenda();
+    inicializarEventosModaisVenda(); // Adicione esta linha aqui
     
     // Carregar interfaces
     carregarEstoque();
