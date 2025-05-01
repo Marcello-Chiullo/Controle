@@ -1,4 +1,4 @@
-<!-- PARTE 1 HTML-->
+// PARTE 1: HTML
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -574,7 +574,7 @@
             <li><a href="#vendas" class="nav-link" data-page="vendas">Vendas</a></li>
         </ul>
     </nav>
-    <!-- PARTE 3: PÁGINA DOS APP -->
+// PARTE 2: PÁGINA DOS APP
 <!-- Página de Estoque -->
 <div class="page-content" id="estoque-page">
     <h2>Gestão de Estoque</h2>
@@ -671,9 +671,9 @@
                         <div class="form-group">
                             <label for="unidade-material">Unidade:</label>
                             <select id="unidade-material" class="form-control" required>
-                                <option value="Pacote">Pacote</option>
-                                <option value="Caixa">Caixa</option>
-                                <option value="Unidade">Unidade</option>
+                                <option value="Pct">Pacote</option>
+                                <option value="Cx">Caixa</option>
+                                <option value="Un">Unidade</option>
                                 <option value="Kg">Quilograma</option>
                                 <option value="L">Litro</option>
                             </select>
@@ -1207,7 +1207,7 @@
     </div>
 </div>
 <script>
-// PARTE 2: JAVASCRIPT (FIREBASE E FUNÇÕES GLOBAIS - OTIMIZADAS)
+// PARTE 3: JAVASCRIPT (FIREBASE E FUNÇÕES GLOBAIS - OTIMIZADAS)
 
 // Sistema de gerenciamento de eventos - novo
 const EventManager = {
@@ -1643,7 +1643,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
-// PARTE 11: JAVASCRIPT - NAVEGAÇÃO E FUNÇÕES UTILITÁRIAS
+// PARTE 4: JAVASCRIPT - NAVEGAÇÃO E FUNÇÕES UTILITÁRIAS
 
 // Função para navegação principal - OTIMIZADA
 function navegarParaPagina(e) {
@@ -2044,7 +2044,7 @@ function verificarFuncoesNecessarias() {
 // Executar verificação após carregamento completo
 window.addEventListener('load', verificarFuncoesNecessarias);
     
-// PARTE 4: JAVASCRIPT (FIREBASE E FUNÇÕES PARA ESTOQUE/MATERIAIS)
+// PARTE 5: JAVASCRIPT (FIREBASE E FUNÇÕES PARA ESTOQUE/MATERIAIS)
 
 // Funções para Estoque e Materiais - Otimizadas
 
@@ -3087,7 +3087,7 @@ function onScanSuccess(decodedText, decodedResult) {
 function onScanFailure(error) {
     // Silenciar erro para não encher o console
 }
-// PARTE 5: JAVASCRIPT - FUNÇÕES DE CÁLCULO PARA RECEITAS
+// PARTE 6: JAVASCRIPT - FUNÇÕES DE CÁLCULO PARA RECEITAS
 
 // Função para calcular o custo de uma receita - OTIMIZADA
 function calcularCustoReceita(receita) {
@@ -3539,7 +3539,7 @@ function atualizarCalculosReceita() {
     }
 }
 
-// PARTE 6: JAVASCRIPT - FUNÇÕES DE GERENCIAMENTO DE RECEITAS
+// PARTE 7: JAVASCRIPT - FUNÇÕES DE GERENCIAMENTO DE RECEITAS
 
 // Função para editar receita - OTIMIZADA
 function editarReceita(index) {
@@ -3906,7 +3906,7 @@ function handleFormAddReceita(e) {
         mostrarToast("Erro ao salvar receita", "error");
     }
 }
-// PARTE 7: JAVASCRIPT - FUNÇÕES PARA VENDAS
+// PARTE 8: JAVASCRIPT - FUNÇÕES PARA VENDAS
 
 // Função para carregar detalhes da receita na tela de vendas - OTIMIZADA
 function carregarDetalhesReceitaVenda(receitaId) {
@@ -4460,7 +4460,7 @@ function excluirVenda(vendaId) {
     }
 }
 
-// PARTE 8: JAVASCRIPT - REGISTRAR VENDA (EVENT HANDLERS)
+// PARTE 9: JAVASCRIPT - REGISTRAR VENDA (EVENT HANDLERS)
 
 // Função para configurar eventos de vendas
 function setupVendasEvents() {
@@ -5107,7 +5107,7 @@ function confirmarExclusaoVenda(vendaId) {
         mostrarToast("Erro ao confirmar exclusão", "error");
     }
 }
-// PARTE 9: JAVASCRIPT - FILTRAR VENDAS E RESUMO
+// PARTE 10: JAVASCRIPT - FILTRAR VENDAS E RESUMO
 
 // Função para filtrar vendas - OTIMIZADA
 function filtrarVendas() {
@@ -5361,7 +5361,7 @@ function inicializarEventosModaisVenda() {
     }
 }
 
-// PARTE 10: JAVASCRIPT - CARREGAR VENDAS E SETUP (FUNÇÕES PRINCIPAIS)
+// PARTE 11: JAVASCRIPT - CARREGAR VENDAS E SETUP (FUNÇÕES PRINCIPAIS)
 
 // Função para carregar a lista de vendas - OTIMIZADA
 function carregarVendas() {
