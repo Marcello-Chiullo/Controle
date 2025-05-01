@@ -2223,47 +2223,49 @@ function unificarEstoque() {
 
 // Função para remover um material e todas suas referências
 function removerMaterial(id) {
-   if (!confirm('Tem certeza que deseja remover este material e todas as suas referências?')) {
-       return;
-   }
-   
-   // Obter o material para guardar código e nome para referência
-   const material = materiais.find(m => m.id === id);
-   if (!material) return;
-   
-   const codigo = material.codigo;
-   const nome = material.nome;
-   
-   // Remover do estoque todos itens relacionados por código ou nome
-   estoque = estoque.filter(item => {
-       const materialItem = materiais.find(m => m.id === item.materialId);
-       return !(materialItem && 
+    // Usar confirm e verificar explicitamente se o resultado é true
+    if (!confirm('Tem certeza que deseja remover este material e todas as suas referências?')) {
+        return false; // Retorna false se o usuário cancela
+    }
+    
+    // O restante do código só executa se o usuário confirmar
+    const material = materiais.find(m => m.id === id);
+    if (!material) return false;
+    
+    const codigo = material.codigo;
+    const nome = material.nome;
+    
+    // Remover do estoque todos itens relacionados por código ou nome
+    estoque = estoque.filter(item => {
+        const materialItem = materiais.find(m => m.id === item.materialId);
+        return !(materialItem && 
                (materialItem.codigo === codigo || 
                 materialItem.nome.toLowerCase() === nome.toLowerCase()));
-   });
-   
-   // Remover das receitas - remover ingredientes que usam este material
-   receitas.forEach(receita => {
-       receita.ingredientes = receita.ingredientes.filter(ing => {
-           const materialIng = materiais.find(m => m.id === ing.materialId);
-           return !(materialIng && 
-                   (materialIng.codigo === codigo || 
-                    materialIng.nome.toLowerCase() === nome.toLowerCase()));
-       });
-   });
-   
-   // Remover do cadastro de materiais - todos com mesmo código ou nome
-   materiais = materiais.filter(m => 
-       !(m.codigo === codigo || m.nome.toLowerCase() === nome.toLowerCase())
-   );
-   
-   // Atualizar localStorage e recarregar interfaces
-   atualizarLocalStorage();
-   carregarMateriais();
-   carregarEstoque();
-   carregarReceitas();
-   
-   mostrarNotificacao('notification-materiais', 'Material removido com sucesso!', 'success');
+    });
+    
+    // Remover das receitas
+    receitas.forEach(receita => {
+        receita.ingredientes = receita.ingredientes.filter(ing => {
+            const materialIng = materiais.find(m => m.id === ing.materialId);
+            return !(materialIng && 
+                    (materialIng.codigo === codigo || 
+                     materialIng.nome.toLowerCase() === nome.toLowerCase()));
+        });
+    });
+    
+    // Remover do cadastro de materiais
+    materiais = materiais.filter(m => 
+        !(m.codigo === codigo || m.nome.toLowerCase() === nome.toLowerCase())
+    );
+    
+    // Atualizar localStorage e recarregar interfaces
+    atualizarLocalStorage();
+    carregarMateriais();
+    carregarEstoque();
+    carregarReceitas();
+    
+    mostrarNotificacao('notification-materiais', 'Material removido com sucesso!', 'success');
+    return true;
 }
 
 // Função para carregar materiais na tabela - CORRIGIDA para não unificar materiais
@@ -3234,47 +3236,62 @@ function carregarReceitas() {
 
 // Função para adicionar eventos aos botões das receitas
 function addRecipeButtonEvents() {
-   document.querySelectorAll('.btn-editar-receita').forEach(btn => {
-       btn.addEventListener('click', function() {
-           const index = this.getAttribute('data-index');
-           editarReceita(index);
-       });
-   });
-   
-   document.querySelectorAll('.btn-remover-receita').forEach(btn => {
-       btn.addEventListener('click', function() {
-           const index = this.getAttribute('data-index');
-           removerReceita(index);
-       });
-   });
-   
-   document.querySelectorAll('.btn-produzir-receita').forEach(btn => {
-       btn.addEventListener('click', function() {
-           const index = this.getAttribute('data-index');
-           const receita = receitas[index];
-           
-           // Mudar para a página de vendas e aba de registrar venda
-           const navLink = document.querySelector('[data-page="vendas"]');
-           if (navLink) {
-               navLink.click();
-           }
-           
-           // Pequeno delay para garantir que a página foi carregada
-           setTimeout(() => {
-               const tabButton = document.querySelector('[data-tab="registrar-venda"]');
-               if (tabButton) {
-                   tabButton.click();
-               }
-               
-               // Selecionar a receita
-               const selectReceita = document.getElementById('selecionar-receita-venda');
-               if (selectReceita) {
-                   selectReceita.value = receita.id;
-                   selectReceita.dispatchEvent(new Event('change'));
-               }
-           }, 100);
-       });
-   });
+    // Remover eventos anteriores para evitar duplicação
+    document.querySelectorAll('.btn-editar-receita').forEach(btn => {
+        btn.removeEventListener('click', editarReceitaHandler);
+        btn.addEventListener('click', editarReceitaHandler);
+    });
+    
+    document.querySelectorAll('.btn-remover-receita').forEach(btn => {
+        btn.removeEventListener('click', removerReceitaHandler);
+        btn.addEventListener('click', removerReceitaHandler);
+    });
+    
+    document.querySelectorAll('.btn-produzir-receita').forEach(btn => {
+        btn.removeEventListener('click', produzirReceitaHandler);
+        btn.addEventListener('click', produzirReceitaHandler);
+    });
+}
+
+// Funções handlers para os eventos
+function editarReceitaHandler() {
+    const index = parseInt(this.getAttribute('data-index'));
+    if (!isNaN(index)) {
+        editarReceita(index);
+    }
+}
+
+function removerReceitaHandler() {
+    const index = parseInt(this.getAttribute('data-index'));
+    if (!isNaN(index)) {
+        removerReceita(index);
+    }
+}
+
+function produzirReceitaHandler() {
+    const index = parseInt(this.getAttribute('data-index'));
+    const receita = receitas[index];
+    if (!receita) return;
+    
+    // Navegar para a página de vendas
+    const navLink = document.querySelector('[data-page="vendas"]');
+    if (navLink) {
+        navLink.click();
+    }
+    
+    setTimeout(() => {
+        const tabButton = document.querySelector('[data-tab="registrar-venda"]');
+        if (tabButton) {
+            tabButton.click();
+        }
+        
+        // Selecionar a receita
+        const selectReceita = document.getElementById('selecionar-receita-venda');
+        if (selectReceita) {
+            selectReceita.value = receita.id;
+            selectReceita.dispatchEvent(new Event('change'));
+        }
+    }, 100);
 }
 
 // FUNÇÕES PARA VENDAS - MODIFICADAS
@@ -4974,6 +4991,108 @@ function inicializarDados() {
   atualizarLocalStorage();
   console.log("Dados inicializados com sucesso!");
 }
+    // No final da função inicializarDados, adicione:
+function verificarBotoesFuncionando() {
+    console.log("Verificando funcionamento dos botões...");
+    
+    // Verificar botões de receitas
+    const btnEditarReceitas = document.querySelectorAll('.btn-editar-receita');
+    const btnRemoverReceitas = document.querySelectorAll('.btn-remover-receita');
+    
+    console.log(`Botões editar receita: ${btnEditarReceitas.length}`);
+    console.log(`Botões remover receita: ${btnRemoverReceitas.length}`);
+    
+    // Verificar botões de materiais
+    const btnRemoverMateriais = document.querySelectorAll('.btn-remover-material');
+    console.log(`Botões remover material: ${btnRemoverMateriais.length}`);
+    
+    // Reinicializar eventos
+    addRecipeButtonEvents();
+    
+    // Verificar formulário de receitas
+    setupFormAddReceitaEvent();
+}
+
+// Adicionar uma chamada para verificar botões após carregar as interfaces
+function inicializarApp() {
+    // Inicializar dados
+    inicializarDados();
+    
+    // Configurar eventos
+    setupEventListeners();
+    setupAdditionalEvents();
+    setupVendasEvents();
+    inicializarEventosModaisVenda();
+    
+    // Carregar interfaces
+    carregarEstoque();
+    carregarMateriais();
+    carregarReceitas();
+    carregarVendas();
+    
+    // Verificar botões depois de um breve delay
+    setTimeout(verificarBotoesFuncionando, 500);
+    
+    // Adicionar outra verificação após navegação
+    setTimeout(verificarBotoesFuncionando, 2000);
+}
+
+// Modificar a função DOMContentLoaded para chamar inicializarApp
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM Carregado! Inicializando aplicativo...');
+    
+    // Verificar autenticação do Firebase
+    firebase.auth().onAuthStateChanged((user) => {
+        console.log("Estado de autenticação alterado:", user ? "Usuário logado" : "Usuário não logado");
+        
+        if (user) {
+            // Usuário está logado
+            currentUser = user;
+            
+            // Mostrar email do usuário
+            const userInfoEl = document.getElementById('user-info');
+            if (userInfoEl) {
+                userInfoEl.classList.remove('hidden');
+                document.getElementById('user-email').textContent = user.email;
+            }
+            
+            console.log("Carregando dados do localStorage...");
+            // Carregar dados do localStorage
+            estoque = JSON.parse(localStorage.getItem('estoque')) || [];
+            materiais = JSON.parse(localStorage.getItem('materiais')) || [];
+            receitas = JSON.parse(localStorage.getItem('receitas')) || [];
+            vendas = JSON.parse(localStorage.getItem('vendas')) || [];
+            
+            // Inicializar toda a aplicação
+            inicializarApp();
+            
+            // Iniciar relógio
+            atualizarDataHora();
+            setInterval(atualizarDataHora, 1000);
+            
+            // Adicionar botão de sincronização
+            adicionarBotaoSincronizacao();
+            
+            // Iniciar sincronização
+            iniciarSincronizacao();
+            
+            // Ativar a primeira aba
+            const primeiraAba = document.querySelector('.nav-link');
+            if (primeiraAba) {
+                setTimeout(() => {
+                    primeiraAba.click();
+                }, 100);
+            }
+        } else {
+            // Usuário não está logado, mostrar tela de login
+            console.log("Mostrando tela de login...");
+            mostrarTelaLogin();
+            
+            // Configurar eventos de login
+            setupEventListeners();
+        }
+    });
+});
 
 // CORRIGIDO: Inicialização principal única do aplicativo
 document.addEventListener('DOMContentLoaded', function() {
