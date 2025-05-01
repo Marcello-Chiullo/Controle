@@ -574,444 +574,7 @@
             <li><a href="#vendas" class="nav-link" data-page="vendas">Vendas</a></li>
         </ul>
     </nav>
-    <script>
-// PARTE 2: JAVASCRIPT (FIREBASE E FUNÇÕES GLOBAIS - OTIMIZADAS)
-
-// Sistema de gerenciamento de eventos - novo
-const EventManager = {
-    // Adiciona um evento e evita duplicações
-    addEvent(element, eventType, handler, options = {}) {
-        if (!element) return false;
-        
-        // Remover handler existente para evitar duplicação
-        element.removeEventListener(eventType, handler);
-        
-        // Adicionar novo handler
-        element.addEventListener(eventType, handler, options);
-        return true;
-    },
-    
-    // Remove um evento específico
-    removeEvent(element, eventType, handler) {
-        if (!element) return false;
-        element.removeEventListener(eventType, handler);
-        return true;
-    },
-    
-    // Delegação de eventos - mais eficiente para listas
-    delegateEvent(parentElement, selector, eventType, handler) {
-        if (!parentElement) return false;
-        
-        const delegationHandler = function(e) {
-            const targetElement = e.target.closest(selector);
-            if (targetElement && parentElement.contains(targetElement)) {
-                handler.call(targetElement, e);
-            }
-        };
-        
-        // Armazenar a referência para poder remover depois
-        parentElement._delegationHandlers = parentElement._delegationHandlers || {};
-        if (parentElement._delegationHandlers[eventType]) {
-            parentElement.removeEventListener(eventType, parentElement._delegationHandlers[eventType]);
-        }
-        
-        parentElement._delegationHandlers[eventType] = delegationHandler;
-        parentElement.addEventListener(eventType, delegationHandler);
-        return true;
-    }
-};
-
-// Cache de elementos DOM frequentemente utilizados
-const DOMCache = {
-    elements: {},
-    
-    // Obtém elemento e armazena em cache
-    get(selector) {
-        if (!this.elements[selector]) {
-            this.elements[selector] = document.querySelector(selector);
-        }
-        return this.elements[selector];
-    },
-    
-    // Obtém múltiplos elementos
-    getAll(selector) {
-        if (!this.elements[selector + '_all']) {
-            this.elements[selector + '_all'] = document.querySelectorAll(selector);
-        }
-        return this.elements[selector + '_all'];
-    },
-    
-    // Limpa o cache
-    clear() {
-        this.elements = {};
-    }
-};
-
-// Funções utilitárias simplificadas
-function $(selector) {
-    return DOMCache.get(selector);
-}
-
-function $$(selector) {
-    return DOMCache.getAll(selector);
-}
-
-// Nova função para notificações toast
-function mostrarToast(mensagem, tipo = 'success') {
-    // Remover toast existente
-    const toastExistente = document.querySelector('.toast-notification');
-    if (toastExistente) {
-        document.body.removeChild(toastExistente);
-    }
-    
-    // Criar novo toast
-    const toast = document.createElement('div');
-    toast.className = 'toast-notification';
-    toast.textContent = mensagem;
-    
-    // Aplicar estilo conforme tipo
-    if (tipo === 'error') {
-        toast.style.backgroundColor = '#dc3545';
-    } else if (tipo === 'warning') {
-        toast.style.backgroundColor = '#ffc107';
-        toast.style.color = '#333';
-    } else {
-        toast.style.backgroundColor = '#28a745';
-    }
-    
-    document.body.appendChild(toast);
-    
-    // Remover após 3 segundos
-    setTimeout(() => {
-        if (document.body.contains(toast)) {
-            document.body.removeChild(toast);
-        }
-    }, 3000);
-}
-
-// Substituir função problemática que causava erros nos botões
-function limparNotificacoes() {
-    // Esconder todos os modais
-    document.querySelectorAll('.modal-overlay').forEach(modal => {
-        modal.classList.add('hidden');
-    });
-    
-    // Esconder todas as notificações
-    document.querySelectorAll('.notification').forEach(notif => {
-        notif.classList.add('hidden');
-    });
-    
-    // NÃO substituir alerts e confirms nativos
-    console.log("Notificações foram ocultadas");
-}
-
-// Configuração do Firebase
-const firebaseConfig = {
-    apiKey: "AIzaSyABzQdTgR9-Al-drNRMBcEb1dN76wUjqvY",
-    authDomain: "deiacontrole-faabc.firebaseapp.com",
-    databaseURL: "https://deiacontrole-faabc-default-rtdb.firebaseio.com",
-    projectId: "deiacontrole-faabc",
-    storageBucket: "deiacontrole-faabc.firebasestorage.app",
-    messagingSenderId: "216368622292",
-    appId: "1:216368622292:web:20522a4725c30907c92941",
-};
-
-// Inicializar Firebase
-firebase.initializeApp(firebaseConfig);
-const database = firebase.database();
-let currentUser = null;
-
-// Variáveis globais
-let estoque = [];
-let materiais = [];
-let receitas = [];
-let vendas = [];
-let html5QrCode;
-
-// Função para atualizar o localStorage
-function atualizarLocalStorage() {
-    try {
-        localStorage.setItem('estoque', JSON.stringify(estoque));
-        localStorage.setItem('materiais', JSON.stringify(materiais));
-        localStorage.setItem('receitas', JSON.stringify(receitas));
-        localStorage.setItem('vendas', JSON.stringify(vendas));
-        localStorage.setItem('ultimaAtualizacao', new Date().toISOString());
-        
-        // Sincronizar com nuvem se o usuário estiver logado
-        if (currentUser) {
-            sincronizarComNuvem();
-        }
-        return true;
-    } catch (error) {
-        console.error("Erro ao atualizar localStorage:", error);
-        return false;
-    }
-}
-
-// Função para sincronizar com o Firebase - otimizada
-function sincronizarComNuvem() {
-    if (!currentUser) return Promise.reject('Usuário não autenticado');
-    
-    // Impedir envio de dados vazios
-    if (estoque.length === 0 && materiais.length === 0 && 
-        receitas.length === 0 && vendas.length === 0) {
-        console.log("Evitando sincronizar arrays vazios");
-        return Promise.resolve(false);
-    }
-    
-    const userId = currentUser.uid;
-    console.log("Enviando dados para o Firebase");
-    
-    // Mostrar modal de sincronização
-    toggleModal(true, "Sincronizando dados...", "Enviando informações para a nuvem.");
-    
-    return database.ref('usuarios/' + userId).set({
-        estoque: estoque,
-        materiais: materiais,
-        receitas: receitas,
-        vendas: vendas,
-        ultimaAtualizacao: new Date().toISOString()
-    }).then(() => {
-        toggleModal(false);
-        mostrarToast('Dados sincronizados com sucesso!');
-        return true;
-    }).catch(error => {
-        toggleModal(false);
-        mostrarToast('Erro ao sincronizar: ' + error.message, 'error');
-        console.error('Erro na sincronização:', error);
-        return false;
-    });
-}
-
-// Função para mostrar/esconder o modal de processamento - simplificada
-function toggleModal(show, title = "Processando...", message = "Aguarde enquanto processamos as informações.") {
-    const modal = document.getElementById('processing-modal');
-    if (!modal) return false;
-    
-    if (show) {
-        // Configurar textos
-        const titleEl = document.getElementById('modal-title');
-        const messageEl = document.getElementById('modal-message');
-        
-        if (titleEl) titleEl.textContent = title;
-        if (messageEl) messageEl.textContent = message;
-        
-        // Mostrar modal
-        modal.classList.remove('hidden');
-        
-        // Configurar timer de segurança para fechar o modal após 10 segundos
-        if (window.modalSafetyTimer) {
-            clearTimeout(window.modalSafetyTimer);
-        }
-        window.modalSafetyTimer = setTimeout(() => {
-            modal.classList.add('hidden');
-        }, 10000);
-    } else {
-        // Esconder modal
-        modal.classList.add('hidden');
-        
-        // Limpar timer
-        if (window.modalSafetyTimer) {
-            clearTimeout(window.modalSafetyTimer);
-        }
-    }
-    
-    return true;
-}
-
-// Função para formatar data
-function formatarData(data) {
-    try {
-        const d = new Date(data);
-        return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
-    } catch (e) {
-        return 'Data inválida';
-    }
-}
-
-// Função para formatar valor monetário
-function formatarMoeda(valor) {
-    if (isNaN(valor)) valor = 0;
-    return 'R$ ' + parseFloat(valor).toFixed(2).replace('.', ',');
-}
-
-// Função para gerar ID único mais curta e eficiente
-function gerarId() {
-    return 'id_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 9);
-}
-
-// Função para atualizar data/hora atual
-function atualizarDataHora() {
-    const elemento = document.getElementById('date-time');
-    if (!elemento) return;
-    
-    const agora = new Date();
-    const dataFormatada = agora.toLocaleDateString('pt-BR');
-    const horaFormatada = agora.toLocaleTimeString('pt-BR');
-    elemento.textContent = `${dataFormatada} ${horaFormatada}`;
-}
-
-// Handler global para tratamento de erros
-window.onerror = function(msg, url, lineNo, columnNo, error) {
-    console.error('Erro capturado globalmente:', error);
-    mostrarToast('Ocorreu um erro no sistema. Veja o console para mais detalhes.', 'error');
-    return false;
-};
-
-// Função para iniciar sincronização - otimizada
-function iniciarSincronizacao(skipSync = false) {
-    if (!currentUser) return Promise.reject('Usuário não autenticado');
-    
-    const userId = currentUser.uid;
-    
-    toggleModal(true, "Verificando dados...", "Buscando informações na nuvem.");
-    
-    return database.ref('usuarios/' + userId).once('value').then((snapshot) => {
-        const dados = snapshot.val();
-        toggleModal(false);
-        
-        if (dados) {
-            console.log('Dados encontrados na nuvem');
-            
-            // Verificar se tem dados válidos
-            if (dados.estoque || dados.materiais || dados.receitas || dados.vendas) {
-                // Atualizar dados locais com dados da nuvem
-                estoque = dados.estoque || [];
-                materiais = dados.materiais || [];
-                receitas = dados.receitas || [];
-                vendas = dados.vendas || [];
-                
-                // Salvar no localStorage sem acionar sincronização
-                localStorage.setItem('estoque', JSON.stringify(estoque));
-                localStorage.setItem('materiais', JSON.stringify(materiais));
-                localStorage.setItem('receitas', JSON.stringify(receitas));
-                localStorage.setItem('vendas', JSON.stringify(vendas));
-                localStorage.setItem('ultimaAtualizacao', dados.ultimaAtualizacao);
-                
-                mostrarToast('Dados carregados da nuvem!');
-            } else if (!skipSync) {
-                // Dados vazios na nuvem, mas temos dados locais para enviar
-                if (estoque.length > 0 || materiais.length > 0 || receitas.length > 0 || vendas.length > 0) {
-                    sincronizarComNuvem();
-                }
-            }
-        } else if (!skipSync) {
-            // Não há dados na nuvem, talvez temos dados locais para enviar
-            if (estoque.length > 0 || materiais.length > 0 || receitas.length > 0 || vendas.length > 0) {
-                sincronizarComNuvem();
-            }
-        }
-        
-        // Recarregar interfaces
-        carregarEstoque();
-        carregarMateriais();
-        carregarReceitas();
-        carregarVendas();
-        
-        // Configurar listener para atualizações futuras (de outros dispositivos)
-        configurarListenerAtualizacoes(userId);
-        
-        return dados;
-    }).catch(error => {
-        toggleModal(false);
-        console.error('Erro ao verificar dados na nuvem:', error);
-        mostrarToast('Erro ao verificar dados na nuvem', 'error');
-        return null;
-    });
-}
-
-// Nova função para configurar listener de atualizações
-function configurarListenerAtualizacoes(userId) {
-    // Remover listener existente se houver
-    if (window.atualizacoesRef) {
-        window.atualizacoesRef.off();
-    }
-    
-    // Configurar novo listener
-    window.atualizacoesRef = database.ref('usuarios/' + userId);
-    window.atualizacoesRef.on('value', (snapshot) => {
-        const dadosNovos = snapshot.val();
-        if (dadosNovos && dadosNovos.ultimaAtualizacao) {
-            const ultimaAtualizacaoLocal = localStorage.getItem('ultimaAtualizacao');
-            
-            // Só atualizar se os dados da nuvem forem mais recentes e não forem os que acabamos de enviar
-            if (ultimaAtualizacaoLocal && 
-                new Date(dadosNovos.ultimaAtualizacao) > new Date(ultimaAtualizacaoLocal) && 
-                dadosNovos.ultimaAtualizacao !== new Date(ultimaAtualizacaoLocal).toISOString()) {
-                
-                console.log('Recebendo atualização da nuvem...');
-                
-                // Atualizar dados locais
-                estoque = dadosNovos.estoque || [];
-                materiais = dadosNovos.materiais || [];
-                receitas = dadosNovos.receitas || [];
-                vendas = dadosNovos.vendas || [];
-                
-                // Salvar no localStorage sem acionar nova sincronização
-                localStorage.setItem('estoque', JSON.stringify(estoque));
-                localStorage.setItem('materiais', JSON.stringify(materiais));
-                localStorage.setItem('receitas', JSON.stringify(receitas));
-                localStorage.setItem('vendas', JSON.stringify(vendas));
-                localStorage.setItem('ultimaAtualizacao', dadosNovos.ultimaAtualizacao);
-                
-                // Recarregar interfaces
-                carregarEstoque();
-                carregarMateriais();
-                carregarReceitas();
-                carregarVendas();
-                
-                mostrarToast('Dados atualizados da nuvem!');
-            }
-        }
-    });
-}
-
-// Inicializar componentes DOM quando o documento estiver pronto
-document.addEventListener('DOMContentLoaded', function() {
-    limparNotificacoes();
-    
-    // Carregar dados do localStorage
-    try {
-        estoque = JSON.parse(localStorage.getItem('estoque')) || [];
-        materiais = JSON.parse(localStorage.getItem('materiais')) || [];
-        receitas = JSON.parse(localStorage.getItem('receitas')) || [];
-        vendas = JSON.parse(localStorage.getItem('vendas')) || [];
-    } catch (e) {
-        console.error('Erro ao carregar dados do localStorage:', e);
-        estoque = [];
-        materiais = [];
-        receitas = [];
-        vendas = [];
-    }
-    
-    // Verificar autenticação do Firebase ao iniciar
-    firebase.auth().onAuthStateChanged((user) => {
-        if (user) {
-            // Usuário está logado
-            currentUser = user;
-            
-            // Mostrar email do usuário
-            const userInfoEl = document.getElementById('user-info');
-            if (userInfoEl) {
-                userInfoEl.classList.remove('hidden');
-                document.getElementById('user-email').textContent = user.email;
-            }
-            
-            // Configurar eventos ANTES da sincronização
-            setupEventListeners();
-            
-            // Iniciar sincronização
-            iniciarSincronizacao();
-            
-            // Adicionar botão de sincronização
-            adicionarBotaoSincronizacao();
-        } else {
-            // Usuário não está logado, mostrar tela de login
-            mostrarTelaLogin();
-        }
-    });
-});
-<!-- PARTE 3: PÁGINA DE RECEITAS -->
+    <!-- PARTE 3: PÁGINA DE RECEITAS -->
 <div class="page-content" id="receitas-page">
     <h2>Gestão de Receitas</h2>
     
@@ -1483,6 +1046,844 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
     </div>
 </div>
+<script>
+// PARTE 2: JAVASCRIPT (FIREBASE E FUNÇÕES GLOBAIS - OTIMIZADAS)
+
+// Sistema de gerenciamento de eventos - novo
+const EventManager = {
+    // Adiciona um evento e evita duplicações
+    addEvent(element, eventType, handler, options = {}) {
+        if (!element) return false;
+        
+        // Remover handler existente para evitar duplicação
+        element.removeEventListener(eventType, handler);
+        
+        // Adicionar novo handler
+        element.addEventListener(eventType, handler, options);
+        return true;
+    },
+    
+    // Remove um evento específico
+    removeEvent(element, eventType, handler) {
+        if (!element) return false;
+        element.removeEventListener(eventType, handler);
+        return true;
+    },
+    
+    // Delegação de eventos - mais eficiente para listas
+    delegateEvent(parentElement, selector, eventType, handler) {
+        if (!parentElement) return false;
+        
+        const delegationHandler = function(e) {
+            const targetElement = e.target.closest(selector);
+            if (targetElement && parentElement.contains(targetElement)) {
+                handler.call(targetElement, e);
+            }
+        };
+        
+        // Armazenar a referência para poder remover depois
+        parentElement._delegationHandlers = parentElement._delegationHandlers || {};
+        if (parentElement._delegationHandlers[eventType]) {
+            parentElement.removeEventListener(eventType, parentElement._delegationHandlers[eventType]);
+        }
+        
+        parentElement._delegationHandlers[eventType] = delegationHandler;
+        parentElement.addEventListener(eventType, delegationHandler);
+        return true;
+    }
+};
+
+// Cache de elementos DOM frequentemente utilizados
+const DOMCache = {
+    elements: {},
+    
+    // Obtém elemento e armazena em cache
+    get(selector) {
+        if (!this.elements[selector]) {
+            this.elements[selector] = document.querySelector(selector);
+        }
+        return this.elements[selector];
+    },
+    
+    // Obtém múltiplos elementos
+    getAll(selector) {
+        if (!this.elements[selector + '_all']) {
+            this.elements[selector + '_all'] = document.querySelectorAll(selector);
+        }
+        return this.elements[selector + '_all'];
+    },
+    
+    // Limpa o cache
+    clear() {
+        this.elements = {};
+    }
+};
+
+// Funções utilitárias simplificadas
+function $(selector) {
+    return DOMCache.get(selector);
+}
+
+function $$(selector) {
+    return DOMCache.getAll(selector);
+}
+
+// Nova função para notificações toast
+function mostrarToast(mensagem, tipo = 'success') {
+    // Remover toast existente
+    const toastExistente = document.querySelector('.toast-notification');
+    if (toastExistente) {
+        document.body.removeChild(toastExistente);
+    }
+    
+    // Criar novo toast
+    const toast = document.createElement('div');
+    toast.className = 'toast-notification';
+    toast.textContent = mensagem;
+    
+    // Aplicar estilo conforme tipo
+    if (tipo === 'error') {
+        toast.style.backgroundColor = '#dc3545';
+    } else if (tipo === 'warning') {
+        toast.style.backgroundColor = '#ffc107';
+        toast.style.color = '#333';
+    } else {
+        toast.style.backgroundColor = '#28a745';
+    }
+    
+    document.body.appendChild(toast);
+    
+    // Remover após 3 segundos
+    setTimeout(() => {
+        if (document.body.contains(toast)) {
+            document.body.removeChild(toast);
+        }
+    }, 3000);
+}
+
+// Substituir função problemática que causava erros nos botões
+function limparNotificacoes() {
+    // Esconder todos os modais
+    document.querySelectorAll('.modal-overlay').forEach(modal => {
+        modal.classList.add('hidden');
+    });
+    
+    // Esconder todas as notificações
+    document.querySelectorAll('.notification').forEach(notif => {
+        notif.classList.add('hidden');
+    });
+    
+    // NÃO substituir alerts e confirms nativos
+    console.log("Notificações foram ocultadas");
+}
+
+// Configuração do Firebase
+const firebaseConfig = {
+    apiKey: "AIzaSyABzQdTgR9-Al-drNRMBcEb1dN76wUjqvY",
+    authDomain: "deiacontrole-faabc.firebaseapp.com",
+    databaseURL: "https://deiacontrole-faabc-default-rtdb.firebaseio.com",
+    projectId: "deiacontrole-faabc",
+    storageBucket: "deiacontrole-faabc.firebasestorage.app",
+    messagingSenderId: "216368622292",
+    appId: "1:216368622292:web:20522a4725c30907c92941",
+};
+
+// Inicializar Firebase
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+let currentUser = null;
+
+// Variáveis globais
+let estoque = [];
+let materiais = [];
+let receitas = [];
+let vendas = [];
+let html5QrCode;
+
+// Função para atualizar o localStorage
+function atualizarLocalStorage() {
+    try {
+        localStorage.setItem('estoque', JSON.stringify(estoque));
+        localStorage.setItem('materiais', JSON.stringify(materiais));
+        localStorage.setItem('receitas', JSON.stringify(receitas));
+        localStorage.setItem('vendas', JSON.stringify(vendas));
+        localStorage.setItem('ultimaAtualizacao', new Date().toISOString());
+        
+        // Sincronizar com nuvem se o usuário estiver logado
+        if (currentUser) {
+            sincronizarComNuvem();
+        }
+        return true;
+    } catch (error) {
+        console.error("Erro ao atualizar localStorage:", error);
+        return false;
+    }
+}
+
+// Função para sincronizar com o Firebase - otimizada
+function sincronizarComNuvem() {
+    if (!currentUser) return Promise.reject('Usuário não autenticado');
+    
+    // Impedir envio de dados vazios
+    if (estoque.length === 0 && materiais.length === 0 && 
+        receitas.length === 0 && vendas.length === 0) {
+        console.log("Evitando sincronizar arrays vazios");
+        return Promise.resolve(false);
+    }
+    
+    const userId = currentUser.uid;
+    console.log("Enviando dados para o Firebase");
+    
+    // Mostrar modal de sincronização
+    toggleModal(true, "Sincronizando dados...", "Enviando informações para a nuvem.");
+    
+    return database.ref('usuarios/' + userId).set({
+        estoque: estoque,
+        materiais: materiais,
+        receitas: receitas,
+        vendas: vendas,
+        ultimaAtualizacao: new Date().toISOString()
+    }).then(() => {
+        toggleModal(false);
+        mostrarToast('Dados sincronizados com sucesso!');
+        return true;
+    }).catch(error => {
+        toggleModal(false);
+        mostrarToast('Erro ao sincronizar: ' + error.message, 'error');
+        console.error('Erro na sincronização:', error);
+        return false;
+    });
+}
+
+// Função para mostrar/esconder o modal de processamento - simplificada
+function toggleModal(show, title = "Processando...", message = "Aguarde enquanto processamos as informações.") {
+    const modal = document.getElementById('processing-modal');
+    if (!modal) return false;
+    
+    if (show) {
+        // Configurar textos
+        const titleEl = document.getElementById('modal-title');
+        const messageEl = document.getElementById('modal-message');
+        
+        if (titleEl) titleEl.textContent = title;
+        if (messageEl) messageEl.textContent = message;
+        
+        // Mostrar modal
+        modal.classList.remove('hidden');
+        
+        // Configurar timer de segurança para fechar o modal após 10 segundos
+        if (window.modalSafetyTimer) {
+            clearTimeout(window.modalSafetyTimer);
+        }
+        window.modalSafetyTimer = setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 10000);
+    } else {
+        // Esconder modal
+        modal.classList.add('hidden');
+        
+        // Limpar timer
+        if (window.modalSafetyTimer) {
+            clearTimeout(window.modalSafetyTimer);
+        }
+    }
+    
+    return true;
+}
+
+// Função para formatar data
+function formatarData(data) {
+    try {
+        const d = new Date(data);
+        return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+    } catch (e) {
+        return 'Data inválida';
+    }
+}
+
+// Função para formatar valor monetário
+function formatarMoeda(valor) {
+    if (isNaN(valor)) valor = 0;
+    return 'R$ ' + parseFloat(valor).toFixed(2).replace('.', ',');
+}
+
+// Função para gerar ID único mais curta e eficiente
+function gerarId() {
+    return 'id_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 9);
+}
+
+// Função para atualizar data/hora atual
+function atualizarDataHora() {
+    const elemento = document.getElementById('date-time');
+    if (!elemento) return;
+    
+    const agora = new Date();
+    const dataFormatada = agora.toLocaleDateString('pt-BR');
+    const horaFormatada = agora.toLocaleTimeString('pt-BR');
+    elemento.textContent = `${dataFormatada} ${horaFormatada}`;
+}
+
+// Handler global para tratamento de erros
+window.onerror = function(msg, url, lineNo, columnNo, error) {
+    console.error('Erro capturado globalmente:', error);
+    mostrarToast('Ocorreu um erro no sistema. Veja o console para mais detalhes.', 'error');
+    return false;
+};
+
+// Função para iniciar sincronização - otimizada
+function iniciarSincronizacao(skipSync = false) {
+    if (!currentUser) return Promise.reject('Usuário não autenticado');
+    
+    const userId = currentUser.uid;
+    
+    toggleModal(true, "Verificando dados...", "Buscando informações na nuvem.");
+    
+    return database.ref('usuarios/' + userId).once('value').then((snapshot) => {
+        const dados = snapshot.val();
+        toggleModal(false);
+        
+        if (dados) {
+            console.log('Dados encontrados na nuvem');
+            
+            // Verificar se tem dados válidos
+            if (dados.estoque || dados.materiais || dados.receitas || dados.vendas) {
+                // Atualizar dados locais com dados da nuvem
+                estoque = dados.estoque || [];
+                materiais = dados.materiais || [];
+                receitas = dados.receitas || [];
+                vendas = dados.vendas || [];
+                
+                // Salvar no localStorage sem acionar sincronização
+                localStorage.setItem('estoque', JSON.stringify(estoque));
+                localStorage.setItem('materiais', JSON.stringify(materiais));
+                localStorage.setItem('receitas', JSON.stringify(receitas));
+                localStorage.setItem('vendas', JSON.stringify(vendas));
+                localStorage.setItem('ultimaAtualizacao', dados.ultimaAtualizacao);
+                
+                mostrarToast('Dados carregados da nuvem!');
+            } else if (!skipSync) {
+                // Dados vazios na nuvem, mas temos dados locais para enviar
+                if (estoque.length > 0 || materiais.length > 0 || receitas.length > 0 || vendas.length > 0) {
+                    sincronizarComNuvem();
+                }
+            }
+        } else if (!skipSync) {
+            // Não há dados na nuvem, talvez temos dados locais para enviar
+            if (estoque.length > 0 || materiais.length > 0 || receitas.length > 0 || vendas.length > 0) {
+                sincronizarComNuvem();
+            }
+        }
+        
+        // Recarregar interfaces
+        carregarEstoque();
+        carregarMateriais();
+        carregarReceitas();
+        carregarVendas();
+        
+        // Configurar listener para atualizações futuras (de outros dispositivos)
+        configurarListenerAtualizacoes(userId);
+        
+        return dados;
+    }).catch(error => {
+        toggleModal(false);
+        console.error('Erro ao verificar dados na nuvem:', error);
+        mostrarToast('Erro ao verificar dados na nuvem', 'error');
+        return null;
+    });
+}
+
+// Nova função para configurar listener de atualizações
+function configurarListenerAtualizacoes(userId) {
+    // Remover listener existente se houver
+    if (window.atualizacoesRef) {
+        window.atualizacoesRef.off();
+    }
+    
+    // Configurar novo listener
+    window.atualizacoesRef = database.ref('usuarios/' + userId);
+    window.atualizacoesRef.on('value', (snapshot) => {
+        const dadosNovos = snapshot.val();
+        if (dadosNovos && dadosNovos.ultimaAtualizacao) {
+            const ultimaAtualizacaoLocal = localStorage.getItem('ultimaAtualizacao');
+            
+            // Só atualizar se os dados da nuvem forem mais recentes e não forem os que acabamos de enviar
+            if (ultimaAtualizacaoLocal && 
+                new Date(dadosNovos.ultimaAtualizacao) > new Date(ultimaAtualizacaoLocal) && 
+                dadosNovos.ultimaAtualizacao !== new Date(ultimaAtualizacaoLocal).toISOString()) {
+                
+                console.log('Recebendo atualização da nuvem...');
+                
+                // Atualizar dados locais
+                estoque = dadosNovos.estoque || [];
+                materiais = dadosNovos.materiais || [];
+                receitas = dadosNovos.receitas || [];
+                vendas = dadosNovos.vendas || [];
+                
+                // Salvar no localStorage sem acionar nova sincronização
+                localStorage.setItem('estoque', JSON.stringify(estoque));
+                localStorage.setItem('materiais', JSON.stringify(materiais));
+                localStorage.setItem('receitas', JSON.stringify(receitas));
+                localStorage.setItem('vendas', JSON.stringify(vendas));
+                localStorage.setItem('ultimaAtualizacao', dadosNovos.ultimaAtualizacao);
+                
+                // Recarregar interfaces
+                carregarEstoque();
+                carregarMateriais();
+                carregarReceitas();
+                carregarVendas();
+                
+                mostrarToast('Dados atualizados da nuvem!');
+            }
+        }
+    });
+}
+
+// Inicializar componentes DOM quando o documento estiver pronto
+document.addEventListener('DOMContentLoaded', function() {
+    limparNotificacoes();
+    
+    // Carregar dados do localStorage
+    try {
+        estoque = JSON.parse(localStorage.getItem('estoque')) || [];
+        materiais = JSON.parse(localStorage.getItem('materiais')) || [];
+        receitas = JSON.parse(localStorage.getItem('receitas')) || [];
+        vendas = JSON.parse(localStorage.getItem('vendas')) || [];
+    } catch (e) {
+        console.error('Erro ao carregar dados do localStorage:', e);
+        estoque = [];
+        materiais = [];
+        receitas = [];
+        vendas = [];
+    }
+    
+    // Verificar autenticação do Firebase ao iniciar
+    firebase.auth().onAuthStateChanged((user) => {
+        if (user) {
+            // Usuário está logado
+            currentUser = user;
+            
+            // Mostrar email do usuário
+            const userInfoEl = document.getElementById('user-info');
+            if (userInfoEl) {
+                userInfoEl.classList.remove('hidden');
+                document.getElementById('user-email').textContent = user.email;
+            }
+            
+            // Configurar eventos ANTES da sincronização
+            setupEventListeners();
+            
+            // Iniciar sincronização
+            iniciarSincronizacao();
+            
+            // Adicionar botão de sincronização
+            adicionarBotaoSincronizacao();
+        } else {
+            // Usuário não está logado, mostrar tela de login
+            mostrarTelaLogin();
+        }
+    });
+});
+// PARTE 11: JAVASCRIPT - NAVEGAÇÃO E FUNÇÕES UTILITÁRIAS
+
+// Função para navegação principal - OTIMIZADA
+function navegarParaPagina(e) {
+    try {
+        e.preventDefault();
+        
+        const pagina = this.getAttribute('data-page');
+        console.log("Navegando para a página:", pagina);
+        
+        // Atualizar navegação
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        this.classList.add('active');
+        
+        // Mostrar página correspondente
+        document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+        const pageElement = document.getElementById(`${pagina}-page`);
+        if (pageElement) {
+            pageElement.classList.add('active');
+            
+            // Atualizar interfaces específicas para cada página
+            switch(pagina) {
+                case 'estoque':
+                    carregarEstoque();
+                    break;
+                case 'materiais':
+                    carregarMateriais();
+                    break;
+                case 'receitas':
+                    carregarReceitas();
+                    break;
+                case 'vendas':
+                    carregarVendas();
+                    break;
+            }
+        } else {
+            console.error("Página não encontrada:", pagina + "-page");
+            mostrarToast("Erro ao navegar para a página", "error");
+        }
+    } catch (error) {
+        console.error("Erro durante navegação:", error);
+        mostrarToast("Erro ao navegar para a página", "error");
+    }
+}
+
+// Função para alternar abas - OTIMIZADA
+function alternarAba(e) {
+    try {
+        if (e) e.preventDefault();
+        
+        const tabId = this.getAttribute('data-tab');
+        console.log("Alterando para a aba:", tabId);
+        
+        // Atualizar botões de abas
+        const parentTab = this.parentElement;
+        parentTab.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        
+        // Mostrar conteúdo da aba
+        const parentContent = parentTab.parentElement;
+        parentContent.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        
+        const contentTab = document.getElementById(tabId);
+        if (contentTab) {
+            contentTab.classList.add('active');
+            
+            // Ações especiais para certas abas
+            if (tabId === 'listar-materiais') {
+                carregarMateriais();
+            } else if (tabId === 'listar-receitas') {
+                carregarReceitas();
+            } else if (tabId === 'listar-vendas') {
+                carregarVendas();
+            }
+        } else {
+            console.error("Conteúdo da aba não encontrado:", tabId);
+        }
+    } catch (error) {
+        console.error("Erro ao alternar aba:", error);
+    }
+}
+
+// Sistema de tratamento de erros global
+window.addEventListener('error', function(e) {
+    console.error("Erro global capturado:", e.error || e.message);
+    mostrarToast("Ocorreu um erro no sistema", "error");
+    return false;
+});
+
+// Função para verificar o status dos botões e corrigir se necessário
+function verificarBotoesFuncionando() {
+    try {
+        console.log("Verificando funcionamento dos botões...");
+        
+        // Verificar botões de materiais
+        const btnRemoverMateriais = document.querySelectorAll('.btn-remover-material');
+        if (btnRemoverMateriais.length > 0) {
+            console.log(`Encontrados ${btnRemoverMateriais.length} botões de remoção de materiais`);
+            setupMaterialButtonEvents();
+        }
+        
+        // Verificar botões de receitas
+        const btnEditarReceitas = document.querySelectorAll('.btn-editar-receita');
+        const btnRemoverReceitas = document.querySelectorAll('.btn-remover-receita');
+        
+        if (btnEditarReceitas.length > 0 || btnRemoverReceitas.length > 0) {
+            console.log(`Encontrados ${btnEditarReceitas.length} botões de edição e ${btnRemoverReceitas.length} de remoção para receitas`);
+            setupReceitaEvents();
+        }
+        
+        // Verificar botões de vendas
+        const btnEditarVendas = document.querySelectorAll('.btn-editar-venda');
+        const btnExcluirVendas = document.querySelectorAll('.btn-excluir-venda');
+        
+        if (btnEditarVendas.length > 0 || btnExcluirVendas.length > 0) {
+            console.log(`Encontrados ${btnEditarVendas.length} botões de edição e ${btnExcluirVendas.length} de exclusão para vendas`);
+            setupVendasEvents();
+        }
+        
+        // Verificar modais
+        const modais = document.querySelectorAll('.modal-overlay');
+        modais.forEach(modal => {
+            if (!modal.classList.contains('hidden')) {
+                console.log("Modal visível encontrado:", modal.id);
+                // Tentar fechar automaticamente se for um modal de processamento
+                if (modal.id === 'processing-modal') {
+                    modal.classList.add('hidden');
+                }
+            }
+        });
+        
+        return true;
+    } catch (error) {
+        console.error("Erro ao verificar botões:", error);
+        return false;
+    }
+}
+
+// Função para recuperação de erros
+function recuperarSistema() {
+    try {
+        console.log("Iniciando recuperação do sistema...");
+        
+        // 1. Esconder todos os modais
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            modal.classList.add('hidden');
+        });
+        
+        // 2. Recarregar dados do localStorage
+        try {
+            const estoqueLocal = JSON.parse(localStorage.getItem('estoque'));
+            const materiaisLocal = JSON.parse(localStorage.getItem('materiais'));
+            const receitasLocal = JSON.parse(localStorage.getItem('receitas'));
+            const vendasLocal = JSON.parse(localStorage.getItem('vendas'));
+            
+            // Só atualizar se os dados forem válidos
+            if (estoqueLocal && Array.isArray(estoqueLocal)) estoque = estoqueLocal;
+            if (materiaisLocal && Array.isArray(materiaisLocal)) materiais = materiaisLocal;
+            if (receitasLocal && Array.isArray(receitasLocal)) receitas = receitasLocal;
+            if (vendasLocal && Array.isArray(vendasLocal)) vendas = vendasLocal;
+        } catch (e) {
+            console.error("Erro ao recuperar dados do localStorage:", e);
+        }
+        
+        // 3. Recarregar interfaces
+        carregarEstoque();
+        carregarMateriais();
+        carregarReceitas();
+        carregarVendas();
+        
+        // 4. Verificar e corrigir botões
+        verificarBotoesFuncionando();
+        
+        mostrarToast("Sistema recuperado", "success");
+        return true;
+    } catch (error) {
+        console.error("Falha na recuperação do sistema:", error);
+        // Como último recurso, recarregar a página
+        setTimeout(() => {
+            location.reload();
+        }, 2000);
+        return false;
+    }
+}
+
+// Monitoramento automático de saúde do sistema
+const sistemaMonitor = {
+    intervaloChecagem: null,
+    ultimoEstado: {
+        numMateriais: 0,
+        numReceitas: 0,
+        numVendas: 0,
+        paginaAtiva: null
+    },
+    
+    iniciar() {
+        if (this.intervaloChecagem) clearInterval(this.intervaloChecagem);
+        
+        // Verificar o sistema a cada 30 segundos
+        this.intervaloChecagem = setInterval(() => {
+            this.verificarSaude();
+        }, 30000);
+        
+        // Verificação inicial
+        this.verificarSaude();
+        console.log("Monitor de sistema iniciado");
+    },
+    
+    verificarSaude() {
+        // 1. Verificar se dados estão coerentes
+        const dadosCoerentes = materiais && receitas && vendas && 
+                              Array.isArray(materiais) && 
+                              Array.isArray(receitas) && 
+                              Array.isArray(vendas);
+        
+        if (!dadosCoerentes) {
+            console.warn("Dados inconsistentes detectados, tentando recuperar...");
+            recuperarSistema();
+            return;
+        }
+        
+        // 2. Verificar se há alguma página ativa
+        const paginasAtivas = document.querySelectorAll('.page-content.active');
+        if (paginasAtivas.length === 0) {
+            console.warn("Nenhuma página ativa, corrigindo navegação...");
+            const primeiraAba = document.querySelector('.nav-link');
+            if (primeiraAba) primeiraAba.click();
+        }
+        
+        // 3. Verifique se há modais travados abertos
+        const modaisAbertos = document.querySelectorAll('.modal-overlay:not(.hidden)');
+        if (modaisAbertos.length > 0) {
+            // Verificar se o modal está aberto há muito tempo
+            const processingModal = document.getElementById('processing-modal');
+            if (processingModal && !processingModal.classList.contains('hidden')) {
+                console.warn("Modal de processamento travado detectado");
+                processingModal.classList.add('hidden');
+            }
+        }
+        
+        // 4. Atualizar estado
+        this.ultimoEstado = {
+            numMateriais: materiais.length,
+            numReceitas: receitas.length,
+            numVendas: vendas.length,
+            paginaAtiva: paginasAtivas.length > 0 ? paginasAtivas[0].id : null
+        };
+    }
+};
+
+// Configuração para dispositivos móveis
+function otimizarParaDispositivos() {
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+        console.log("Dispositivo móvel detectado, aplicando otimizações");
+        
+        // 1. Ajustar estilos para melhor visualização móvel
+        const styleSheet = document.createElement('style');
+        styleSheet.type = 'text/css';
+        styleSheet.innerHTML = `
+            @media (max-width: 768px) {
+                .form-row { flex-direction: column; }
+                .form-col { margin-bottom: 10px; }
+                .btn { display: block; width: 100%; margin-bottom: 5px; }
+                .venda-resumo-grid { grid-template-columns: 1fr 1fr; }
+                table { font-size: 14px; }
+                .modal-content { width: 95% !important; max-width: 95% !important; }
+            }
+        `;
+        document.head.appendChild(styleSheet);
+        
+        // 2. Simplificar tabelas para melhor visualização
+        document.querySelectorAll('table').forEach(table => {
+            table.classList.add('mobile-optimized');
+        });
+        
+        // 3. Configurar eventos de toque para navegação
+        document.querySelectorAll('.nav-link, .tab-button, button').forEach(el => {
+            el.style.padding = '12px'; // Aumentar área de toque
+        });
+    }
+}
+
+// Inicializar o sistema de eventos personalizados
+const EventosSistema = {
+    listeners: {},
+    
+    on(evento, callback) {
+        if (!this.listeners[evento]) {
+            this.listeners[evento] = [];
+        }
+        this.listeners[evento].push(callback);
+    },
+    
+    off(evento, callback) {
+        if (!this.listeners[evento]) return;
+        this.listeners[evento] = this.listeners[evento].filter(cb => cb !== callback);
+    },
+    
+    trigger(evento, data) {
+        if (!this.listeners[evento]) return;
+        this.listeners[evento].forEach(callback => {
+            try {
+                callback(data);
+            } catch (error) {
+                console.error(`Erro ao executar callback para evento ${evento}:`, error);
+            }
+        });
+    }
+};
+
+// Verificação periódica do estado dos botões
+setInterval(verificarBotoesFuncionando, 10000);
+
+// Inicializar o monitoramento do sistema quando a aplicação estiver pronta
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(() => {
+        sistemaMonitor.iniciar();
+        otimizarParaDispositivos();
+    }, 1000);
+});
+
+// Iniciar o controle de foco nos elementos
+document.addEventListener('focusin', function(e) {
+    const target = e.target;
+    if (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA') {
+        target.dataset.lastValue = target.value;
+    }
+});
+
+document.addEventListener('focusout', function(e) {
+    const target = e.target;
+    if ((target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA') && 
+        target.dataset.lastValue !== target.value) {
+        console.log(`Valor alterado em ${target.id || target.name}`);
+        EventosSistema.trigger('campo-alterado', { 
+            elemento: target, 
+            valorAntigo: target.dataset.lastValue, 
+            valorNovo: target.value 
+        });
+    }
+});
+
+// Capturar erros em APIs assíncronas
+window.addEventListener('unhandledrejection', function(event) {
+    console.error('Promessa rejeitada não tratada:', event.reason);
+    mostrarToast("Erro na comunicação com o servidor", "error");
+});
+
+// Inicialização final com verificação de segurança
+window.addEventListener('load', function() {
+    // Verificação final para garantir que tudo está funcionando
+    setTimeout(() => {
+        verificarBotoesFuncionando();
+        
+        // Verificar navegação
+        const paginasAtivas = document.querySelectorAll('.page-content.active');
+        if (paginasAtivas.length === 0 && currentUser) {
+            console.warn("Página não inicializada corretamente, forçando navegação para estoque");
+            const navEstoque = document.querySelector('.nav-link[data-page="estoque"]');
+            if (navEstoque) navEstoque.click();
+        }
+    }, 500);
+});
+
+// Garantir que todas as funções críticas estão definidas
+function verificarFuncoesNecessarias() {
+    const funcoesEssenciais = [
+        'removerMaterial',
+        'editarReceita', 
+        'removerReceita',
+        'registrarVenda',
+        'editarVenda',
+        'excluirVenda',
+        'carregarEstoque',
+        'carregarMateriais',
+        'carregarReceitas',
+        'carregarVendas'
+    ];
+    
+    let todasDefinidas = true;
+    
+    funcoesEssenciais.forEach(funcao => {
+        if (typeof window[funcao] !== 'function') {
+            console.error(`Função necessária não definida: ${funcao}`);
+            todasDefinidas = false;
+        }
+    });
+    
+    if (!todasDefinidas) {
+        console.error("ALERTA: Algumas funções críticas não estão definidas. O sistema pode não funcionar corretamente.");
+        mostrarToast("Algumas funções do sistema não estão disponíveis", "error");
+    }
+    
+    return todasDefinidas;
+}
+
+// Executar verificação após carregamento completo
+window.addEventListener('load', verificarFuncoesNecessarias);
+    
 // PARTE 4: JAVASCRIPT (FIREBASE E FUNÇÕES PARA ESTOQUE/MATERIAIS)
 
 // Funções para Estoque e Materiais - Otimizadas
@@ -5260,406 +5661,6 @@ function setupMaterialButtonEvents() {
         console.error("Erro ao configurar eventos de materiais:", error);
     }
 }
-    // PARTE 11: JAVASCRIPT - NAVEGAÇÃO E FUNÇÕES UTILITÁRIAS
-
-// Função para navegação principal - OTIMIZADA
-function navegarParaPagina(e) {
-    try {
-        e.preventDefault();
-        
-        const pagina = this.getAttribute('data-page');
-        console.log("Navegando para a página:", pagina);
-        
-        // Atualizar navegação
-        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-        this.classList.add('active');
-        
-        // Mostrar página correspondente
-        document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
-        const pageElement = document.getElementById(`${pagina}-page`);
-        if (pageElement) {
-            pageElement.classList.add('active');
-            
-            // Atualizar interfaces específicas para cada página
-            switch(pagina) {
-                case 'estoque':
-                    carregarEstoque();
-                    break;
-                case 'materiais':
-                    carregarMateriais();
-                    break;
-                case 'receitas':
-                    carregarReceitas();
-                    break;
-                case 'vendas':
-                    carregarVendas();
-                    break;
-            }
-        } else {
-            console.error("Página não encontrada:", pagina + "-page");
-            mostrarToast("Erro ao navegar para a página", "error");
-        }
-    } catch (error) {
-        console.error("Erro durante navegação:", error);
-        mostrarToast("Erro ao navegar para a página", "error");
-    }
-}
-
-// Função para alternar abas - OTIMIZADA
-function alternarAba(e) {
-    try {
-        if (e) e.preventDefault();
-        
-        const tabId = this.getAttribute('data-tab');
-        console.log("Alterando para a aba:", tabId);
-        
-        // Atualizar botões de abas
-        const parentTab = this.parentElement;
-        parentTab.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
-        this.classList.add('active');
-        
-        // Mostrar conteúdo da aba
-        const parentContent = parentTab.parentElement;
-        parentContent.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        
-        const contentTab = document.getElementById(tabId);
-        if (contentTab) {
-            contentTab.classList.add('active');
-            
-            // Ações especiais para certas abas
-            if (tabId === 'listar-materiais') {
-                carregarMateriais();
-            } else if (tabId === 'listar-receitas') {
-                carregarReceitas();
-            } else if (tabId === 'listar-vendas') {
-                carregarVendas();
-            }
-        } else {
-            console.error("Conteúdo da aba não encontrado:", tabId);
-        }
-    } catch (error) {
-        console.error("Erro ao alternar aba:", error);
-    }
-}
-
-// Sistema de tratamento de erros global
-window.addEventListener('error', function(e) {
-    console.error("Erro global capturado:", e.error || e.message);
-    mostrarToast("Ocorreu um erro no sistema", "error");
-    return false;
-});
-
-// Função para verificar o status dos botões e corrigir se necessário
-function verificarBotoesFuncionando() {
-    try {
-        console.log("Verificando funcionamento dos botões...");
-        
-        // Verificar botões de materiais
-        const btnRemoverMateriais = document.querySelectorAll('.btn-remover-material');
-        if (btnRemoverMateriais.length > 0) {
-            console.log(`Encontrados ${btnRemoverMateriais.length} botões de remoção de materiais`);
-            setupMaterialButtonEvents();
-        }
-        
-        // Verificar botões de receitas
-        const btnEditarReceitas = document.querySelectorAll('.btn-editar-receita');
-        const btnRemoverReceitas = document.querySelectorAll('.btn-remover-receita');
-        
-        if (btnEditarReceitas.length > 0 || btnRemoverReceitas.length > 0) {
-            console.log(`Encontrados ${btnEditarReceitas.length} botões de edição e ${btnRemoverReceitas.length} de remoção para receitas`);
-            setupReceitaEvents();
-        }
-        
-        // Verificar botões de vendas
-        const btnEditarVendas = document.querySelectorAll('.btn-editar-venda');
-        const btnExcluirVendas = document.querySelectorAll('.btn-excluir-venda');
-        
-        if (btnEditarVendas.length > 0 || btnExcluirVendas.length > 0) {
-            console.log(`Encontrados ${btnEditarVendas.length} botões de edição e ${btnExcluirVendas.length} de exclusão para vendas`);
-            setupVendasEvents();
-        }
-        
-        // Verificar modais
-        const modais = document.querySelectorAll('.modal-overlay');
-        modais.forEach(modal => {
-            if (!modal.classList.contains('hidden')) {
-                console.log("Modal visível encontrado:", modal.id);
-                // Tentar fechar automaticamente se for um modal de processamento
-                if (modal.id === 'processing-modal') {
-                    modal.classList.add('hidden');
-                }
-            }
-        });
-        
-        return true;
-    } catch (error) {
-        console.error("Erro ao verificar botões:", error);
-        return false;
-    }
-}
-
-// Função para recuperação de erros
-function recuperarSistema() {
-    try {
-        console.log("Iniciando recuperação do sistema...");
-        
-        // 1. Esconder todos os modais
-        document.querySelectorAll('.modal-overlay').forEach(modal => {
-            modal.classList.add('hidden');
-        });
-        
-        // 2. Recarregar dados do localStorage
-        try {
-            const estoqueLocal = JSON.parse(localStorage.getItem('estoque'));
-            const materiaisLocal = JSON.parse(localStorage.getItem('materiais'));
-            const receitasLocal = JSON.parse(localStorage.getItem('receitas'));
-            const vendasLocal = JSON.parse(localStorage.getItem('vendas'));
-            
-            // Só atualizar se os dados forem válidos
-            if (estoqueLocal && Array.isArray(estoqueLocal)) estoque = estoqueLocal;
-            if (materiaisLocal && Array.isArray(materiaisLocal)) materiais = materiaisLocal;
-            if (receitasLocal && Array.isArray(receitasLocal)) receitas = receitasLocal;
-            if (vendasLocal && Array.isArray(vendasLocal)) vendas = vendasLocal;
-        } catch (e) {
-            console.error("Erro ao recuperar dados do localStorage:", e);
-        }
-        
-        // 3. Recarregar interfaces
-        carregarEstoque();
-        carregarMateriais();
-        carregarReceitas();
-        carregarVendas();
-        
-        // 4. Verificar e corrigir botões
-        verificarBotoesFuncionando();
-        
-        mostrarToast("Sistema recuperado", "success");
-        return true;
-    } catch (error) {
-        console.error("Falha na recuperação do sistema:", error);
-        // Como último recurso, recarregar a página
-        setTimeout(() => {
-            location.reload();
-        }, 2000);
-        return false;
-    }
-}
-
-// Monitoramento automático de saúde do sistema
-const sistemaMonitor = {
-    intervaloChecagem: null,
-    ultimoEstado: {
-        numMateriais: 0,
-        numReceitas: 0,
-        numVendas: 0,
-        paginaAtiva: null
-    },
-    
-    iniciar() {
-        if (this.intervaloChecagem) clearInterval(this.intervaloChecagem);
-        
-        // Verificar o sistema a cada 30 segundos
-        this.intervaloChecagem = setInterval(() => {
-            this.verificarSaude();
-        }, 30000);
-        
-        // Verificação inicial
-        this.verificarSaude();
-        console.log("Monitor de sistema iniciado");
-    },
-    
-    verificarSaude() {
-        // 1. Verificar se dados estão coerentes
-        const dadosCoerentes = materiais && receitas && vendas && 
-                              Array.isArray(materiais) && 
-                              Array.isArray(receitas) && 
-                              Array.isArray(vendas);
-        
-        if (!dadosCoerentes) {
-            console.warn("Dados inconsistentes detectados, tentando recuperar...");
-            recuperarSistema();
-            return;
-        }
-        
-        // 2. Verificar se há alguma página ativa
-        const paginasAtivas = document.querySelectorAll('.page-content.active');
-        if (paginasAtivas.length === 0) {
-            console.warn("Nenhuma página ativa, corrigindo navegação...");
-            const primeiraAba = document.querySelector('.nav-link');
-            if (primeiraAba) primeiraAba.click();
-        }
-        
-        // 3. Verifique se há modais travados abertos
-        const modaisAbertos = document.querySelectorAll('.modal-overlay:not(.hidden)');
-        if (modaisAbertos.length > 0) {
-            // Verificar se o modal está aberto há muito tempo
-            const processingModal = document.getElementById('processing-modal');
-            if (processingModal && !processingModal.classList.contains('hidden')) {
-                console.warn("Modal de processamento travado detectado");
-                processingModal.classList.add('hidden');
-            }
-        }
-        
-        // 4. Atualizar estado
-        this.ultimoEstado = {
-            numMateriais: materiais.length,
-            numReceitas: receitas.length,
-            numVendas: vendas.length,
-            paginaAtiva: paginasAtivas.length > 0 ? paginasAtivas[0].id : null
-        };
-    }
-};
-
-// Configuração para dispositivos móveis
-function otimizarParaDispositivos() {
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
-    if (isMobile) {
-        console.log("Dispositivo móvel detectado, aplicando otimizações");
-        
-        // 1. Ajustar estilos para melhor visualização móvel
-        const styleSheet = document.createElement('style');
-        styleSheet.type = 'text/css';
-        styleSheet.innerHTML = `
-            @media (max-width: 768px) {
-                .form-row { flex-direction: column; }
-                .form-col { margin-bottom: 10px; }
-                .btn { display: block; width: 100%; margin-bottom: 5px; }
-                .venda-resumo-grid { grid-template-columns: 1fr 1fr; }
-                table { font-size: 14px; }
-                .modal-content { width: 95% !important; max-width: 95% !important; }
-            }
-        `;
-        document.head.appendChild(styleSheet);
-        
-        // 2. Simplificar tabelas para melhor visualização
-        document.querySelectorAll('table').forEach(table => {
-            table.classList.add('mobile-optimized');
-        });
-        
-        // 3. Configurar eventos de toque para navegação
-        document.querySelectorAll('.nav-link, .tab-button, button').forEach(el => {
-            el.style.padding = '12px'; // Aumentar área de toque
-        });
-    }
-}
-
-// Inicializar o sistema de eventos personalizados
-const EventosSistema = {
-    listeners: {},
-    
-    on(evento, callback) {
-        if (!this.listeners[evento]) {
-            this.listeners[evento] = [];
-        }
-        this.listeners[evento].push(callback);
-    },
-    
-    off(evento, callback) {
-        if (!this.listeners[evento]) return;
-        this.listeners[evento] = this.listeners[evento].filter(cb => cb !== callback);
-    },
-    
-    trigger(evento, data) {
-        if (!this.listeners[evento]) return;
-        this.listeners[evento].forEach(callback => {
-            try {
-                callback(data);
-            } catch (error) {
-                console.error(`Erro ao executar callback para evento ${evento}:`, error);
-            }
-        });
-    }
-};
-
-// Verificação periódica do estado dos botões
-setInterval(verificarBotoesFuncionando, 10000);
-
-// Inicializar o monitoramento do sistema quando a aplicação estiver pronta
-document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(() => {
-        sistemaMonitor.iniciar();
-        otimizarParaDispositivos();
-    }, 1000);
-});
-
-// Iniciar o controle de foco nos elementos
-document.addEventListener('focusin', function(e) {
-    const target = e.target;
-    if (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA') {
-        target.dataset.lastValue = target.value;
-    }
-});
-
-document.addEventListener('focusout', function(e) {
-    const target = e.target;
-    if ((target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA') && 
-        target.dataset.lastValue !== target.value) {
-        console.log(`Valor alterado em ${target.id || target.name}`);
-        EventosSistema.trigger('campo-alterado', { 
-            elemento: target, 
-            valorAntigo: target.dataset.lastValue, 
-            valorNovo: target.value 
-        });
-    }
-});
-
-// Capturar erros em APIs assíncronas
-window.addEventListener('unhandledrejection', function(event) {
-    console.error('Promessa rejeitada não tratada:', event.reason);
-    mostrarToast("Erro na comunicação com o servidor", "error");
-});
-
-// Inicialização final com verificação de segurança
-window.addEventListener('load', function() {
-    // Verificação final para garantir que tudo está funcionando
-    setTimeout(() => {
-        verificarBotoesFuncionando();
-        
-        // Verificar navegação
-        const paginasAtivas = document.querySelectorAll('.page-content.active');
-        if (paginasAtivas.length === 0 && currentUser) {
-            console.warn("Página não inicializada corretamente, forçando navegação para estoque");
-            const navEstoque = document.querySelector('.nav-link[data-page="estoque"]');
-            if (navEstoque) navEstoque.click();
-        }
-    }, 500);
-});
-
-// Garantir que todas as funções críticas estão definidas
-function verificarFuncoesNecessarias() {
-    const funcoesEssenciais = [
-        'removerMaterial',
-        'editarReceita', 
-        'removerReceita',
-        'registrarVenda',
-        'editarVenda',
-        'excluirVenda',
-        'carregarEstoque',
-        'carregarMateriais',
-        'carregarReceitas',
-        'carregarVendas'
-    ];
-    
-    let todasDefinidas = true;
-    
-    funcoesEssenciais.forEach(funcao => {
-        if (typeof window[funcao] !== 'function') {
-            console.error(`Função necessária não definida: ${funcao}`);
-            todasDefinidas = false;
-        }
-    });
-    
-    if (!todasDefinidas) {
-        console.error("ALERTA: Algumas funções críticas não estão definidas. O sistema pode não funcionar corretamente.");
-        mostrarToast("Algumas funções do sistema não estão disponíveis", "error");
-    }
-    
-    return todasDefinidas;
-}
-
-// Executar verificação após carregamento completo
-window.addEventListener('load', verificarFuncoesNecessarias);
 </script>
 </body>
 </html>
