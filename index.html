@@ -5873,6 +5873,83 @@ function handleFormAddMaterial(e) {
         mostrarToast("Erro ao processar formulário", "error");
     }
 }
+    // Adicione esta função no seu script
+function corrigirBotoesReceita() {
+  console.log("Corrigindo eventos dos botões de receitas");
+  
+  // Obter o container que contém todas as receitas
+  const listaReceitas = document.getElementById('lista-receitas');
+  if (!listaReceitas) {
+    console.error("Elemento lista-receitas não encontrado");
+    return;
+  }
+  
+  // Remover eventos antigos que possam estar causando conflitos
+  if (listaReceitas._delegationHandlers) {
+    for (const eventType in listaReceitas._delegationHandlers) {
+      listaReceitas.removeEventListener(eventType, listaReceitas._delegationHandlers[eventType]);
+    }
+    listaReceitas._delegationHandlers = {};
+  }
+  
+  // Adicionar eventos diretamente aos botões existentes
+  const botoesEditar = listaReceitas.querySelectorAll('.btn-editar-receita');
+  const botoesRemover = listaReceitas.querySelectorAll('.btn-remover-receita');
+  
+  console.log(`Encontrados ${botoesEditar.length} botões de edição e ${botoesRemover.length} de remoção`);
+  
+  // Adicionar eventos diretamente
+  botoesEditar.forEach(botao => {
+    botao.addEventListener('click', function(e) {
+      e.preventDefault();
+      const index = parseInt(this.getAttribute('data-index'));
+      console.log("Clique no botão editar detectado, index:", index);
+      if (!isNaN(index)) {
+        editarReceita(index);
+      }
+    });
+  });
+  
+  botoesRemover.forEach(botao => {
+    botao.addEventListener('click', function(e) {
+      e.preventDefault();
+      const index = parseInt(this.getAttribute('data-index'));
+      console.log("Clique no botão remover detectado, index:", index);
+      if (!isNaN(index)) {
+        if (confirm("Tem certeza que deseja remover esta receita?")) {
+          removerReceita(index);
+        }
+      }
+    });
+  });
+}
+
+// Modifique a função carregarReceitas() para chamar nossa nova função
+// Adicione esta linha no final da função carregarReceitas()
+// Logo após o trecho que renderiza as receitas:
+function carregarReceitasCorrigido() {
+  // Chame a função original primeiro
+  carregarReceitas();
+  
+  // Depois aplique nossa correção
+  setTimeout(corrigirBotoesReceita, 100);
+}
+
+// Substitua todas as chamadas para carregarReceitas por carregarReceitasCorrigido
+// Ou adicione estas linhas no início do seu script para sobrescrever a função:
+const carregarReceitasOriginal = carregarReceitas;
+carregarReceitas = function() {
+  carregarReceitasOriginal.apply(this, arguments);
+  setTimeout(corrigirBotoesReceita, 100);
+};
+
+// Por fim, corrija os botões imediatamente se a página já estiver carregada
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(corrigirBotoesReceita, 500);
+});
+window.addEventListener('load', function() {
+  setTimeout(corrigirBotoesReceita, 500);
+});
 </script>
 </body>
 </html>
