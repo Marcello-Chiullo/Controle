@@ -1,4 +1,4 @@
-// PARTE 1: HTML
+<!-- PARTE 1 HTML-->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -574,7 +574,7 @@
             <li><a href="#vendas" class="nav-link" data-page="vendas">Vendas</a></li>
         </ul>
     </nav>
-// PARTE 2: PÁGINA DOS APP
+<!-- PARTE 2: PÁGINA DOS APP-->
 <!-- Página de Estoque -->
 <div class="page-content" id="estoque-page">
     <h2>Gestão de Estoque</h2>
@@ -1360,6 +1360,108 @@ let receitas = [];
 let vendas = [];
 let html5QrCode;
 
+// Função para mostrar a tela de login
+function mostrarTelaLogin() {
+    const loginModal = document.getElementById('login-modal');
+    if (loginModal) {
+        loginModal.classList.remove('hidden');
+    }
+}
+
+// Função para fazer login
+function fazerLogin() {
+    const email = document.getElementById('login-email').value;
+    const senha = document.getElementById('login-senha').value;
+    
+    if (!email || !senha) {
+        mostrarNotificacaoLogin('Preencha todos os campos', 'error');
+        return;
+    }
+    
+    toggleModal(true, "Fazendo login...", "Verificando credenciais...");
+    
+    firebase.auth().signInWithEmailAndPassword(email, senha)
+        .then(() => {
+            toggleModal(false);
+            document.getElementById('login-modal').classList.add('hidden');
+        })
+        .catch((error) => {
+            toggleModal(false);
+            mostrarNotificacaoLogin('Erro: ' + error.message, 'error');
+        });
+}
+
+// Função para criar cadastro
+function fazerCadastro() {
+    const email = document.getElementById('login-email').value;
+    const senha = document.getElementById('login-senha').value;
+    
+    if (!email || !senha) {
+        mostrarNotificacaoLogin('Preencha todos os campos', 'error');
+        return;
+    }
+    
+    toggleModal(true, "Criando conta...", "Aguarde...");
+    
+    firebase.auth().createUserWithEmailAndPassword(email, senha)
+        .then(() => {
+            toggleModal(false);
+            document.getElementById('login-modal').classList.add('hidden');
+            mostrarToast('Conta criada com sucesso!', 'success');
+        })
+        .catch((error) => {
+            toggleModal(false);
+            mostrarNotificacaoLogin('Erro: ' + error.message, 'error');
+        });
+}
+
+// Função para mostrar notificações no login
+function mostrarNotificacaoLogin(mensagem, tipo) {
+    const notificacao = document.getElementById('login-notification');
+    if (notificacao) {
+        notificacao.textContent = mensagem;
+        notificacao.className = `notification notification-${tipo}`;
+        notificacao.classList.remove('hidden');
+    }
+}
+
+// Função para adicionar botão de sincronização
+function adicionarBotaoSincronizacao() {
+    // Evitar duplicação
+    if (document.getElementById('btn-sync')) return;
+    
+    const btnSync = document.createElement('button');
+    btnSync.id = 'btn-sync';
+    btnSync.className = 'btn btn-primary';
+    btnSync.textContent = 'Sincronizar';
+    btnSync.style.position = 'fixed';
+    btnSync.style.bottom = '20px';
+    btnSync.style.right = '20px';
+    btnSync.style.zIndex = '999';
+    
+    btnSync.addEventListener('click', sincronizarComNuvem);
+    document.body.appendChild(btnSync);
+}
+
+// Função para logout
+function fazerLogout() {
+    firebase.auth().signOut()
+        .then(() => {
+            mostrarToast('Logout realizado com sucesso', 'success');
+            currentUser = null;
+            document.getElementById('user-info').classList.add('hidden');
+            
+            // Remover botão de sincronização
+            const btnSync = document.getElementById('btn-sync');
+            if (btnSync) document.body.removeChild(btnSync);
+            
+            mostrarTelaLogin();
+        })
+        .catch((error) => {
+            mostrarToast('Erro ao fazer logout: ' + error.message, 'error');
+        });
+}
+
 // Função para atualizar o localStorage
 function atualizarLocalStorage() {
     try {
@@ -1629,14 +1731,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('user-email').textContent = user.email;
             }
             
-            // Configurar eventos ANTES da sincronização
-            setupEventListeners();
-            
-            // Iniciar sincronização
-            iniciarSincronizacao();
-            
-            // Adicionar botão de sincronização
+            // MODIFICAÇÃO: Sequência correta para inicialização
+            setupEventListeners();  // Configurar eventos principais
+            setupAllEvents();       // Configurar todos os eventos
+            inicializarApp();       // Inicializar aplicação (já ativa a página)
+            iniciarSincronizacao(); // Sincronizar com Firebase
             adicionarBotaoSincronizacao();
+            
+            // Verificação adicional após 500ms
+            setTimeout(() => {
+                const paginasAtivas = document.querySelectorAll('.page-content.active');
+                if (paginasAtivas.length === 0) {
+                    console.log("Nenhuma página ativa, ativando estoque");
+                    const navEstoque = document.querySelector('.nav-link[data-page="estoque"]');
+                    if (navEstoque) navEstoque.click();
+                }
+            }, 500);
         } else {
             // Usuário não está logado, mostrar tela de login
             mostrarTelaLogin();
@@ -2039,6 +2149,31 @@ function verificarFuncoesNecessarias() {
     }
     
     return todasDefinidas;
+}
+    // Função de emergência para forçar a exibição das páginas
+function corrigirExibicaoPaginas() {
+    console.log("Aplicando correção de emergência para exibir as páginas");
+    
+    // Garantir que todos os elementos page-content existam com display block
+    const paginas = ["estoque-page", "materiais-page", "receitas-page", "vendas-page"];
+    
+    paginas.forEach(pagina => {
+        const elemento = document.getElementById(pagina);
+        if (elemento) {
+            // Forçar a exibição via estilo inline
+            elemento.style.display = "block";
+            console.log(`Página ${pagina} forçada a exibir`);
+        } else {
+            console.error(`Elemento ${pagina} não encontrado`);
+        }
+    });
+    
+    // Ativar a página de estoque por padrão
+    const estoquePage = document.getElementById("estoque-page");
+    if (estoquePage) {
+        estoquePage.classList.add("active");
+        carregarEstoque();
+    }
 }
 
 // Executar verificação após carregamento completo
@@ -3526,6 +3661,7 @@ function editarReceita(index) {
 
 // Função para remover receita - OTIMIZADA
 // Função para remover receita - CORRIGIDA
+// Função para remover receita - CORRIGIDA
 function removerReceita(index) {
     try {
         // Verificar se o índice é válido
@@ -3548,6 +3684,23 @@ function removerReceita(index) {
             return false;
         }
         
+        // Atualizar localStorage e recarregar interface
+        try {
+            atualizarLocalStorage();
+        } catch (storageError) {
+            console.error("Erro ao salvar no localStorage:", storageError);
+            // Continuar mesmo com erro no localStorage
+        }
+        
+        carregarReceitas();
+        mostrarToast('Receita removida com sucesso!', 'success');
+        return true;
+    } catch (error) {
+        console.error("Erro ao remover receita:", error);
+        mostrarToast("Erro ao remover receita", "error");
+        return false;
+    }
+}        
         // Atualizar localStorage e recarregar interface
         try {
             atualizarLocalStorage();
@@ -5430,6 +5583,11 @@ function setupEventListeners() {
             stopScannerBtn.removeEventListener('click', pararScanner);
             stopScannerBtn.addEventListener('click', pararScanner);
         }
+        const btnLogout = document.getElementById('btn-logout');
+        if (btnLogout) {
+            btnLogout.removeEventListener('click', fazerLogout);
+            btnLogout.addEventListener('click', fazerLogout);
+        }
     } catch (error) {
         console.error("Erro ao configurar eventos de navegação:", error);
     }
@@ -5652,69 +5810,29 @@ function inicializarApp() {
         
         // 5. Correção para navegação em dispositivos móveis
         corrigirNavegacaoMovel();
-        
+
+        // ADICIONAR ESTA LINHA:
+        corrigirExibicaoPaginas(); // Força a exibição das páginas
+
+        // Ativar a página de estoque por padrão
+        const estoqueLink = document.querySelector('.nav-link[data-page="estoque"]');
+        if (estoqueLink) {
+            estoqueLink.click();
+        } else {
+            // Ativação manual se o click não funcionar
+            document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+            const estoquePage = document.getElementById('estoque-page');
+            if (estoquePage) {
+                estoquePage.classList.add('active');
+                carregarEstoque();
+            }
+        }
         console.log("Aplicação inicializada com sucesso");
     } catch (error) {
         console.error("Erro ao inicializar aplicação:", error);
         mostrarToast("Erro ao inicializar aplicação", "error");
     }
 }
-
-// Inicializar aplicação quando o documento estiver pronto
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM Carregado! Inicializando aplicativo...');
-    
-    // Carregar dados do localStorage
-    try {
-        estoque = JSON.parse(localStorage.getItem('estoque')) || [];
-        materiais = JSON.parse(localStorage.getItem('materiais')) || [];
-        receitas = JSON.parse(localStorage.getItem('receitas')) || [];
-        vendas = JSON.parse(localStorage.getItem('vendas')) || [];
-    } catch (e) {
-        console.error('Erro ao carregar dados do localStorage:', e);
-        estoque = [];
-        materiais = [];
-        receitas = [];
-        vendas = [];
-    }
-    
-    // Verificar autenticação do Firebase
-    firebase.auth().onAuthStateChanged((user) => {
-        if (user) {
-            // Usuário está logado
-            currentUser = user;
-            
-            // Mostrar email do usuário
-            const userInfoEl = document.getElementById('user-info');
-            if (userInfoEl) {
-                userInfoEl.classList.remove('hidden');
-                document.getElementById('user-email').textContent = user.email;
-            }
-            
-            // Inicializar aplicação
-            inicializarApp();
-            
-            // Adicionar botão de sincronização
-            adicionarBotaoSincronizacao();
-        } else {
-            // Usuário não está logado, mostrar tela de login
-            mostrarTelaLogin();
-            
-            // Configurar eventos de login
-            const btnLogin = document.getElementById('btn-login');
-            if (btnLogin) {
-                btnLogin.removeEventListener('click', fazerLogin);
-                btnLogin.addEventListener('click', fazerLogin);
-            }
-            
-            const btnCadastrar = document.getElementById('btn-cadastrar');
-            if (btnCadastrar) {
-                btnCadastrar.removeEventListener('click', fazerCadastro);
-                btnCadastrar.addEventListener('click', fazerCadastro);
-            }
-        }
-    });
-});
 
 // Corrigir navegação em dispositivos móveis
 function corrigirNavegacaoMovel() {
@@ -5871,6 +5989,57 @@ function handleFormAddMaterial(e) {
     } catch (error) {
         console.error("Erro ao processar formulário de material:", error);
         mostrarToast("Erro ao processar formulário", "error");
+    }
+}
+
+// MODIFICADO: Função para configurar eventos de receitas
+function setupReceitaEvents() {
+    try {
+        // Evento para adicionar ingrediente
+        const btnAdicionarIngrediente = document.getElementById('adicionar-ingrediente');
+        if (btnAdicionarIngrediente) {
+            btnAdicionarIngrediente.removeEventListener('click', handleAdicionarIngrediente);
+            btnAdicionarIngrediente.addEventListener('click', handleAdicionarIngrediente);
+        }
+        
+        // Configurar o formulário de adicionar receita
+        setupFormAddReceitaEvent();
+        
+        // NOVA ADIÇÃO: Configurar delegação de eventos para os botões de receitas
+        const listaReceitas = document.getElementById('lista-receitas');
+        if (listaReceitas) {
+            // Remover eventos anteriores
+            if (listaReceitas._delegationHandlers) {
+                for (const eventType in listaReceitas._delegationHandlers) {
+                    listaReceitas.removeEventListener(eventType, listaReceitas._delegationHandlers[eventType]);
+                }
+            }
+            
+            EventManager.delegateEvent(listaReceitas, '.btn-editar-receita', 'click', function() {
+                const index = parseInt(this.getAttribute('data-index'));
+                if (!isNaN(index)) {
+                    editarReceita(index);
+                }
+            });
+            
+            EventManager.delegateEvent(listaReceitas, '.btn-remover-receita', 'click', function() {
+                const index = parseInt(this.getAttribute('data-index'));
+                if (!isNaN(index)) {
+                    if (confirm("Tem certeza que deseja remover esta receita?")) {
+                        removerReceita(index);
+                    }
+                }
+            });
+            
+            EventManager.delegateEvent(listaReceitas, '.btn-produzir-receita', 'click', function() {
+                const index = parseInt(this.getAttribute('data-index'));
+                if (!isNaN(index)) {
+                    produzirReceita(index);
+                }
+            });
+        }
+    } catch (error) {
+        console.error("Erro ao configurar eventos de receita:", error);
     }
 }
 </script>
