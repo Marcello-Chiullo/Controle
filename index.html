@@ -2416,126 +2416,138 @@ function adicionarEstoqueDeVolta(materialId, quantidade, unidadeMedida) {
     }
 }
 
-// Função para unificar itens de estoque - OTIMIZADA
+// Função para unificar itens de estoque - OTIMIZADA (CORRIGIDA)
 function unificarEstoque() {
     try {
+        // Cria um novo array para armazenar o estoque unificado
         const estoqueUnificado = [];
         const itensPorCodigo = {};
         const itensPorNome = {};
         
+        // Verifica se há itens no estoque
+        if (!estoque || estoque.length === 0) {
+            return estoqueUnificado;
+        }
+        
         // Primeiro agrupamos por código
-        estoque.forEach(item => {
-            const material = materiais.find(m => m.id === item.materialId);
-            if (!material) return; // Ignorar itens sem material associado
-            
-            const codigo = material.codigo;
-            if (codigo) {
-                if (!itensPorCodigo[codigo]) {
-                    itensPorCodigo[codigo] = {
+        for (const item of estoque) {
+            try {
+                if (!item || !item.materialId) continue;
+                
+                // Encontrar o material associado
+                const material = materiais.find(m => m.id === item.materialId);
+                if (!material) continue;
+                
+                const codigo = material.codigo;
+                if (codigo) {
+                    if (!itensPorCodigo[codigo]) {
+                        itensPorCodigo[codigo] = {
+                            id: gerarId(),
+                            materialId: material.id,
+                            codigo: codigo,
+                            nome: material.nome,
+                            quantidade: 0,
+                            unidade: material.unidade,
+                            unidadeMedida: material.unidadeMedida,
+                            quantidadeMedida: material.quantidadeMedida,
+                            preco: material.precoMedio || 0,
+                            dataAdicao: new Date().toISOString()
+                        };
+                    }
+                    
+                    // Somar quantidade normalizada
+                    itensPorCodigo[codigo].quantidade += (parseFloat(item.quantidade) || 0);
+                }
+            } catch (err) {
+                console.error("Erro ao processar item para unificação por código:", err);
+                continue;
+            }
+        }
+        
+        // Depois agrupamos os que não têm código por nome
+        for (const item of estoque) {
+            try {
+                if (!item || !item.materialId) continue;
+                
+                const material = materiais.find(m => m.id === item.materialId);
+                if (!material || material.codigo) continue; // Ignorar se tem código ou sem material
+                
+                const nome = material.nome ? material.nome.toLowerCase() : "";
+                if (!nome) continue;
+                
+                if (!itensPorNome[nome]) {
+                    itensPorNome[nome] = {
                         id: gerarId(),
                         materialId: material.id,
-                        codigo: codigo,
+                        codigo: "",
                         nome: material.nome,
                         quantidade: 0,
                         unidade: material.unidade,
                         unidadeMedida: material.unidadeMedida,
                         quantidadeMedida: material.quantidadeMedida,
-                        preco: material.precoMedio,
+                        preco: material.precoMedio || 0,
                         dataAdicao: new Date().toISOString()
                     };
                 }
                 
                 // Somar quantidade normalizada
-                itensPorCodigo[codigo].quantidade += item.quantidade;
+                itensPorNome[nome].quantidade += (parseFloat(item.quantidade) || 0);
+            } catch (err) {
+                console.error("Erro ao processar item para unificação por nome:", err);
+                continue;
             }
-        });
-        
-        // Depois agrupamos os que não tem código por nome
-        estoque.forEach(item => {
-            const material = materiais.find(m => m.id === item.materialId);
-            if (!material || material.codigo) return; // Ignorar itens com código ou sem material
-            
-            const nome = material.nome.toLowerCase();
-            if (!itensPorNome[nome]) {
-                itensPorNome[nome] = {
-                    id: gerarId(),
-                    materialId: material.id,
-                    codigo: "",
-                    nome: material.nome,
-                    quantidade: 0,
-                    unidade: material.unidade,
-                    unidadeMedida: material.unidadeMedida,
-                    quantidadeMedida: material.quantidadeMedida,
-                    preco: material.precoMedio,
-                    dataAdicao: new Date().toISOString()
-                };
-            }
-            
-            // Somar quantidade normalizada
-            itensPorNome[nome].quantidade += item.quantidade;
-        });
+        }
         
         // Combinar os resultados
         for (const codigo in itensPorCodigo) {
-            estoqueUnificado.push(itensPorCodigo[codigo]);
+            if (itensPorCodigo[codigo].quantidade > 0) {
+                estoqueUnificado.push(itensPorCodigo[codigo]);
+            }
         }
         
         for (const nome in itensPorNome) {
             // Verificar se já não foi adicionado por código
             const jaAdicionado = estoqueUnificado.some(item => 
-                item.nome.toLowerCase() === nome);
+                item.nome && nome && item.nome.toLowerCase() === nome);
             
-            if (!jaAdicionado) {
+            if (!jaAdicionado && itensPorNome[nome].quantidade > 0) {
                 estoqueUnificado.push(itensPorNome[nome]);
             }
         }
         
-        // Substituir o estoque original pelo unificado
-        estoque = estoqueUnificado;
+        // Não substituir o estoque original pelo unificado, apenas retornar o unificado
         return estoqueUnificado;
     } catch (error) {
         console.error("Erro ao unificar estoque:", error);
-        return estoque; // Retornar estoque original em caso de erro
+        return []; // Retornar array vazio em caso de erro
     }
 }
 
-// Função para remover um material e todas suas referências - OTIMIZADA
+// Função para remover um material e todas suas referências - OTIMIZADA (CORRIGIDA)
 function removerMaterial(id) {
     try {
+        // Encontrar o material a ser removido
         const material = materiais.find(m => m.id === id);
-        if (!material) return false;
+        if (!material) {
+            mostrarToast("Material não encontrado", "error");
+            return false;
+        }
         
         const codigo = material.codigo;
         const nome = material.nome;
         
-        // Remover do estoque todos itens relacionados por código ou nome
-        estoque = estoque.filter(item => {
-            const materialItem = materiais.find(m => m.id === item.materialId);
-            return !(materialItem && 
-                   (materialItem.codigo === codigo || 
-                    materialItem.nome.toLowerCase() === nome.toLowerCase()));
-        });
-        
-        // Remover das receitas
-        receitas.forEach(receita => {
-            receita.ingredientes = receita.ingredientes.filter(ing => {
-                const materialIng = materiais.find(m => m.id === ing.materialId);
-                return !(materialIng && 
-                        (materialIng.codigo === codigo || 
-                         materialIng.nome.toLowerCase() === nome.toLowerCase()));
-            });
-        });
-        
-        // Remover do cadastro de materiais
-        materiais = materiais.filter(m => 
-            !(m.codigo === codigo || m.nome.toLowerCase() === nome.toLowerCase())
-        );
+        // Remover o material da lista de materiais
+        const indexMaterial = materiais.findIndex(m => m.id === id);
+        if (indexMaterial !== -1) {
+            materiais.splice(indexMaterial, 1);
+        }
         
         // Atualizar localStorage e recarregar interfaces
         atualizarLocalStorage();
+        
+        // Recarregar interfaces
         carregarMateriais();
         carregarEstoque();
-        carregarReceitas();
         
         mostrarToast("Material removido com sucesso!", "success");
         return true;
@@ -2647,7 +2659,7 @@ function editarMaterial(index) {
         if(!material) return;
         
         // Mudar para a aba de adicionar item
-        const tabButton = document.querySelector('[data-tab="adicionar-item"]');
+        const tabButton = document.querySelector('.tab-button[data-tab="adicionar-item"]');
         if (tabButton) {
             tabButton.click();
         }
@@ -2705,16 +2717,22 @@ function editarMaterial(index) {
     }
 }
 
-// Função para adicionar um material ao estoque - OTIMIZADA
+// Função para adicionar um material ao estoque - OTIMIZADA (CORRIGIDA)
 function adicionarAoEstoque(materialId) {
     try {
         const material = materiais.find(m => m.id === materialId);
-        if (!material) return;
+        if (!material) {
+            mostrarToast("Material não encontrado", "error");
+            return;
+        }
         
         // Mudar para a aba de adicionar item
-        const tabButton = document.querySelector('[data-tab="adicionar-item"]');
+        const tabButton = document.querySelector('.tab-button[data-tab="adicionar-item"]');
         if (tabButton) {
             tabButton.click();
+            
+            // Limpar o formulário antes de preenchê-lo
+            document.getElementById('form-adicionar-material').reset();
         }
         
         // Preencher o formulário com os dados do material
@@ -2754,13 +2772,15 @@ function adicionarAoEstoque(materialId) {
             const hoje = new Date();
             dataCompra.value = hoje.toISOString().split('T')[0];
         }
+        
+        mostrarToast("Material carregado para adicionar ao estoque", "success");
     } catch (error) {
         console.error("Erro ao adicionar ao estoque:", error);
         mostrarToast("Erro ao adicionar ao estoque", "error");
     }
 }
 
-// Função para carregar o estoque na tabela - OTIMIZADA
+// Função para carregar o estoque na tabela - OTIMIZADA (CORRIGIDA)
 function carregarEstoque() {
     try {
         const tbody = document.getElementById('itens-estoque');
@@ -2778,22 +2798,33 @@ function carregarEstoque() {
         // Unificar estoque antes de exibir
         const estoqueUnificado = unificarEstoque();
         
-        estoqueUnificado.forEach((item) => {
-            // Calcular a quantidade em unidade de medida (ex: ml restantes)
-            const quantidadeTotalMedida = item.quantidade * (item.quantidadeMedida || 1);
-            // Verificar se é um número fracionário
-            const quantidadeFracionada = item.quantidade % 1 !== 0;
-            
+        if (estoqueUnificado.length === 0) {
             const tr = document.createElement('tr');
-            tr.className = 'estoque-unificado';
-            tr.innerHTML = `
-                <td>${item.codigo || 'N/A'}</td>
-                <td>${item.nome}</td>
-                <td>${item.quantidade.toFixed(2)} ${quantidadeFracionada ? `(${Math.floor(item.quantidade)} + ${((item.quantidade % 1) * 100).toFixed(0)}%)` : ''}</td>
-                <td>${item.unidade}</td>
-                <td>${quantidadeTotalMedida.toFixed(0)} ${item.unidadeMedida || 'N/A'}</td>
-            `;
+            tr.innerHTML = '<td colspan="5" style="text-align: center;">Nenhum item no estoque após unificação.</td>';
             tbody.appendChild(tr);
+            return;
+        }
+        
+        estoqueUnificado.forEach((item) => {
+            try {
+                // Calcular a quantidade em unidade de medida (ex: ml restantes)
+                const quantidadeTotalMedida = (parseFloat(item.quantidade) || 0) * (parseFloat(item.quantidadeMedida) || 1);
+                // Verificar se é um número fracionário
+                const quantidadeFracionada = (parseFloat(item.quantidade) || 0) % 1 !== 0;
+                
+                const tr = document.createElement('tr');
+                tr.className = 'estoque-unificado';
+                tr.innerHTML = `
+                    <td>${item.codigo || 'N/A'}</td>
+                    <td>${item.nome || 'Sem nome'}</td>
+                    <td>${(parseFloat(item.quantidade) || 0).toFixed(2)} ${quantidadeFracionada ? `(${Math.floor(item.quantidade)} + ${((item.quantidade % 1) * 100).toFixed(0)}%)` : ''}</td>
+                    <td>${item.unidade || 'N/A'}</td>
+                    <td>${quantidadeTotalMedida.toFixed(0)} ${item.unidadeMedida || 'N/A'}</td>
+                `;
+                tbody.appendChild(tr);
+            } catch (err) {
+                console.error("Erro ao renderizar item do estoque:", err);
+            }
         });
     } catch (error) {
         console.error("Erro ao carregar estoque:", error);
@@ -2813,6 +2844,20 @@ function adicionarEventoCodigoMaterial() {
     // Adicionar eventos
     codigoInput.addEventListener('keypress', handleCodigoKeyPress);
     codigoInput.addEventListener('blur', handleCodigoBlur);
+    
+    // Adicionar evento para o botão scanner
+    const scannerBtn = document.getElementById('scanner-btn');
+    if (scannerBtn) {
+        scannerBtn.removeEventListener('click', iniciarScanner);
+        scannerBtn.addEventListener('click', iniciarScanner);
+    }
+    
+    // Adicionar evento para parar o scanner
+    const stopScannerBtn = document.getElementById('stop-scanner');
+    if (stopScannerBtn) {
+        stopScannerBtn.removeEventListener('click', pararScanner);
+        stopScannerBtn.addEventListener('click', pararScanner);
+    }
 }
 
 // Handler para keypress no campo de código
@@ -2903,154 +2948,40 @@ function buscarInformacoesProduto(codigo) {
     }
 }
 
-// Funções de Autenticação e Login
-function mostrarTelaLogin() {
-    try {
-        document.getElementById('login-modal').classList.remove('hidden');
-    } catch (e) {
-        console.error("Erro ao mostrar tela de login:", e);
-    }
-}
-
-function esconderTelaLogin() {
-    try {
-        document.getElementById('login-modal').classList.add('hidden');
-    } catch (e) {
-        console.error("Erro ao esconder tela de login:", e);
-    }
-}
-
-function fazerLogin() {
-    const email = document.getElementById('login-email').value;
-    const senha = document.getElementById('login-senha').value;
-    
-    if (!email || !senha) {
-        mostrarToast('Preencha email e senha', 'error');
-        return;
-    }
-    
-    toggleModal(true, "Fazendo login...", "Por favor aguarde...");
-    
-    firebase.auth().signInWithEmailAndPassword(email, senha)
-        .then((userCredential) => {
-            // Login bem-sucedido
-            currentUser = userCredential.user;
-            
-            // Mostrar email do usuário logado
-            const userInfoEl = document.getElementById('user-info');
-            if (userInfoEl) {
-                userInfoEl.classList.remove('hidden');
-                document.getElementById('user-email').textContent = currentUser.email;
-            }
-            
-            // Esconder a tela de login
-            esconderTelaLogin();
-            
-            // Adicionar botão de sincronização
-            adicionarBotaoSincronizacao();
-            
-            toggleModal(false);
-            
-            // Recarregar interfaces
-            inicializarDados();
-            carregarEstoque();
-            carregarMateriais();
-            carregarReceitas();
-            carregarVendas();
-            
-            // Configurar eventos
-            setupEventListeners();
-        })
-        .catch((error) => {
-            toggleModal(false);
-            mostrarToast('Erro ao fazer login: ' + error.message, 'error');
-        });
-}
-
-function fazerCadastro() {
-    const email = document.getElementById('login-email').value;
-    const senha = document.getElementById('login-senha').value;
-    
-    if (!email || !senha || senha.length < 6) {
-        mostrarToast('Email válido e senha com pelo menos 6 caracteres são necessários', 'error');
-        return;
-    }
-    
-    toggleModal(true, "Criando conta...", "Por favor aguarde...");
-    
-    firebase.auth().createUserWithEmailAndPassword(email, senha)
-        .then((userCredential) => {
-            currentUser = userCredential.user;
-            
-            // Mostrar email do usuário logado
-            const userInfoEl = document.getElementById('user-info');
-            if (userInfoEl) {
-                userInfoEl.classList.remove('hidden');
-                document.getElementById('user-email').textContent = currentUser.email;
-            }
-            
-            // Esconder a tela de login
-            esconderTelaLogin();
-            
-            // Adicionar botão de sincronização
-            adicionarBotaoSincronizacao();
-            
-            toggleModal(false);
-            mostrarToast('Conta criada com sucesso!', 'success');
-            
-            // Inicializar interfaces
-            inicializarDados();
-            setupEventListeners();
-        })
-        .catch((error) => {
-            toggleModal(false);
-            mostrarToast('Erro ao criar conta: ' + error.message, 'error');
-        });
-}
-
-// Adicionar botão de sincronização manual - OTIMIZADA
-function adicionarBotaoSincronizacao() {
-    const userInfo = document.getElementById('user-info');
-    if (!userInfo) return;
-    
-    // Verificar se já existe um botão
-    if (!document.getElementById('btn-sync')) {
-        const botaoSync = document.createElement('button');
-        botaoSync.id = 'btn-sync';
-        botaoSync.className = 'btn btn-primary';
-        botaoSync.style.marginLeft = '10px';
-        botaoSync.innerHTML = 'Sincronizar';
-        
-        // Usar EventManager para adicionar evento
-        userInfo.appendChild(botaoSync);
-        
-        // Remover evento anterior se existir
-        botaoSync.removeEventListener('click', sincronizarComNuvem);
-        botaoSync.addEventListener('click', sincronizarComNuvem);
-    }
-}
-
 // FUNÇÕES PARA SCANNER DE QR CODE/CÓDIGO DE BARRAS
 function iniciarScanner() {
-    const scannerContainer = document.getElementById('scanner-container');
-    if (!scannerContainer) return;
-    
-    scannerContainer.classList.remove('hidden');
-    
-    // Se já existe um scanner em execução, para-lo
-    if (html5QrCode && html5QrCode.isScanning) {
-        html5QrCode.stop().catch(err => console.error('Erro ao parar scanner:', err));
+    try {
+        const scannerContainer = document.getElementById('scanner-container');
+        if (!scannerContainer) {
+            mostrarToast("Container do scanner não encontrado", "error");
+            return;
+        }
+        
+        scannerContainer.classList.remove('hidden');
+        
+        // Se já existe um scanner em execução, para-lo
+        if (html5QrCode && html5QrCode.isScanning) {
+            html5QrCode.stop().catch(err => console.error('Erro ao parar scanner:', err));
+        }
+        
+        html5QrCode = new Html5Qrcode("reader");
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+        
+        html5QrCode.start(
+            { facingMode: "environment" }, 
+            config, 
+            onScanSuccess, 
+            onScanFailure
+        ).catch(error => {
+            console.error("Erro ao iniciar scanner:", error);
+            mostrarToast("Erro ao iniciar scanner: " + error.message, "error");
+        });
+        
+        mostrarToast("Scanner iniciado", "success");
+    } catch (error) {
+        console.error("Erro ao iniciar scanner:", error);
+        mostrarToast("Erro ao iniciar scanner", "error");
     }
-    
-    html5QrCode = new Html5Qrcode("reader");
-    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-    
-    html5QrCode.start(
-        { facingMode: "environment" }, 
-        config, 
-        onScanSuccess, 
-        onScanFailure
-    );
 }
 
 function pararScanner() {
@@ -3058,9 +2989,13 @@ function pararScanner() {
         html5QrCode.stop().then(() => {
             console.log('Scanner parado.');
             document.getElementById('scanner-container').classList.add('hidden');
+            mostrarToast("Scanner parado", "success");
         }).catch(err => {
             console.error('Erro ao parar o scanner:', err);
+            mostrarToast("Erro ao parar scanner", "error");
         });
+    } else {
+        document.getElementById('scanner-container').classList.add('hidden');
     }
 }
 
@@ -3071,11 +3006,14 @@ function onScanSuccess(decodedText, decodedResult) {
     document.getElementById('codigo-material').value = decodedText;
     
     // Mostrar resultado
-    document.getElementById('scanner-result').innerHTML = `
-        <div class="notification notification-success">
-            Código detectado: ${decodedText}
-        </div>
-    `;
+    const scannerResult = document.getElementById('scanner-result');
+    if (scannerResult) {
+        scannerResult.innerHTML = `
+            <div class="notification notification-success">
+                Código detectado: ${decodedText}
+            </div>
+        `;
+    }
     
     // Parar o scanner
     pararScanner();
@@ -3086,6 +3024,7 @@ function onScanSuccess(decodedText, decodedResult) {
 
 function onScanFailure(error) {
     // Silenciar erro para não encher o console
+    // console.error('Falha no scanner:', error);
 }
 // PARTE 6: JAVASCRIPT - FUNÇÕES DE CÁLCULO PARA RECEITAS
 
@@ -3586,11 +3525,37 @@ function editarReceita(index) {
 }
 
 // Função para remover receita - OTIMIZADA
+// Função para remover receita - CORRIGIDA
 function removerReceita(index) {
     try {
-        // Não precisamos de confirmação, vamos remover diretamente
+        // Verificar se o índice é válido
+        if (index < 0 || index >= receitas.length || !receitas[index]) {
+            console.error("Índice de receita inválido:", index);
+            mostrarToast("Receita não encontrada", "error");
+            return false;
+        }
+        
+        // Armazenar ID da receita para verificação
+        const receitaId = receitas[index].id;
+        
+        // Remover a receita pelo índice
         receitas.splice(index, 1);
-        atualizarLocalStorage();
+        
+        // Verificar se a remoção foi bem-sucedida
+        if (receitas.findIndex(r => r.id === receitaId) !== -1) {
+            console.error("Falha ao remover receita");
+            mostrarToast("Erro ao remover receita", "error");
+            return false;
+        }
+        
+        // Atualizar localStorage e recarregar interface
+        try {
+            atualizarLocalStorage();
+        } catch (storageError) {
+            console.error("Erro ao salvar no localStorage:", storageError);
+            // Continuar mesmo com erro no localStorage
+        }
+        
         carregarReceitas();
         mostrarToast('Receita removida com sucesso!', 'success');
         return true;
@@ -3600,7 +3565,6 @@ function removerReceita(index) {
         return false;
     }
 }
-
 // Função para carregar receitas - OTIMIZADA
 function carregarReceitas() {
     try {
@@ -5362,7 +5326,6 @@ function inicializarEventosModaisVenda() {
 }
 
 // PARTE 11: JAVASCRIPT - CARREGAR VENDAS E SETUP (FUNÇÕES PRINCIPAIS)
-
 // Função para carregar a lista de vendas - OTIMIZADA
 function carregarVendas() {
     try {
@@ -5396,10 +5359,7 @@ function carregarVendas() {
             EventManager.delegateEvent(listaVendas, '.btn-excluir-venda', 'click', function() {
                 const id = this.getAttribute('data-id');
                 if (id) {
-                    // Exclusão direta sem confirmação
-                    excluirVenda(id);
-                    carregarVendas();
-                    carregarEstoque();
+                    confirmarExclusaoVenda(id); // Alterado para usar confirmação
                 }
             });
         }
@@ -5456,6 +5416,20 @@ function setupEventListeners() {
                 el.addEventListener('input', handlePesquisaInput);
             }
         });
+        
+        // NOVA ADIÇÃO: Configurar o evento para o botão de scanner
+        const scannerBtn = document.getElementById('scanner-btn');
+        if (scannerBtn) {
+            scannerBtn.removeEventListener('click', iniciarScanner);
+            scannerBtn.addEventListener('click', iniciarScanner);
+        }
+        
+        // NOVA ADIÇÃO: Configurar o evento para o botão de parar scanner
+        const stopScannerBtn = document.getElementById('stop-scanner');
+        if (stopScannerBtn) {
+            stopScannerBtn.removeEventListener('click', pararScanner);
+            stopScannerBtn.addEventListener('click', pararScanner);
+        }
     } catch (error) {
         console.error("Erro ao configurar eventos de navegação:", error);
     }
@@ -5472,31 +5446,31 @@ function handlePesquisaInput() {
             case 'pesquisar-estoque':
                 itens = document.querySelectorAll('#tabela-estoque tbody tr');
                 itens.forEach(tr => {
-                    const nome = tr.children[1].textContent.toLowerCase();
-                    const codigo = tr.children[0].textContent.toLowerCase();
+                    const nome = tr.children[1]?.textContent.toLowerCase() || '';
+                    const codigo = tr.children[0]?.textContent.toLowerCase() || '';
                     tr.style.display = (nome.includes(termo) || codigo.includes(termo)) ? '' : 'none';
                 });
                 break;
             case 'pesquisar-materiais':
                 itens = document.querySelectorAll('#tabela-materiais tbody tr');
                 itens.forEach(tr => {
-                    const nome = tr.children[1].textContent.toLowerCase();
-                    const codigo = tr.children[0].textContent.toLowerCase();
+                    const nome = tr.children[1]?.textContent.toLowerCase() || '';
+                    const codigo = tr.children[0]?.textContent.toLowerCase() || '';
                     tr.style.display = (nome.includes(termo) || codigo.includes(termo)) ? '' : 'none';
                 });
                 break;
             case 'pesquisar-receita':
                 itens = document.querySelectorAll('.recipe-card');
                 itens.forEach(card => {
-                    const nome = card.querySelector('h3').textContent.toLowerCase();
+                    const nome = card.querySelector('h3')?.textContent.toLowerCase() || '';
                     card.style.display = nome.includes(termo) ? '' : 'none';
                 });
                 break;
             case 'pesquisar-vendas':
                 itens = document.querySelectorAll('.sale-card');
                 itens.forEach(card => {
-                    const nome = card.querySelector('.sale-title').textContent.toLowerCase();
-                    const cliente = card.querySelector('div:nth-child(2)').textContent.toLowerCase();
+                    const nome = card.querySelector('.sale-title')?.textContent.toLowerCase() || '';
+                    const cliente = card.querySelector('div:nth-child(2)')?.textContent.toLowerCase() || '';
                     card.style.display = (nome.includes(termo) || cliente.includes(termo)) ? '' : 'none';
                 });
                 break;
@@ -5789,17 +5763,26 @@ setInterval(function() {
     }
 }, 2000);
 
-// Configurar eventos para materiais
+// MODIFICADO: Configurar eventos para materiais
 function setupMaterialButtonEvents() {
     try {
         const materiaisTable = document.getElementById('itens-materiais');
         if (materiaisTable) {
+            // Limpar eventos existentes
+            if (materiaisTable._delegationHandlers) {
+                for (const eventType in materiaisTable._delegationHandlers) {
+                    materiaisTable.removeEventListener(eventType, materiaisTable._delegationHandlers[eventType]);
+                }
+            }
+            
             // Usar delegação de eventos para os botões
             EventManager.delegateEvent(materiaisTable, '.btn-remover-material', 'click', function() {
                 const id = this.getAttribute('data-id');
                 if (id) {
-                    // Remover diretamente sem confirmação
-                    removerMaterial(id);
+                    // Confirmação antes de remover
+                    if (confirm("Tem certeza que deseja remover este material?")) {
+                        removerMaterial(id);
+                    }
                 }
             });
             
@@ -5817,8 +5800,77 @@ function setupMaterialButtonEvents() {
                 adicionarAoEstoque(id);
             });
         }
+        
+        // Configurar evento para formulário de adicionar material
+        const formAdicionarMaterial = document.getElementById('form-adicionar-material');
+        if (formAdicionarMaterial) {
+            formAdicionarMaterial.removeEventListener('submit', handleFormAddMaterial);
+            formAdicionarMaterial.addEventListener('submit', handleFormAddMaterial);
+        }
     } catch (error) {
         console.error("Erro ao configurar eventos de materiais:", error);
+    }
+}
+
+// NOVA FUNÇÃO: Handler para o formulário de adicionar material
+function handleFormAddMaterial(e) {
+    e.preventDefault();
+    try {
+        const codigoMaterial = document.getElementById('codigo-material').value;
+        const nomeMaterial = document.getElementById('nome-material').value;
+        const quantidadeMaterial = document.getElementById('quantidade-material').value;
+        const unidadeMaterial = document.getElementById('unidade-material').value;
+        const unidadeMedidaMaterial = document.getElementById('unidade-medida-material').value;
+        const quantidadeMedidaMaterial = document.getElementById('quantidade-medida-material').value;
+        const precoMaterial = document.getElementById('preco-material').value;
+        const dataCompra = document.getElementById('data-compra-material').value;
+        
+        if (!nomeMaterial || !quantidadeMaterial || !unidadeMaterial || !unidadeMedidaMaterial || 
+            !quantidadeMedidaMaterial || !precoMaterial) {
+            mostrarToast('Preencha todos os campos obrigatórios.', 'error');
+            return;
+        }
+        
+        // Verificar botão submit para saber se é edição
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const indexEdicao = submitBtn ? submitBtn.getAttribute('data-edicao') : null;
+        
+        // Criar ou atualizar material
+        const materialId = adicionarOuAtualizarMaterial(
+            codigoMaterial,
+            nomeMaterial,
+            unidadeMaterial,
+            unidadeMedidaMaterial,
+            quantidadeMedidaMaterial,
+            precoMaterial,
+            dataCompra ? new Date(dataCompra).toISOString() : null
+        );
+        
+        if (materialId) {
+            // Adicionar ao estoque
+            if (adicionarItemEstoque(materialId, quantidadeMaterial)) {
+                atualizarLocalStorage();
+                this.reset();
+                
+                // Resetar o botão de edição se necessário
+                if (indexEdicao) {
+                    submitBtn.textContent = 'Adicionar ao Estoque';
+                    submitBtn.removeAttribute('data-edicao');
+                }
+                
+                carregarMateriais();
+                carregarEstoque();
+                
+                mostrarToast('Material adicionado com sucesso!', 'success');
+                
+                // Voltar para a primeira aba
+                const tabButton = document.querySelector('[data-tab="listar-materiais"]');
+                if (tabButton) tabButton.click();
+            }
+        }
+    } catch (error) {
+        console.error("Erro ao processar formulário de material:", error);
+        mostrarToast("Erro ao processar formulário", "error");
     }
 }
 </script>
