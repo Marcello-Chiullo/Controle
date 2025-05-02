@@ -1731,14 +1731,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('user-email').textContent = user.email;
             }
             
-            // Configurar eventos ANTES da sincronização
-            setupEventListeners();
-            
-            // Iniciar sincronização
-            iniciarSincronizacao();
-            
-            // Adicionar botão de sincronização
+            // MODIFICAÇÃO: Sequência correta para inicialização
+            setupEventListeners();  // Configurar eventos principais
+            setupAllEvents();       // Configurar todos os eventos
+            inicializarApp();       // Inicializar aplicação (já ativa a página)
+            iniciarSincronizacao(); // Sincronizar com Firebase
             adicionarBotaoSincronizacao();
+            
+            // Verificação adicional após 500ms
+            setTimeout(() => {
+                const paginasAtivas = document.querySelectorAll('.page-content.active');
+                if (paginasAtivas.length === 0) {
+                    console.log("Nenhuma página ativa, ativando estoque");
+                    const navEstoque = document.querySelector('.nav-link[data-page="estoque"]');
+                    if (navEstoque) navEstoque.click();
+                }
+            }, 500);
         } else {
             // Usuário não está logado, mostrar tela de login
             mostrarTelaLogin();
@@ -5777,69 +5785,26 @@ function inicializarApp() {
         
         // 5. Correção para navegação em dispositivos móveis
         corrigirNavegacaoMovel();
-        
+
+        // Ativar a página de estoque por padrão
+        const estoqueLink = document.querySelector('.nav-link[data-page="estoque"]');
+        if (estoqueLink) {
+            estoqueLink.click();
+        } else {
+            // Ativação manual se o click não funcionar
+            document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+            const estoquePage = document.getElementById('estoque-page');
+            if (estoquePage) {
+                estoquePage.classList.add('active');
+                carregarEstoque();
+            }
+        }
         console.log("Aplicação inicializada com sucesso");
     } catch (error) {
         console.error("Erro ao inicializar aplicação:", error);
         mostrarToast("Erro ao inicializar aplicação", "error");
     }
 }
-
-// Inicializar aplicação quando o documento estiver pronto
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM Carregado! Inicializando aplicativo...');
-    
-    // Carregar dados do localStorage
-    try {
-        estoque = JSON.parse(localStorage.getItem('estoque')) || [];
-        materiais = JSON.parse(localStorage.getItem('materiais')) || [];
-        receitas = JSON.parse(localStorage.getItem('receitas')) || [];
-        vendas = JSON.parse(localStorage.getItem('vendas')) || [];
-    } catch (e) {
-        console.error('Erro ao carregar dados do localStorage:', e);
-        estoque = [];
-        materiais = [];
-        receitas = [];
-        vendas = [];
-    }
-    
-    // Verificar autenticação do Firebase
-    firebase.auth().onAuthStateChanged((user) => {
-        if (user) {
-            // Usuário está logado
-            currentUser = user;
-            
-            // Mostrar email do usuário
-            const userInfoEl = document.getElementById('user-info');
-            if (userInfoEl) {
-                userInfoEl.classList.remove('hidden');
-                document.getElementById('user-email').textContent = user.email;
-            }
-            
-            // Inicializar aplicação
-            inicializarApp();
-            
-            // Adicionar botão de sincronização
-            adicionarBotaoSincronizacao();
-        } else {
-            // Usuário não está logado, mostrar tela de login
-            mostrarTelaLogin();
-            
-            // Configurar eventos de login
-            const btnLogin = document.getElementById('btn-login');
-            if (btnLogin) {
-                btnLogin.removeEventListener('click', fazerLogin);
-                btnLogin.addEventListener('click', fazerLogin);
-            }
-            
-            const btnCadastrar = document.getElementById('btn-cadastrar');
-            if (btnCadastrar) {
-                btnCadastrar.removeEventListener('click', fazerCadastro);
-                btnCadastrar.addEventListener('click', fazerCadastro);
-            }
-        }
-    });
-});
 
 // Corrigir navegação em dispositivos móveis
 function corrigirNavegacaoMovel() {
