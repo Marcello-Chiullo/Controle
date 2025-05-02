@@ -1731,22 +1731,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('user-email').textContent = user.email;
             }
             
-            // MODIFICAÇÃO: Sequência correta para inicialização
-            setupEventListeners();  // Configurar eventos principais
-            setupAllEvents();       // Configurar todos os eventos
-            inicializarApp();       // Inicializar aplicação (já ativa a página)
-            iniciarSincronizacao(); // Sincronizar com Firebase
-            adicionarBotaoSincronizacao();
+            // Configurar eventos ANTES da sincronização
+            setupEventListeners();
             
-            // Verificação adicional após 500ms
-            setTimeout(() => {
-                const paginasAtivas = document.querySelectorAll('.page-content.active');
-                if (paginasAtivas.length === 0) {
-                    console.log("Nenhuma página ativa, ativando estoque");
-                    const navEstoque = document.querySelector('.nav-link[data-page="estoque"]');
-                    if (navEstoque) navEstoque.click();
-                }
-            }, 500);
+            // Iniciar sincronização
+            iniciarSincronizacao();
+            
+            // Adicionar botão de sincronização
+            adicionarBotaoSincronizacao();
         } else {
             // Usuário não está logado, mostrar tela de login
             mostrarTelaLogin();
@@ -5810,9 +5802,6 @@ function inicializarApp() {
         
         // 5. Correção para navegação em dispositivos móveis
         corrigirNavegacaoMovel();
-
-        // ADICIONAR ESTA LINHA:
-        corrigirExibicaoPaginas(); // Força a exibição das páginas
 
         // Ativar a página de estoque por padrão
         const estoqueLink = document.querySelector('.nav-link[data-page="estoque"]');
