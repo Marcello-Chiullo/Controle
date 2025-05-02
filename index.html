@@ -1360,6 +1360,108 @@ let receitas = [];
 let vendas = [];
 let html5QrCode;
 
+// Função para mostrar a tela de login
+function mostrarTelaLogin() {
+    const loginModal = document.getElementById('login-modal');
+    if (loginModal) {
+        loginModal.classList.remove('hidden');
+    }
+}
+
+// Função para fazer login
+function fazerLogin() {
+    const email = document.getElementById('login-email').value;
+    const senha = document.getElementById('login-senha').value;
+    
+    if (!email || !senha) {
+        mostrarNotificacaoLogin('Preencha todos os campos', 'error');
+        return;
+    }
+    
+    toggleModal(true, "Fazendo login...", "Verificando credenciais...");
+    
+    firebase.auth().signInWithEmailAndPassword(email, senha)
+        .then(() => {
+            toggleModal(false);
+            document.getElementById('login-modal').classList.add('hidden');
+        })
+        .catch((error) => {
+            toggleModal(false);
+            mostrarNotificacaoLogin('Erro: ' + error.message, 'error');
+        });
+}
+
+// Função para criar cadastro
+function fazerCadastro() {
+    const email = document.getElementById('login-email').value;
+    const senha = document.getElementById('login-senha').value;
+    
+    if (!email || !senha) {
+        mostrarNotificacaoLogin('Preencha todos os campos', 'error');
+        return;
+    }
+    
+    toggleModal(true, "Criando conta...", "Aguarde...");
+    
+    firebase.auth().createUserWithEmailAndPassword(email, senha)
+        .then(() => {
+            toggleModal(false);
+            document.getElementById('login-modal').classList.add('hidden');
+            mostrarToast('Conta criada com sucesso!', 'success');
+        })
+        .catch((error) => {
+            toggleModal(false);
+            mostrarNotificacaoLogin('Erro: ' + error.message, 'error');
+        });
+}
+
+// Função para mostrar notificações no login
+function mostrarNotificacaoLogin(mensagem, tipo) {
+    const notificacao = document.getElementById('login-notification');
+    if (notificacao) {
+        notificacao.textContent = mensagem;
+        notificacao.className = `notification notification-${tipo}`;
+        notificacao.classList.remove('hidden');
+    }
+}
+
+// Função para adicionar botão de sincronização
+function adicionarBotaoSincronizacao() {
+    // Evitar duplicação
+    if (document.getElementById('btn-sync')) return;
+    
+    const btnSync = document.createElement('button');
+    btnSync.id = 'btn-sync';
+    btnSync.className = 'btn btn-primary';
+    btnSync.textContent = 'Sincronizar';
+    btnSync.style.position = 'fixed';
+    btnSync.style.bottom = '20px';
+    btnSync.style.right = '20px';
+    btnSync.style.zIndex = '999';
+    
+    btnSync.addEventListener('click', sincronizarComNuvem);
+    document.body.appendChild(btnSync);
+}
+
+// Função para logout
+function fazerLogout() {
+    firebase.auth().signOut()
+        .then(() => {
+            mostrarToast('Logout realizado com sucesso', 'success');
+            currentUser = null;
+            document.getElementById('user-info').classList.add('hidden');
+            
+            // Remover botão de sincronização
+            const btnSync = document.getElementById('btn-sync');
+            if (btnSync) document.body.removeChild(btnSync);
+            
+            mostrarTelaLogin();
+        })
+        .catch((error) => {
+            mostrarToast('Erro ao fazer logout: ' + error.message, 'error');
+        });
+}
+
 // Função para atualizar o localStorage
 function atualizarLocalStorage() {
     try {
@@ -5447,6 +5549,11 @@ function setupEventListeners() {
         if (stopScannerBtn) {
             stopScannerBtn.removeEventListener('click', pararScanner);
             stopScannerBtn.addEventListener('click', pararScanner);
+        }
+        const btnLogout = document.getElementById('btn-logout');
+        if (btnLogout) {
+            btnLogout.removeEventListener('click', fazerLogout);
+            btnLogout.addEventListener('click', fazerLogout);
         }
     } catch (error) {
         console.error("Erro ao configurar eventos de navegação:", error);
