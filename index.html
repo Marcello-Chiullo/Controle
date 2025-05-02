@@ -1,4 +1,4 @@
-// PARTE 1: HTML
+<!-- PARTE 1 HTML-->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -574,7 +574,7 @@
             <li><a href="#vendas" class="nav-link" data-page="vendas">Vendas</a></li>
         </ul>
     </nav>
-// PARTE 2: PÁGINA DOS APP
+<!-- PARTE 2: PÁGINA DOS APP-->
 <!-- Página de Estoque -->
 <div class="page-content" id="estoque-page">
     <h2>Gestão de Estoque</h2>
@@ -3526,6 +3526,7 @@ function editarReceita(index) {
 
 // Função para remover receita - OTIMIZADA
 // Função para remover receita - CORRIGIDA
+// Função para remover receita - CORRIGIDA
 function removerReceita(index) {
     try {
         // Verificar se o índice é válido
@@ -3548,6 +3549,23 @@ function removerReceita(index) {
             return false;
         }
         
+        // Atualizar localStorage e recarregar interface
+        try {
+            atualizarLocalStorage();
+        } catch (storageError) {
+            console.error("Erro ao salvar no localStorage:", storageError);
+            // Continuar mesmo com erro no localStorage
+        }
+        
+        carregarReceitas();
+        mostrarToast('Receita removida com sucesso!', 'success');
+        return true;
+    } catch (error) {
+        console.error("Erro ao remover receita:", error);
+        mostrarToast("Erro ao remover receita", "error");
+        return false;
+    }
+}        
         // Atualizar localStorage e recarregar interface
         try {
             atualizarLocalStorage();
@@ -5871,6 +5889,57 @@ function handleFormAddMaterial(e) {
     } catch (error) {
         console.error("Erro ao processar formulário de material:", error);
         mostrarToast("Erro ao processar formulário", "error");
+    }
+}
+
+// MODIFICADO: Função para configurar eventos de receitas
+function setupReceitaEvents() {
+    try {
+        // Evento para adicionar ingrediente
+        const btnAdicionarIngrediente = document.getElementById('adicionar-ingrediente');
+        if (btnAdicionarIngrediente) {
+            btnAdicionarIngrediente.removeEventListener('click', handleAdicionarIngrediente);
+            btnAdicionarIngrediente.addEventListener('click', handleAdicionarIngrediente);
+        }
+        
+        // Configurar o formulário de adicionar receita
+        setupFormAddReceitaEvent();
+        
+        // NOVA ADIÇÃO: Configurar delegação de eventos para os botões de receitas
+        const listaReceitas = document.getElementById('lista-receitas');
+        if (listaReceitas) {
+            // Remover eventos anteriores
+            if (listaReceitas._delegationHandlers) {
+                for (const eventType in listaReceitas._delegationHandlers) {
+                    listaReceitas.removeEventListener(eventType, listaReceitas._delegationHandlers[eventType]);
+                }
+            }
+            
+            EventManager.delegateEvent(listaReceitas, '.btn-editar-receita', 'click', function() {
+                const index = parseInt(this.getAttribute('data-index'));
+                if (!isNaN(index)) {
+                    editarReceita(index);
+                }
+            });
+            
+            EventManager.delegateEvent(listaReceitas, '.btn-remover-receita', 'click', function() {
+                const index = parseInt(this.getAttribute('data-index'));
+                if (!isNaN(index)) {
+                    if (confirm("Tem certeza que deseja remover esta receita?")) {
+                        removerReceita(index);
+                    }
+                }
+            });
+            
+            EventManager.delegateEvent(listaReceitas, '.btn-produzir-receita', 'click', function() {
+                const index = parseInt(this.getAttribute('data-index'));
+                if (!isNaN(index)) {
+                    produzirReceita(index);
+                }
+            });
+        }
+    } catch (error) {
+        console.error("Erro ao configurar eventos de receita:", error);
     }
 }
 </script>
