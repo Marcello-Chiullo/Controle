@@ -1414,6 +1414,221 @@ function sincronizarComNuvem() {
         return false;
     });
 }
+    // Função para fazer logout
+function fazerLogout() {
+    try {
+        firebase.auth().signOut().then(() => {
+            currentUser = null;
+            
+            // Esconder informações do usuário
+            const userInfoEl = document.getElementById('user-info');
+            if (userInfoEl) {
+                userInfoEl.classList.add('hidden');
+            }
+            
+            // Mostrar tela de login
+            mostrarTelaLogin();
+            
+            mostrarToast('Logout realizado com sucesso!', 'success');
+        }).catch((error) => {
+            console.error('Erro ao fazer logout:', error);
+            mostrarToast('Erro ao fazer logout', 'error');
+        });
+    } catch (error) {
+        console.error('Erro ao fazer logout:', error);
+        mostrarToast('Erro ao fazer logout', 'error');
+    }
+}
+
+// Adicionar evento de logout ao botão
+function adicionarEventoLogout() {
+    const btnLogout = document.getElementById('btn-logout');
+    if (btnLogout) {
+        btnLogout.removeEventListener('click', fazerLogout);
+        btnLogout.addEventListener('click', fazerLogout);
+    }
+}
+    // Função para mostrar a tela de login
+function mostrarTelaLogin() {
+    // Esconder todas as páginas de conteúdo
+    document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+    
+    // Mostrar o modal de login
+    const loginModal = document.getElementById('login-modal');
+    if (loginModal) {
+        loginModal.classList.remove('hidden');
+        
+        // Configurar eventos de login
+        setupLoginEvents();
+    }
+}
+
+// Configurar eventos de login e cadastro
+function setupLoginEvents() {
+    const btnLogin = document.getElementById('btn-login');
+    if (btnLogin) {
+        btnLogin.removeEventListener('click', fazerLogin);
+        btnLogin.addEventListener('click', fazerLogin);
+    }
+    
+    const btnCadastrar = document.getElementById('btn-cadastrar');
+    if (btnCadastrar) {
+        btnCadastrar.removeEventListener('click', fazerCadastro);
+        btnCadastrar.addEventListener('click', fazerCadastro);
+    }
+}
+
+// Função para fazer login
+function fazerLogin() {
+    try {
+        const email = document.getElementById('login-email').value;
+        const senha = document.getElementById('login-senha').value;
+        
+        if (!email || !senha) {
+            mostrarNotificacaoLogin('Preencha todos os campos.', 'error');
+            return;
+        }
+        
+        // Mostrar modal de carregamento
+        toggleModal(true, "Fazendo login...", "Aguarde enquanto autenticamos suas credenciais.");
+        
+        firebase.auth().signInWithEmailAndPassword(email, senha)
+            .then((userCredential) => {
+                // Login bem-sucedido
+                toggleModal(false);
+                
+                // Esconder o modal de login
+                document.getElementById('login-modal').classList.add('hidden');
+                
+                // Atualizar currentUser
+                currentUser = userCredential.user;
+                
+                // Mostrar o email do usuário
+                const userInfoEl = document.getElementById('user-info');
+                if (userInfoEl) {
+                    userInfoEl.classList.remove('hidden');
+                    document.getElementById('user-email').textContent = userCredential.user.email;
+                }
+                
+                // Iniciar sincronização
+                iniciarSincronizacao();
+                
+                // Navegar para a página inicial
+                const navLink = document.querySelector('.nav-link[data-page="estoque"]');
+                if (navLink) {
+                    navLink.click();
+                }
+                
+                mostrarToast('Login realizado com sucesso!', 'success');
+            })
+            .catch((error) => {
+                toggleModal(false);
+                console.error('Erro ao fazer login:', error);
+                
+                let mensagemErro = 'Erro ao fazer login.';
+                
+                if (error.code === 'auth/user-not-found') {
+                    mensagemErro = 'Usuário não encontrado.';
+                } else if (error.code === 'auth/wrong-password') {
+                    mensagemErro = 'Senha incorreta.';
+                } else if (error.code === 'auth/invalid-email') {
+                    mensagemErro = 'Email inválido.';
+                }
+                
+                mostrarNotificacaoLogin(mensagemErro, 'error');
+            });
+    } catch (error) {
+        toggleModal(false);
+        console.error('Erro ao fazer login:', error);
+        mostrarNotificacaoLogin('Erro ao fazer login.', 'error');
+    }
+}
+
+// Função para fazer cadastro
+function fazerCadastro() {
+    try {
+        const email = document.getElementById('login-email').value;
+        const senha = document.getElementById('login-senha').value;
+        
+        if (!email || !senha) {
+            mostrarNotificacaoLogin('Preencha todos os campos.', 'error');
+            return;
+        }
+        
+        if (senha.length < 6) {
+            mostrarNotificacaoLogin('A senha deve ter pelo menos 6 caracteres.', 'error');
+            return;
+        }
+        
+        // Mostrar modal de carregamento
+        toggleModal(true, "Criando conta...", "Aguarde enquanto criamos sua conta.");
+        
+        firebase.auth().createUserWithEmailAndPassword(email, senha)
+            .then((userCredential) => {
+                // Cadastro bem-sucedido
+                toggleModal(false);
+                
+                // Esconder o modal de login
+                document.getElementById('login-modal').classList.add('hidden');
+                
+                // Atualizar currentUser
+                currentUser = userCredential.user;
+                
+                // Mostrar o email do usuário
+                const userInfoEl = document.getElementById('user-info');
+                if (userInfoEl) {
+                    userInfoEl.classList.remove('hidden');
+                    document.getElementById('user-email').textContent = userCredential.user.email;
+                }
+                
+                // Iniciar sincronização
+                iniciarSincronizacao();
+                
+                // Navegar para a página inicial
+                const navLink = document.querySelector('.nav-link[data-page="estoque"]');
+                if (navLink) {
+                    navLink.click();
+                }
+                
+                mostrarToast('Conta criada com sucesso!', 'success');
+            })
+            .catch((error) => {
+                toggleModal(false);
+                console.error('Erro ao criar conta:', error);
+                
+                let mensagemErro = 'Erro ao criar conta.';
+                
+                if (error.code === 'auth/email-already-in-use') {
+                    mensagemErro = 'Este email já está em uso.';
+                } else if (error.code === 'auth/invalid-email') {
+                    mensagemErro = 'Email inválido.';
+                } else if (error.code === 'auth/weak-password') {
+                    mensagemErro = 'Senha muito fraca.';
+                }
+                
+                mostrarNotificacaoLogin(mensagemErro, 'error');
+            });
+    } catch (error) {
+        toggleModal(false);
+        console.error('Erro ao criar conta:', error);
+        mostrarNotificacaoLogin('Erro ao criar conta.', 'error');
+    }
+}
+
+// Função para mostrar notificação no modal de login
+function mostrarNotificacaoLogin(mensagem, tipo) {
+    const notificacao = document.getElementById('login-notification');
+    if (!notificacao) return;
+    
+    notificacao.textContent = mensagem;
+    notificacao.className = `notification notification-${tipo}`;
+    notificacao.classList.remove('hidden');
+    
+    // Esconder a notificação após 3 segundos
+    setTimeout(() => {
+        notificacao.classList.add('hidden');
+    }, 3000);
+}
 
 // Função para mostrar/esconder o modal de processamento - simplificada
 function toggleModal(show, title = "Processando...", message = "Aguarde enquanto processamos as informações.") {
@@ -2054,30 +2269,77 @@ function calcularPrecoMedio(material) {
         return 0;
     }
     
-    const totalPrecos = material.historicoPrecos.reduce((total, registro) => total + (parseFloat(registro.preco) || 0), 0);
-    return totalPrecos / material.historicoPrecos.length;
+    // Calcular preço por unidade de medida (g ou ml)
+    let totalPrecosPorUnidade = 0;
+    let totalQuantidade = 0;
+    
+    material.historicoPrecos.forEach(registro => {
+        const preco = parseFloat(registro.preco) || 0;
+        const quantidade = parseFloat(material.quantidadeMedida) || 1;
+        
+        // Preço por unidade de medida
+        const precoPorUnidade = preco / quantidade;
+        
+        // Acumular preço por unidade
+        totalPrecosPorUnidade += precoPorUnidade;
+        totalQuantidade += 1;
+    });
+    
+    return totalQuantidade > 0 ? totalPrecosPorUnidade / totalQuantidade : 0;
 }
 
 // Função para obter o preço médio de um material pelo código
-function obterPrecoMedioPorCodigo(codigo) {
-    if (!codigo) return 0;
+function obterPrecoMedioPorCodigoOuNome(codigo, nome) {
+    // Se não temos código nem nome, retornar 0
+    if (!codigo && !nome) return 0;
     
-    // Encontrar todos os materiais com esse código
-    const materiaisComCodigo = materiais.filter(m => m.codigo === codigo);
-    if (materiaisComCodigo.length === 0) return 0;
+    let materiaisEncontrados = [];
     
-    // Calcular preço médio geral considerando todos os registros de preço
-    let todosPrecos = [];
-    materiaisComCodigo.forEach(material => {
+    // Encontrar materiais pelo código
+    if (codigo) {
+        const materiaisComCodigo = materiais.filter(m => m.codigo === codigo);
+        materiaisEncontrados = materiaisEncontrados.concat(materiaisComCodigo);
+    }
+    
+    // Encontrar materiais pelo nome (se não encontrou pelo código ou não tem código)
+    if (nome && (materiaisEncontrados.length === 0 || !codigo)) {
+        const nomeNormalizado = nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const materiaisComNome = materiais.filter(m => {
+            if (!m.nome) return false;
+            const materialNomeNormalizado = m.nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            return materialNomeNormalizado === nomeNormalizado || materialNomeNormalizado.includes(nomeNormalizado) || nomeNormalizado.includes(materialNomeNormalizado);
+        });
+        materiaisEncontrados = materiaisEncontrados.concat(materiaisComNome);
+    }
+    
+    if (materiaisEncontrados.length === 0) return 0;
+    
+    // Calcular preço médio por unidade considerando todos os registros de preço
+    let totalPrecoPorUnidade = 0;
+    let totalQuantidade = 0;
+    
+    materiaisEncontrados.forEach(material => {
         if (material.historicoPrecos && material.historicoPrecos.length > 0) {
-            todosPrecos = todosPrecos.concat(material.historicoPrecos);
+            material.historicoPrecos.forEach(registro => {
+                const preco = parseFloat(registro.preco) || 0;
+                const quantidade = parseFloat(material.quantidadeMedida) || 1;
+                
+                // Preço por unidade de medida
+                const precoPorUnidade = preco / quantidade;
+                
+                // Acumular preço por unidade
+                totalPrecoPorUnidade += precoPorUnidade;
+                totalQuantidade += 1;
+            });
         }
     });
     
-    if (todosPrecos.length === 0) return 0;
-    
-    const totalPrecos = todosPrecos.reduce((total, registro) => total + (parseFloat(registro.preco) || 0), 0);
-    return totalPrecos / todosPrecos.length;
+    return totalQuantidade > 0 ? totalPrecoPorUnidade / totalQuantidade : 0;
+}
+
+// Função atualizada para compatibilidade
+function obterPrecoMedioPorCodigo(codigo) {
+    return obterPrecoMedioPorCodigoOuNome(codigo, null);
 }
 
 // Função para encontrar um material pelo código - OTIMIZADA
@@ -3040,48 +3302,17 @@ function calcularCustoReceita(receita) {
             const material = materiais.find(m => m.id === ingrediente.materialId);
             if (!material) continue;
             
-            // Obter o preço médio para o código ou nome do material
-            let precoMedio = 0;
-            
-            if (material.codigo) {
-                // Primeiro tenta pelo código
-                precoMedio = obterPrecoMedioPorCodigo(material.codigo);
-            }
-            
-            if (precoMedio === 0 && material.nome) {
-                // Se não encontrou pelo código ou preço é zero, tenta pelo nome
-                const materiaisMesmoNome = materiais.filter(m => 
-                    m.nome && m.nome.toLowerCase() === material.nome.toLowerCase());
-                
-                if (materiaisMesmoNome.length > 0) {
-                    // Calcular preço médio de todos os registros com mesmo nome
-                    let todosPrecos = [];
-                    materiaisMesmoNome.forEach(m => {
-                        if (m.historicoPrecos && m.historicoPrecos.length > 0) {
-                            todosPrecos = todosPrecos.concat(m.historicoPrecos);
-                        }
-                    });
-                    
-                    if (todosPrecos.length > 0) {
-                        precoMedio = todosPrecos.reduce((total, registro) => total + (parseFloat(registro.preco) || 0), 0) / todosPrecos.length;
-                    } else {
-                        // Se não tem histórico, usar o preço atual do material
-                        precoMedio = material.ultimoPreco || 0;
-                    }
-                } else {
-                    // Se não encontrou materiais com mesmo nome, usar o preço do material atual
-                    precoMedio = material.ultimoPreco || 0;
-                }
-            }
+            // Obter o preço médio por unidade para o código ou nome do material
+            let precoMedioPorUnidade = obterPrecoMedioPorCodigoOuNome(material.codigo, material.nome);
             
             // Se ainda não temos preço, usar o último preço do material
-            if (precoMedio === 0) {
-                precoMedio = material.ultimoPreco || 0;
+            if (precoMedioPorUnidade === 0) {
+                // Calcular preço por unidade com base no último preço
+                precoMedioPorUnidade = (material.ultimoPreco || 0) / (parseFloat(material.quantidadeMedida) || 1);
             }
             
-            // Calculamos o custo com base na quantidade especificada
-            const quantidadeMedida = parseFloat(material.quantidadeMedida) || 1;
-            custoTotal += precoMedio * parseFloat(ingrediente.quantidade) / quantidadeMedida;
+            // Calculamos o custo com base na quantidade especificada multiplicada pelo preço por unidade
+            custoTotal += precoMedioPorUnidade * parseFloat(ingrediente.quantidade);
         }
         
         return custoTotal;
@@ -5430,6 +5661,9 @@ function setupEventListeners() {
             stopScannerBtn.removeEventListener('click', pararScanner);
             stopScannerBtn.addEventListener('click', pararScanner);
         }
+        
+        // NOVA ADIÇÃO: Configurar evento para o botão de logout
+        adicionarEventoLogout();
     } catch (error) {
         console.error("Erro ao configurar eventos de navegação:", error);
     }
@@ -5650,7 +5884,10 @@ function inicializarApp() {
         atualizarDataHora();
         setInterval(atualizarDataHora, 1000);
         
-        // 5. Correção para navegação em dispositivos móveis
+        // 5. Garantir que o evento de logout esteja configurado
+        adicionarEventoLogout();
+        
+        // 6. Correção para navegação em dispositivos móveis
         corrigirNavegacaoMovel();
         
         console.log("Aplicação inicializada com sucesso");
