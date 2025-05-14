@@ -2269,26 +2269,22 @@ function calcularPrecoMedio(material) {
         return 0;
     }
     
-    let totalValor = 0;
-    let totalQuantidade = 0;
+    let somaPrecos = 0;
+    let somaQuantidades = 0;
     
     material.historicoPrecos.forEach(registro => {
         const preco = parseFloat(registro.preco) || 0;
         const quantidade = parseFloat(material.quantidadeMedida) || 1;
         
-        // Valor total desta compra
-        totalValor += preco;
-        // Quantidade total desta compra em unidades de medida (g ou ml)
-        totalQuantidade += quantidade;
+        somaPrecos += preco;
+        somaQuantidades += quantidade;
     });
     
-    // Preço médio por unidade de medida (média ponderada)
-    return totalQuantidade > 0 ? totalValor / totalQuantidade : 0;
+    return somaQuantidades > 0 ? somaPrecos / somaQuantidades : 0;
 }
 
 // Função para obter o preço médio de um material pelo código
 function obterPrecoMedioPorCodigoOuNome(codigo, nome) {
-    // Se não temos código nem nome, retornar 0
     if (!codigo && !nome) return 0;
     
     let materiaisEncontrados = [];
@@ -2299,22 +2295,24 @@ function obterPrecoMedioPorCodigoOuNome(codigo, nome) {
         materiaisEncontrados = materiaisEncontrados.concat(materiaisComCodigo);
     }
     
-    // Encontrar materiais pelo nome se necessário
+    // Encontrar materiais pelo nome
     if (nome && (materiaisEncontrados.length === 0 || !codigo)) {
         const nomeNormalizado = nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const materiaisComNome = materiais.filter(m => {
             if (!m.nome) return false;
             const materialNomeNormalizado = m.nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            return materialNomeNormalizado === nomeNormalizado || materialNomeNormalizado.includes(nomeNormalizado) || nomeNormalizado.includes(materialNomeNormalizado);
+            return materialNomeNormalizado === nomeNormalizado || 
+                   materialNomeNormalizado.includes(nomeNormalizado) || 
+                   nomeNormalizado.includes(materialNomeNormalizado);
         });
         materiaisEncontrados = materiaisEncontrados.concat(materiaisComNome);
     }
     
     if (materiaisEncontrados.length === 0) return 0;
     
-    // Calcular preço médio ponderado pela quantidade
-    let valorTotal = 0;
-    let quantidadeTotal = 0;
+    // Calcular preço médio simples por grama
+    let somaPrecos = 0;
+    let somaQuantidades = 0;
     
     materiaisEncontrados.forEach(material => {
         if (material.historicoPrecos && material.historicoPrecos.length > 0) {
@@ -2322,13 +2320,14 @@ function obterPrecoMedioPorCodigoOuNome(codigo, nome) {
                 const preco = parseFloat(registro.preco) || 0;
                 const quantidade = parseFloat(material.quantidadeMedida) || 1;
                 
-                valorTotal += preco;
-                quantidadeTotal += quantidade;
+                somaPrecos += preco;
+                somaQuantidades += quantidade;
             });
         }
     });
     
-    return quantidadeTotal > 0 ? valorTotal / quantidadeTotal : 0;
+    // Preço médio por unidade (preço total / quantidade total)
+    return somaQuantidades > 0 ? somaPrecos / somaQuantidades : 0;
 }
 
 // Função atualizada para compatibilidade
