@@ -2405,13 +2405,13 @@ function encontrarMaterialPorCodigo(codigo) {
 function encontrarMaterialPorNome(nome) {
     if (!nome) return null;
     
-    // Normalizar o nome para comparação (minúsculas, sem acentos)
-    const nomeLimpo = nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    // Normalizar o nome para comparação (minúsculas, sem acentos, sem espaços extras)
+    const nomeLimpo = nome.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     
     // Encontrar materiais com nomes similares - correspondência exata primeiro
     let materiaisComNome = materiais.filter(m => {
         if (!m.nome) return false;
-        const materialNomeLimpo = m.nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const materialNomeLimpo = m.nome.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         return materialNomeLimpo === nomeLimpo;
     });
     
@@ -3655,31 +3655,8 @@ function atualizarCalculosReceita() {
                 const material = materiais.find(m => m.id === materialId);
                 if (!material) return;
                 
-                // Obter o preço médio
-                let precoMedio = 0;
-                
-                if (material.codigo) {
-                    precoMedio = obterPrecoMedioPorCodigo(material.codigo);
-                }
-                
-                if (precoMedio === 0) {
-                    // Tentar pelo nome
-                    const materiaisMesmoNome = materiais.filter(m => 
-                        m.nome && m.nome.toLowerCase() === material.nome.toLowerCase());
-                    
-                    if (materiaisMesmoNome.length > 0) {
-                        let todosPrecos = [];
-                        materiaisMesmoNome.forEach(m => {
-                            if (m.historicoPrecos && m.historicoPrecos.length > 0) {
-                                todosPrecos = todosPrecos.concat(m.historicoPrecos);
-                            }
-                        });
-                        
-                        if (todosPrecos.length > 0) {
-                            precoMedio = todosPrecos.reduce((total, registro) => total + (parseFloat(registro.preco) || 0), 0) / todosPrecos.length;
-                        }
-                    }
-                }
+                // Obter preço médio APENAS pelo nome
+                let precoMedio = obterPrecoMedioPorCodigoOuNome(null, material.nome);
                 
                 // Se ainda não tem preço, usar o último preço do material
                 if (precoMedio === 0) {
@@ -4193,23 +4170,10 @@ function carregarDetalhesReceitaVenda(receitaId) {
                 let statusEstoque = 'Não disponível';
                 let disponivel = false;
                 
-                // Encontrar o material apropriado no estoque unificado
-                let materialEstoque = null;
-                
-                // Procurar primeiro por código
-                if (material.codigo) {
-                    materialEstoque = estoqueUnificado.find(item => {
-                        const itemMaterial = materiais.find(m => m.id === item.materialId);
-                        return itemMaterial && itemMaterial.codigo === material.codigo;
-                    });
-                }
-                
-                // Se não encontrou por código, tenta por nome
-                if (!materialEstoque) {
-                    materialEstoque = estoqueUnificado.find(item => {
-                        return item.nome && item.nome.toLowerCase() === material.nome.toLowerCase();
-                    });
-                }
+                // Encontrar o material no estoque APENAS pelo nome
+                let materialEstoque = estoque.find(item => {
+                    return item.nome && item.nome.toLowerCase().trim() === material.nome.toLowerCase().trim();
+                });    
                 
                 // Calcular preço médio APENAS pelo nome
                 let precoMedio = obterPrecoMedioPorCodigoOuNome(null, material.nome);
@@ -5201,31 +5165,12 @@ function mostrarFormEditarVenda(vendaId) {
                         let statusEstoque = 'Não disponível';
                         let disponivel = false;
                         
-                        // Calcular preço médio do material
-                        let precoMedio = 0;
-                        if (material.codigo) {
-                            precoMedio = obterPrecoMedioPorCodigo(material.codigo);
-                        } else {
-                            // Calcular pelo nome
-                            const materiaisMesmoNome = materiais.filter(m => 
-                                m.nome && m.nome.toLowerCase() === material.nome.toLowerCase());
-                            
-                            if (materiaisMesmoNome.length > 0) {
-                                let todosPrecos = [];
-                                materiaisMesmoNome.forEach(m => {
-                                    if (m.historicoPrecos && m.historicoPrecos.length > 0) {
-                                        todosPrecos = todosPrecos.concat(m.historicoPrecos);
-                                    }
-                                });
-                                
-                                if (todosPrecos.length > 0) {
-                                    precoMedio = todosPrecos.reduce((total, registro) => total + (parseFloat(registro.preco) || 0), 0) / todosPrecos.length;
-                                } else {
-                                    precoMedio = material.ultimoPreco || 0;
-                                }
-                            } else {
-                                precoMedio = material.ultimoPreco || 0;
-                            }
+                        // Usar função simplificada que utiliza apenas o nome
+                        let precoMedio = obterPrecoMedioPorCodigoOuNome(null, material.nome);
+                        
+                        // Se não encontrou preço médio, usar último preço como fallback
+                        if (precoMedio === 0) {
+                            precoMedio = material.ultimoPreco || 0;
                         }
                         
                         // Encontrar o material no estoque unificado
@@ -5394,8 +5339,19 @@ function renderizarVendas(vendasLista) {
         }
         
         vendasUnicas.forEach((venda) => {
-            // Calcular valores financeiros
-            const despesa = venda.despesa || (venda.custoProducao + venda.custosVariados);
+            // Buscar receita associada para recalcular custos com preço médio atual
+            const receita = receitas.find(r => r.id === venda.receitaId);
+            let custoProducao = venda.custoProducao;
+            let custosVariados = venda.custosVariados;
+            
+            // Se encontrou a receita, recalcular com preço médio atual
+            if (receita) {
+                custoProducao = calcularCustoReceita(receita);
+                custosVariados = custoProducao * 0.1;
+            }
+            
+            // Recalcular despesa com valores atualizados
+            const despesa = custoProducao + custosVariados;
             const valorReinvestir = despesa;
             
             // Compatibilidade com vendas antigas
@@ -5706,9 +5662,11 @@ function handlePesquisaInput() {
             case 'pesquisar-materiais':
                 itens = document.querySelectorAll('#tabela-materiais tbody tr');
                 itens.forEach(tr => {
-                    const nome = tr.children[1]?.textContent.toLowerCase() || '';
-                    const codigo = tr.children[0]?.textContent.toLowerCase() || '';
-                    tr.style.display = (nome.includes(termo) || codigo.includes(termo)) ? '' : 'none';
+                    const nome = tr.children[1]?.textContent.toLowerCase().trim() || '';
+                    // Priorizar busca pelo nome, manter código apenas para compatibilidade
+                    const codigo = tr.children[0]?.textContent.toLowerCase().trim() || '';
+                    // Dar maior prioridade ao nome na exibição dos resultados
+                    tr.style.display = (nome.includes(termo)) ? '' : (codigo.includes(termo) ? '' : 'none');
                 });
                 break;
             case 'pesquisar-receita':
