@@ -2269,23 +2269,21 @@ function calcularPrecoMedio(material) {
         return 0;
     }
     
-    // Calcular preço por unidade de medida (g ou ml)
-    let totalPrecosPorUnidade = 0;
+    let totalValor = 0;
     let totalQuantidade = 0;
     
     material.historicoPrecos.forEach(registro => {
         const preco = parseFloat(registro.preco) || 0;
         const quantidade = parseFloat(material.quantidadeMedida) || 1;
         
-        // Preço por unidade de medida
-        const precoPorUnidade = preco / quantidade;
-        
-        // Acumular preço por unidade
-        totalPrecosPorUnidade += precoPorUnidade;
-        totalQuantidade += 1;
+        // Valor total desta compra
+        totalValor += preco;
+        // Quantidade total desta compra em unidades de medida (g ou ml)
+        totalQuantidade += quantidade;
     });
     
-    return totalQuantidade > 0 ? totalPrecosPorUnidade / totalQuantidade : 0;
+    // Preço médio por unidade de medida (média ponderada)
+    return totalQuantidade > 0 ? totalValor / totalQuantidade : 0;
 }
 
 // Função para obter o preço médio de um material pelo código
@@ -2314,27 +2312,55 @@ function obterPrecoMedioPorCodigoOuNome(codigo, nome) {
     
     if (materiaisEncontrados.length === 0) return 0;
     
-    // Calcular preço médio por unidade considerando todos os registros de preço
-    let totalPrecoPorUnidade = 0;
-    let totalQuantidade = 0;
+    // Agrupar materiais pela unidade de medida
+    const materiaisPorUnidadeMedida = {};
     
     materiaisEncontrados.forEach(material => {
-        if (material.historicoPrecos && material.historicoPrecos.length > 0) {
-            material.historicoPrecos.forEach(registro => {
-                const preco = parseFloat(registro.preco) || 0;
-                const quantidade = parseFloat(material.quantidadeMedida) || 1;
-                
-                // Preço por unidade de medida
-                const precoPorUnidade = preco / quantidade;
-                
-                // Acumular preço por unidade
-                totalPrecoPorUnidade += precoPorUnidade;
-                totalQuantidade += 1;
-            });
+        if (!material.unidadeMedida) return;
+        
+        const unidadeMedida = material.unidadeMedida.toLowerCase();
+        if (!materiaisPorUnidadeMedida[unidadeMedida]) {
+            materiaisPorUnidadeMedida[unidadeMedida] = [];
         }
+        
+        materiaisPorUnidadeMedida[unidadeMedida].push(material);
     });
     
-    return totalQuantidade > 0 ? totalPrecoPorUnidade / totalQuantidade : 0;
+    // Para cada unidade de medida, calcular o preço médio ponderado
+    const resultados = {};
+    
+    for (const unidadeMedida in materiaisPorUnidadeMedida) {
+        const materiaisNessaUnidade = materiaisPorUnidadeMedida[unidadeMedida];
+        let totalValor = 0;
+        let totalQuantidade = 0;
+        
+        materiaisNessaUnidade.forEach(material => {
+            if (material.historicoPrecos && material.historicoPrecos.length > 0) {
+                material.historicoPrecos.forEach(registro => {
+                    const preco = parseFloat(registro.preco) || 0;
+                    const quantidade = parseFloat(material.quantidadeMedida) || 1;
+                    
+                    // Acumular valores totais para média ponderada
+                    totalValor += preco;
+                    totalQuantidade += quantidade;
+                });
+            }
+        });
+        
+        // Preço médio ponderado para esta unidade de medida
+        resultados[unidadeMedida] = totalQuantidade > 0 ? totalValor / totalQuantidade : 0;
+    }
+    
+    // Retornar o resultado para a unidade de medida do material original
+    const material = materiaisEncontrados[0];
+    if (material && material.unidadeMedida) {
+        const unidadeMedida = material.unidadeMedida.toLowerCase();
+        return resultados[unidadeMedida] || 0;
+    }
+    
+    // Se não conseguir determinar a unidade, retorna o primeiro resultado
+    const primeiraUnidade = Object.keys(resultados)[0];
+    return primeiraUnidade ? resultados[primeiraUnidade] : 0;
 }
 
 // Função atualizada para compatibilidade
@@ -3311,8 +3337,33 @@ function calcularCustoReceita(receita) {
                 precoMedioPorUnidade = (material.ultimoPreco || 0) / (parseFloat(material.quantidadeMedida) || 1);
             }
             
-            // Calculamos o custo com base na quantidade especificada multiplicada pelo preço por unidade
-            custoTotal += precoMedioPorUnidade * parseFloat(ingrediente.quantidade);
+            // Converter unidades se necessário (kg para g, l para ml, etc.)
+            let quantidadeConvertida = parseFloat(ingrediente.quantidade);
+            
+            if (material.unidadeMedida && ingrediente.unidadeMedida) {
+                const materialUM = material.unidadeMedida.toLowerCase();
+                const ingredienteUM = ingrediente.unidadeMedida.toLowerCase();
+                
+                // Conversão de kg para g
+                if (ingredienteUM === 'kg' && materialUM === 'g') {
+                    quantidadeConvertida *= 1000;
+                }
+                // Conversão de g para kg
+                else if (ingredienteUM === 'g' && materialUM === 'kg') {
+                    quantidadeConvertida /= 1000;
+                }
+                // Conversão de l para ml
+                else if (ingredienteUM === 'l' && materialUM === 'ml') {
+                    quantidadeConvertida *= 1000;
+                }
+                // Conversão de ml para l
+                else if (ingredienteUM === 'ml' && materialUM === 'l') {
+                    quantidadeConvertida /= 1000;
+                }
+            }
+            
+            // Calculamos o custo com base na quantidade convertida multiplicada pelo preço por unidade
+            custoTotal += precoMedioPorUnidade * quantidadeConvertida;
         }
         
         return custoTotal;
