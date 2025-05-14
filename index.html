@@ -2315,43 +2315,44 @@ function obterPrecoMedioPorCodigoOuNome(codigo, nome) {
     if (materiaisEncontrados.length === 0) return 0;
     
     // Agrupar materiais pela unidade de medida e nome
-    const materiaisPorNomeEUnidade = {};
+    // Agrupar materiais apenas pelo nome, ignorando códigos e unidades
+const materiaisPorNome = {};
+
+materiaisEncontrados.forEach(material => {
+    if (!material.nome) return;
     
-    materiaisEncontrados.forEach(material => {
-        if (!material.unidadeMedida || !material.nome) return;
-        
-        const chave = material.nome.toLowerCase() + '_' + material.unidadeMedida.toLowerCase();
-        if (!materiaisPorNomeEUnidade[chave]) {
-            materiaisPorNomeEUnidade[chave] = [];
+    const nomeLimpo = material.nome.toLowerCase().trim();
+    if (!materiaisPorNome[nomeLimpo]) {
+        materiaisPorNome[nomeLimpo] = [];
+    }
+    
+    materiaisPorNome[nomeLimpo].push(material);
+});
+
+// Para cada grupo, calcular o preço médio usando a fórmula (preço1 + preço2 + ...)/(quantidade1 + quantidade2 + ...)
+const resultados = {};
+
+for (const nomeLimpo in materiaisPorNome) {
+    const materiaisNoGrupo = materiaisPorNome[nomeLimpo];
+    let totalValor = 0;
+    let totalQuantidade = 0;
+    
+    materiaisNoGrupo.forEach(material => {
+        if (material.historicoPrecos && material.historicoPrecos.length > 0) {
+            material.historicoPrecos.forEach(registro => {
+                const preco = parseFloat(registro.preco) || 0;
+                const quantidade = parseFloat(material.quantidadeMedida) || 1;
+                
+                // Acumular valores totais para média ponderada
+                totalValor += preco;
+                totalQuantidade += quantidade;
+            });
         }
-        
-        materiaisPorNomeEUnidade[chave].push(material);
     });
     
-    // Para cada grupo, calcular o preço médio usando a fórmula (preço1 + preço2 + ...)/(quantidade1 + quantidade2 + ...)
-    const resultados = {};
-    
-    for (const chave in materiaisPorNomeEUnidade) {
-        const materiaisNoGrupo = materiaisPorNomeEUnidade[chave];
-        let totalValor = 0;
-        let totalQuantidade = 0;
-        
-        materiaisNoGrupo.forEach(material => {
-            if (material.historicoPrecos && material.historicoPrecos.length > 0) {
-                material.historicoPrecos.forEach(registro => {
-                    const preco = parseFloat(registro.preco) || 0;
-                    const quantidade = parseFloat(material.quantidadeMedida) || 1;
-                    
-                    // Acumular valores totais para média ponderada
-                    totalValor += preco;
-                    totalQuantidade += quantidade;
-                });
-            }
-        });
-        
-        // Preço médio usando a fórmula (soma dos preços)/(soma das quantidades)
-        resultados[chave] = totalQuantidade > 0 ? totalValor / totalQuantidade : 0;
-    }
+    // Preço médio usando a fórmula (soma dos preços)/(soma das quantidades)
+    resultados[nomeLimpo] = totalQuantidade > 0 ? totalValor / totalQuantidade : 0;
+}
     
     // Retornar o resultado correspondente ao material buscado
     if (nome) {
@@ -2531,17 +2532,12 @@ function adicionarItemEstoque(materialId, quantidade, preco = null) {
         }
         
         // Verificar se existe um item com o mesmo código ou nome no estoque
-        const itemPorCodigo = estoque.find(i => {
-            const materialItem = materiais.find(m => m.id === i.materialId);
-            return materialItem && materialItem.codigo === material.codigo;
-        });
-        
         const itemPorNome = estoque.find(i => {
             const materialItem = materiais.find(m => m.id === i.materialId);
-            return materialItem && materialItem.nome.toLowerCase() === material.nome.toLowerCase();
+            return materialItem && materialItem.nome.toLowerCase().trim() === material.nome.toLowerCase().trim();
         });
         
-        const itemExistente = itemPorCodigo || itemPorNome;
+        const itemExistente = itemPorNome; // Usar apenas nome, ignorando código
         
         if (itemExistente) {
             // Atualizar item existente - somar quantidade
@@ -2591,9 +2587,7 @@ function removerItemEstoque(materialId, quantidade, unidadeMedida) {
         // Procurar por itens no estoque com mesmo código ou nome
         const itensPossiveis = estoque.filter(i => {
             const materialItem = materiais.find(m => m.id === i.materialId);
-            return materialItem && 
-                   (materialItem.codigo === material.codigo || 
-                    materialItem.nome.toLowerCase() === material.nome.toLowerCase());
+            return materialItem && materialItem.nome.toLowerCase().trim() === material.nome.toLowerCase().trim();
         });
         
         if (itensPossiveis.length === 0) return false;
@@ -2669,9 +2663,7 @@ function adicionarEstoqueDeVolta(materialId, quantidade, unidadeMedida) {
         // Verificar se já existe um item deste material no estoque
         const itensPossiveis = estoque.filter(i => {
             const materialItem = materiais.find(m => m.id === i.materialId);
-            return materialItem && 
-                   (materialItem.codigo === material.codigo || 
-                    materialItem.nome.toLowerCase() === material.nome.toLowerCase());
+            return materialItem && materialItem.nome.toLowerCase().trim() === material.nome.toLowerCase().trim();
         });
         
         // Normalizar unidades
@@ -2737,7 +2729,7 @@ function unificarEstoque() {
             return estoqueUnificado;
         }
         
-        // Agrupa os itens por nome, independente do código
+        // Agrupa os itens APENAS por nome, ignorando código e unidade de medida
         for (const item of estoque) {
             try {
                 if (!item || !item.materialId) continue;
@@ -2746,34 +2738,42 @@ function unificarEstoque() {
                 const material = materiais.find(m => m.id === item.materialId);
                 if (!material || !material.nome) continue;
                 
-                const nome = material.nome.toLowerCase();
-                const unidadeMedida = (material.unidadeMedida || '').toLowerCase();
+                const nome = material.nome.toLowerCase().trim();
                 
-                // Criar uma chave única combinando nome e unidade de medida
-                const chave = `${nome}_${unidadeMedida}`;
-                
-                if (!itensPorNome[chave]) {
-                    itensPorNome[chave] = {
+                // Chave é apenas o nome, ignorando unidade de medida e código
+                if (!itensPorNome[nome]) {
+                    itensPorNome[nome] = {
                         id: gerarId(),
                         materialId: material.id,
-                        codigo: material.codigo || "",
+                        codigo: "", // Código não é mais relevante para unificação
                         nome: material.nome,
                         quantidade: 0,
                         unidade: material.unidade,
                         unidadeMedida: material.unidadeMedida,
                         quantidadeMedida: material.quantidadeMedida,
-                        preco: obterPrecoMedioPorCodigoOuNome(material.codigo, material.nome),
+                        preco: obterPrecoMedioPorCodigoOuNome(null, material.nome), // Usar apenas o nome
                         dataAdicao: new Date().toISOString()
                     };
                 }
                 
-                // Somar quantidade normalizada
-                itensPorNome[chave].quantidade += (parseFloat(item.quantidade) || 0);
+                // Normalizar a quantidade para a unidade base antes de somar
+                let quantidadeNormalizada = parseFloat(item.quantidade) || 0;
+                const itemUnidadeMedida = (item.unidadeMedida || '').toLowerCase();
+                const unidadeEstoque = (itensPorNome[nome].unidadeMedida || '').toLowerCase();
                 
-                // Usar o código mais recente caso exista
-                if (material.codigo && !itensPorNome[chave].codigo) {
-                    itensPorNome[chave].codigo = material.codigo;
+                // Converter unidades conforme necessário (kg para g, l para ml)
+                if (itemUnidadeMedida === 'kg' && unidadeEstoque === 'g') {
+                    quantidadeNormalizada *= 1000;
+                } else if (itemUnidadeMedida === 'l' && unidadeEstoque === 'ml') {
+                    quantidadeNormalizada *= 1000;
+                } else if (itemUnidadeMedida === 'g' && unidadeEstoque === 'kg') {
+                    quantidadeNormalizada /= 1000;
+                } else if (itemUnidadeMedida === 'ml' && unidadeEstoque === 'l') {
+                    quantidadeNormalizada /= 1000;
                 }
+                
+                // Somar quantidade normalizada
+                itensPorNome[nome].quantidade += quantidadeNormalizada;
             } catch (err) {
                 console.error("Erro ao processar item para unificação:", err);
                 continue;
@@ -2814,8 +2814,19 @@ function removerMaterial(id) {
             materiais.splice(indexMaterial, 1);
         }
         
+        // Atualizar estoque
+        unificarEstoque();
+        
+        // Unificar estoque antes de salvar
+        unificarEstoque();
+        
         // Atualizar localStorage e recarregar interfaces
         atualizarLocalStorage();
+        
+        // Garantir que todas as interfaces sejam atualizadas
+        carregarEstoque();
+        carregarMateriais();
+        carregarReceitas();
         
         // Recarregar interfaces
         carregarMateriais();
@@ -3079,6 +3090,9 @@ function carregarEstoque() {
         
         estoqueUnificado.forEach((item) => {
             try {
+                // Recalcular preço médio com base apenas no nome
+                const precoMedio = obterPrecoMedioPorCodigoOuNome(null, item.nome);
+                
                 // Calcular a quantidade em unidade de medida (ex: ml restantes)
                 const quantidadeTotalMedida = (parseFloat(item.quantidade) || 0) * (parseFloat(item.quantidadeMedida) || 1);
                 // Verificar se é um número fracionário
@@ -3315,11 +3329,6 @@ function calcularCustoReceita(receita) {
             // Obter o preço médio por g/ml priorizando o nome do material
             let precoMedioPorGramma = obterPrecoMedioPorCodigoOuNome(null, material.nome);
             
-            // Se não encontrou pelo nome, tentar pelo código
-            if (precoMedioPorGramma === 0 && material.codigo) {
-                precoMedioPorGramma = obterPrecoMedioPorCodigoOuNome(material.codigo, null);
-            }
-            
             // Se ainda não temos preço, usar o último preço do material
             if (precoMedioPorGramma === 0 && material.ultimoPreco) {
                 // Calcular preço por g/ml com base no último preço
@@ -3498,11 +3507,6 @@ function atualizarPrecoMedioIngrediente(select, quantidadeInput, unidadeMedidaSe
         
         // Obter preço médio por g/ml priorizando o nome
         let precoMedioPorGramma = obterPrecoMedioPorCodigoOuNome(null, material.nome);
-        
-        // Se não encontrou pelo nome, tentar pelo código
-        if (precoMedioPorGramma === 0 && material.codigo) {
-            precoMedioPorGramma = obterPrecoMedioPorCodigoOuNome(material.codigo, null);
-        }
         
         // Se ainda não tem preço, usar o último preço do material
         if (precoMedioPorGramma === 0) {
@@ -4207,31 +4211,12 @@ function carregarDetalhesReceitaVenda(receitaId) {
                     });
                 }
                 
-                // Calcular preço médio do material
-                let precoMedio = 0;
-                if (material.codigo) {
-                    precoMedio = obterPrecoMedioPorCodigo(material.codigo);
-                } else {
-                    // Calcular pelo nome
-                    const materiaisMesmoNome = materiais.filter(m => 
-                        m.nome && m.nome.toLowerCase() === material.nome.toLowerCase());
-                    
-                    if (materiaisMesmoNome.length > 0) {
-                        let todosPrecos = [];
-                        materiaisMesmoNome.forEach(m => {
-                            if (m.historicoPrecos && m.historicoPrecos.length > 0) {
-                                todosPrecos = todosPrecos.concat(m.historicoPrecos);
-                            }
-                        });
-                        
-                        if (todosPrecos.length > 0) {
-                            precoMedio = todosPrecos.reduce((total, registro) => total + (parseFloat(registro.preco) || 0), 0) / todosPrecos.length;
-                        } else {
-                            precoMedio = material.ultimoPreco || 0;
-                        }
-                    } else {
-                        precoMedio = material.ultimoPreco || 0;
-                    }
+                // Calcular preço médio APENAS pelo nome
+                let precoMedio = obterPrecoMedioPorCodigoOuNome(null, material.nome);
+                
+                // Se não encontrou preço médio, usar último preço do material como fallback
+                if (precoMedio === 0) {
+                    precoMedio = material.ultimoPreco || 0;
                 }
                 
                 if (materialEstoque) {
@@ -4861,6 +4846,9 @@ function handleRegistrarVenda(e) {
         toggleModal(false);
         
         if (resultado) {
+            // Unificar estoque após venda
+            unificarEstoque();
+            
             // Limpar o formulário
             this.reset();
             document.getElementById('detalhes-receita-venda').classList.add('hidden');
@@ -4913,6 +4901,9 @@ function handleEditarVenda(e) {
         toggleModal(false);
         
         if (resultado) {
+            // Unificar estoque após edição da venda
+            unificarEstoque();
+            
             // Fechar o modal de edição
             document.getElementById('editar-venda-modal').classList.add('hidden');
             
@@ -4944,6 +4935,9 @@ function handleConfirmarExclusao() {
         
         // Fechar modal de confirmação
         document.getElementById('confirmar-exclusao-modal').classList.add('hidden');
+
+        // Unificar estoque após exclusão
+        unificarEstoque();
         
         // Recarregar listas
         carregarVendas();
@@ -5803,8 +5797,10 @@ function inicializarDados() {
             }
         });
         
-        // Unificar estoque - agrupar itens similares
-        unificarEstoque();
+        // Unificar estoque - agrupar itens pelo nome, ignorando códigos
+        const estoqueUnificado = unificarEstoque();
+        // Substituir o estoque pelo resultado unificado para garantir consistência
+        estoque = estoqueUnificado;
         
         // Atualizar vendas antigas para o novo modelo de cálculo
         // e eliminar possíveis duplicatas
@@ -6110,6 +6106,9 @@ function handleFormAddMaterial(e) {
         if (materialId) {
             // Adicionar ao estoque
             if (adicionarItemEstoque(materialId, quantidadeMaterial)) {
+                // Unificar e atualizar estoque
+                unificarEstoque();
+                
                 atualizarLocalStorage();
                 this.reset();
                 
