@@ -1846,8 +1846,8 @@
         // ====================================
         
         /**
-         * CÁLCULO DE PREÇO MÉDIO PONDERADO (CORRETO)
-         * Fórmula: Σ(preço × quantidade) / Σ(quantidade)
+         * CÁLCULO DE PREÇO MÉDIO PONDERADO (CORRIGIDO)
+         * Calcula o preço médio POR UNIDADE de medida
          */
         function calcularPrecoMedioPonderado(nomeMaterial) {
             // Buscar todos os materiais com mesmo nome (normalizado)
@@ -1858,21 +1858,24 @@
             
             if (materiaisGrupo.length === 0) return 0;
             
-            let somaValorTotal = 0;
+            let somaPrecosPonderados = 0;
             let somaQuantidadeTotal = 0;
             
             materiaisGrupo.forEach(material => {
                 if (material.historicoCompras && material.historicoCompras.length > 0) {
                     material.historicoCompras.forEach(compra => {
                         if (!compra.removed) {
-                            // Valor total desta compra
-                            const valorCompra = parseFloat(compra.preco) || 0;
-                            
-                            // Quantidade em unidade base (converter se necessário)
+                            // CORREÇÃO: Calcular preço UNITÁRIO desta compra
+                            const valorTotal = parseFloat(compra.preco) || 0;
                             const quantidade = parseFloat(compra.quantidade) || 0;
                             
-                            somaValorTotal += valorCompra;
-                            somaQuantidadeTotal += quantidade;
+                            if (quantidade > 0) {
+                                const precoUnitario = valorTotal / quantidade;
+                                
+                                // Ponderar pelo peso (quantidade)
+                                somaPrecosPonderados += precoUnitario * quantidade;
+                                somaQuantidadeTotal += quantidade;
+                            }
                         }
                     });
                 }
@@ -1880,8 +1883,8 @@
             
             if (somaQuantidadeTotal === 0) return 0;
             
-            // Preço médio ponderado
-            return somaValorTotal / somaQuantidadeTotal;
+            // Preço médio ponderado correto
+            return somaPrecosPonderados / somaQuantidadeTotal;
         }
         
         /**
