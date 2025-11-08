@@ -854,6 +854,8 @@
             <div id="user-info" class="hidden">
                 <span id="user-email"></span>
                 <button id="btn-admin-nav" class="hidden">👥 Navegar Usuários</button>
+                <button id="btn-upload-firebase" class="hidden">⬆️ Enviar</button>
+                <button id="btn-download-firebase" class="hidden">⬇️ Buscar</button>
                 <button id="btn-logout">🚪 Sair</button>
             </div>
             <div>
@@ -1318,10 +1320,14 @@
                 document.getElementById('user-email').textContent = user.email;
                 document.getElementById('user-info').classList.remove('hidden');
                 
-                // Mostrar botão de navegação apenas para ADM
+                // Mostrar botões de admin
                 if (isAdmin) {
                     document.getElementById('btn-admin-nav').classList.remove('hidden');
                 }
+                
+                // Mostrar botões de sincronização para todos
+                document.getElementById('btn-upload-firebase').classList.remove('hidden');
+                document.getElementById('btn-download-firebase').classList.remove('hidden');
                 
                 // Esconder modal de login
                 document.getElementById('login-modal').classList.add('hidden');
@@ -1424,6 +1430,98 @@
                 toggleModal(false);
                 mostrarToast('Erro ao sincronizar dados', 'error');
                 return false;
+            }
+        }
+        
+        /**
+         * Força upload dos dados locais para o Firebase
+         */
+        async function forcarUploadFirebase() {
+            const confirma = confirm(
+                '⬆️ ENVIAR DADOS PARA NUVEM\n\n' +
+                'Isso vai SOBRESCREVER os dados no Firebase\n' +
+                'com os dados que estão no seu navegador.\n\n' +
+                'Deseja continuar?'
+            );
+            
+            if (!confirma) return;
+            
+            try {
+                toggleModal(true, "Enviando para nuvem...", "Fazendo upload dos dados...");
+                
+                const emailUsuario = getUsuarioAtual();
+                const dados = {
+                    materiais: materiais,
+                    receitas: receitas,
+                    vendas: vendas,
+                    ultimaAtualizacao: new Date().toISOString()
+                };
+                
+                await database.ref(`usuarios/${emailUsuario.replace(/\./g, '_')}`).set(dados);
+                
+                // Atualizar localStorage também
+                salvarLocalStorage();
+                
+                toggleModal(false);
+                mostrarToast('✅ Dados enviados para nuvem com sucesso!', 'success');
+                
+            } catch (erro) {
+                console.error('Erro ao enviar para nuvem:', erro);
+                toggleModal(false);
+                mostrarToast('❌ Erro ao enviar dados: ' + erro.message, 'error');
+            }
+        }
+
+        /**
+         * Força download dos dados do Firebase para local
+         */
+        async function forcarDownloadFirebase() {
+            const confirma = confirm(
+                '⬇️ BUSCAR DADOS DA NUVEM\n\n' +
+                'Isso vai SOBRESCREVER os dados no seu navegador\n' +
+                'com os dados que estão no Firebase.\n\n' +
+                'ATENÇÃO: Você vai perder as alterações\n' +
+                'não sincronizadas que estão no navegador!\n\n' +
+                'Deseja continuar?'
+            );
+            
+            if (!confirma) return;
+            
+            try {
+                toggleModal(true, "Buscando da nuvem...", "Fazendo download dos dados...");
+                
+                const emailUsuario = getUsuarioAtual();
+                const snapshot = await database.ref(`usuarios/${emailUsuario.replace(/\./g, '_')}`).once('value');
+                const dadosNuvem = snapshot.val();
+                
+                if (!dadosNuvem) {
+                    toggleModal(false);
+                    mostrarToast('⚠️ Nenhum dado encontrado na nuvem', 'warning');
+                    return;
+                }
+                
+                // Substituir dados locais pelos da nuvem
+                materiais = dadosNuvem.materiais || [];
+                receitas = dadosNuvem.receitas || [];
+                vendas = dadosNuvem.vendas || [];
+                
+                // Recalcular estoque
+                estoque = calcularEstoqueCompleto();
+                
+                // Salvar no localStorage
+                salvarLocalStorage();
+                
+                // Recarregar página atual
+                const paginaAtual = document.querySelector('.page-content.active').id.replace('-page', '');
+                navegarPagina(paginaAtual);
+                
+                toggleModal(false);
+                mostrarToast('✅ Dados baixados da nuvem com sucesso!', 'success');
+                
+            } catch (erro) {
+                console.error('Erro ao baixar da nuvem:', erro);
+                toggleModal(false);
+                mostrarToast('❌ Erro ao baixar dados: ' + erro.message, 'error');
             }
         }
         
@@ -1610,15 +1708,21 @@
                 const snapshot = await database.ref('usuarios').once('value');
                 const usuarios = snapshot.val();
                 
-                toggleModal(false);
-                
+                // Se não tiver usuários, retornar
                 if (!usuarios) {
+                    toggleModal(false);
                     mostrarToast('Nenhum usuário encontrado', 'info');
                     return;
                 }
                 
+                // Filtrar apenas os usuários que têm dados (não apenas /info)
+                const usuariosComDados = Object.keys(usuarios).filter(key => {
+                    const usuario = usuarios[key];
+                    return usuario && (usuario.materiais || usuario.receitas || usuario.vendas);
+                });
+                
                 // Criar modal de seleção
-                const usuariosArray = Object.keys(usuarios)
+                const usuariosArray = usuariosComDados
                     .map(key => key.replace(/_/g, '.'))
                     .filter(email => email !== EMAIL_ADMIN); // Excluir o próprio ADM
                 
@@ -1789,6 +1893,18 @@
             if (btnAdminNav) {
                 btnAdminNav.addEventListener('click', abrirNavegacaoUsuarios);
             }
+
+            // Botão de upload forçado
+            const btnUpload = document.getElementById('btn-upload-firebase');
+            if (btnUpload) {
+                btnUpload.addEventListener('click', forcarUploadFirebase);
+            }
+            
+            // Botão de download forçado
+            const btnDownload = document.getElementById('btn-download-firebase');
+            if (btnDownload) {
+                btnDownload.addEventListener('click', forcarDownloadFirebase);
+            }
             
             // Enter no campo de senha
             const senhaInput = document.getElementById('login-senha');
@@ -1815,6 +1931,11 @@
                 
                 // Esconder info do usuário
                 document.getElementById('user-info').classList.add('hidden');
+
+                // Esconder botões de sincronização
+                document.getElementById('btn-upload-firebase').classList.add('hidden');
+                document.getElementById('btn-download-firebase').classList.add('hidden');
+                document.getElementById('btn-admin-nav').classList.add('hidden');
                 
                 // Mostrar modal de login
                 document.getElementById('login-modal').classList.remove('hidden');
@@ -1847,7 +1968,7 @@
         
         /**
          * CÁLCULO DE PREÇO MÉDIO PONDERADO (CORRIGIDO)
-         * Calcula o preço médio POR UNIDADE de medida
+         * Retorna o preço médio POR UNIDADE de medida (por ml, por g, etc)
          */
         function calcularPrecoMedioPonderado(nomeMaterial) {
             // Buscar todos os materiais com mesmo nome (normalizado)
@@ -1865,11 +1986,12 @@
                 if (material.historicoCompras && material.historicoCompras.length > 0) {
                     material.historicoCompras.forEach(compra => {
                         if (!compra.removed) {
-                            // CORREÇÃO: Calcular preço UNITÁRIO desta compra
+                            // Valor total e quantidade desta compra
                             const valorTotal = parseFloat(compra.preco) || 0;
                             const quantidade = parseFloat(compra.quantidade) || 0;
                             
                             if (quantidade > 0) {
+                                // Preço unitário desta compra (por ml, por g, etc)
                                 const precoUnitario = valorTotal / quantidade;
                                 
                                 // Ponderar pelo peso (quantidade)
@@ -1883,7 +2005,7 @@
             
             if (somaQuantidadeTotal === 0) return 0;
             
-            // Preço médio ponderado correto
+            // Retorna o preço médio POR UNIDADE (ml, g, etc)
             return somaPrecosPonderados / somaQuantidadeTotal;
         }
         
