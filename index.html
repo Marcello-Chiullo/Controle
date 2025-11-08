@@ -1034,6 +1034,19 @@
                 return 'Data inválida';
             }
         }
+
+        /**
+         * Formata quantidade grande em unidades maiores
+         */
+        function formatarQuantidadeGrande(quantidade, unidade) {
+            if (unidade === 'ml' && quantidade >= 1000) {
+                return `${(quantidade / 1000).toFixed(2)} L (${quantidade.toFixed(2)} ml)`;
+            }
+            if (unidade === 'g' && quantidade >= 1000) {
+                return `${(quantidade / 1000).toFixed(2)} Kg (${quantidade.toFixed(2)} g)`;
+            }
+            return `${quantidade.toFixed(2)} ${unidade}`;
+        }
         
         /**
          * Formata valor monetário
@@ -2338,6 +2351,7 @@
                         <thead>
                             <tr>
                                 <th>Material</th>
+                                <th>Estoque (Unidades)</th>
                                 <th>Lançado</th>
                                 <th>Vendido</th>
                                 <th>Removido</th>
@@ -2356,6 +2370,7 @@
                                     return `
                                         <tr>
                                             <td><strong>${item.nome}</strong></td>
+                                            <td>${formatarQuantidadeGrande(item.disponivel, item.unidadePadrao)}</td>
                                             <td>${item.totalLancado.toFixed(2)} ${item.unidadePadrao}</td>
                                             <td>${item.totalVendido.toFixed(2)} ${item.unidadePadrao}</td>
                                             <td>${item.totalRemovido.toFixed(2)} ${item.unidadePadrao}</td>
@@ -3336,11 +3351,16 @@
                                             ${materiais
                                                 .filter(m => !m.removed)
                                                 .sort((a, b) => a.nome.localeCompare(b.nome))
-                                                .map(m => `
-                                                    <option value="${m.id}">
-                                                        ${m.nome} (${formatarMoeda(calcularPrecoMedioPonderado(m.nome))}/${m.unidadeMedida})
-                                                    </option>
-                                                `).join('')
+                                                .map(m => {
+                                                    const precoMedio = calcularPrecoMedioPonderado(m.nome);
+                                                    const unidade = m.unidadeMedida || 'un';
+                                                    
+                                                    return `
+                                                        <option value="${m.id}">
+                                                            ${m.nome} (${formatarMoeda(precoMedio)}/${unidade})
+                                                        </option>
+                                                    `;
+                                                }).join('')
                                             }
                                         </select>
                                     </div>
