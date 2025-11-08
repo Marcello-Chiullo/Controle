@@ -1984,7 +1984,6 @@
          * Retorna o preço médio POR UNIDADE de medida (por ml, por g, etc)
          */
         function calcularPrecoMedioPonderado(nomeMaterial) {
-            // Buscar todos os materiais com mesmo nome (normalizado)
             const materiaisGrupo = materiais.filter(m => 
                 normalizarNome(m.nome) === normalizarNome(nomeMaterial) &&
                 !m.removed
@@ -1999,7 +1998,6 @@
                 if (material.historicoCompras && material.historicoCompras.length > 0) {
                     material.historicoCompras.forEach(compra => {
                         if (!compra.removed) {
-                            // Valor total e quantidade desta compra
                             const valorTotal = parseFloat(compra.preco) || 0;
                             const quantidade = parseFloat(compra.quantidade) || 0;
                             
@@ -2023,9 +2021,9 @@
         }
         
         /**
-         * CALCULA ESTOQUE COMPLETO
-         * Fórmula: Lançamentos - Vendas - Remoções
-         * Agrupa por NOME (normalizado)
+         * CALCULA ESTOQUE COMPLETO (CORRIGIDO)
+         * Lançado = soma de QUANTIDADES (em ml/g)
+         * Estoque (Unidades) = quantidade de COMPRAS
          */
         function calcularEstoqueCompleto() {
             const estoqueCalculado = {};
@@ -2041,9 +2039,10 @@
                     estoqueCalculado[nomeNorm] = {
                         nome: material.nome,
                         unidadePadrao: material.unidadeMedida || 'un',
-                        totalLancado: 0,
-                        totalVendido: 0,
-                        totalRemovido: 0,
+                        totalLancado: 0,           // SOMA das QUANTIDADES (ml/g)
+                        totalVendido: 0,           // SOMA do que foi vendido (ml/g)
+                        totalRemovido: 0,          // SOMA do que foi removido (ml/g)
+                        quantidadeCompras: 0,      // QUANTIDADE de COMPRAS (unidades)
                         disponivel: 0,
                         registros: []
                     };
@@ -2060,6 +2059,7 @@
                         } else {
                             // Compra válida
                             estoqueCalculado[nomeNorm].totalLancado += quantidade;
+                            estoqueCalculado[nomeNorm].quantidadeCompras += 1;  // ← NOVO!
                             estoqueCalculado[nomeNorm].registros.push({
                                 tipo: 'lancamento',
                                 materialId: material.id,
@@ -2072,7 +2072,7 @@
                 }
             });
             
-            // 2. PROCESSAR VENDAS (subtrair do estoque)
+            // 2. PROCESSAR VENDAS (subtrair do estoque em ml/g)
             vendas.forEach(venda => {
                 if (venda.cancelada || !venda.ingredientesSnapshot) return;
                 
@@ -2370,7 +2370,7 @@
                                     return `
                                         <tr>
                                             <td><strong>${item.nome}</strong></td>
-                                            <td>${formatarQuantidadeGrande(item.disponivel, item.unidadePadrao)}</td>
+                                            <td><strong>${item.quantidadeCompras}</strong></td>
                                             <td>${item.totalLancado.toFixed(2)} ${item.unidadePadrao}</td>
                                             <td>${item.totalVendido.toFixed(2)} ${item.unidadePadrao}</td>
                                             <td>${item.totalRemovido.toFixed(2)} ${item.unidadePadrao}</td>
