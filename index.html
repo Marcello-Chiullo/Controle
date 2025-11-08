@@ -2051,21 +2051,22 @@
                 // Somar lançamentos do histórico de compras
                 if (material.historicoCompras) {
                     material.historicoCompras.forEach(compra => {
-                        const quantidade = parseFloat(compra.quantidade) || 0;
+                        // USAR quantidadeTotal (em ml/g) ao invés de quantidade
+                        const quantidadeTotal = parseFloat(compra.quantidadeTotal || compra.quantidade) || 0;
+                        const quantidadeUnidades = parseFloat(compra.quantidadeUnidades || 1) || 1;
                         
                         if (compra.removed) {
-                            // Compra removida (erro de lançamento)
-                            estoqueCalculado[nomeNorm].totalRemovido += quantidade;
+                            estoqueCalculado[nomeNorm].totalRemovido += quantidadeTotal;
                         } else {
-                            // Compra válida
-                            estoqueCalculado[nomeNorm].totalLancado += quantidade;
-                            estoqueCalculado[nomeNorm].quantidadeCompras += 1;  // ← NOVO!
+                            estoqueCalculado[nomeNorm].totalLancado += quantidadeTotal;
+                            estoqueCalculado[nomeNorm].quantidadeCompras += quantidadeUnidades; // ← CORRIGIDO!
                             estoqueCalculado[nomeNorm].registros.push({
                                 tipo: 'lancamento',
                                 materialId: material.id,
-                                quantidade: quantidade,
+                                quantidade: quantidadeTotal,
+                                quantidadeUnidades: quantidadeUnidades,
                                 data: compra.data,
-                                preco: compra.preco
+                                preco: compra.precoTotal || compra.preco
                             });
                         }
                     });
@@ -2123,14 +2124,30 @@
         }
         
         /**
-         * ADICIONA OU ATUALIZA MATERIAL
+         * ADICIONA OU ATUALIZA MATERIAL (CORRIGIDO)
          */
         function adicionarMaterial(dados) {
             try {
                 // Validações
                 if (!dados.nome) throw new Error('Nome é obrigatório');
-                if (!dados.preco || dados.preco <= 0) throw new Error('Preço inválido');
+                if (!dados.preco || dados.preco <= 0) throw new Error('Preço total inválido');
                 if (!dados.quantidade || dados.quantidade <= 0) throw new Error('Quantidade inválida');
+                if (!dados.quantidadePorUnidade || dados.quantidadePorUnidade <= 0) {
+                    throw new Error('Quantidade por unidade inválida');
+                }
+                
+                // CÁLCULOS CORRETOS
+                const precoTotal = parseFloat(dados.preco);           // Ex: R$ 50,00
+                const quantidadeUnidades = parseFloat(dados.quantidade); // Ex: 5 caixas
+                const quantidadePorUnidade = parseFloat(dados.quantidadePorUnidade); // Ex: 1000ml
+                
+                // Quantidade TOTAL em unidade de medida (ml, g, etc)
+                const quantidadeTotalMedida = quantidadeUnidades * quantidadePorUnidade;
+                // Ex: 5 caixas × 1000ml = 5000ml
+                
+                // Preço por unidade de medida (ml, g, etc)
+                const precoPorMedida = precoTotal / quantidadeTotalMedida;
+                // Ex: R$ 50,00 ÷ 5000ml = R$ 0,01/ml
                 
                 // Verificar se código já existe com nome diferente
                 if (dados.codigo) {
@@ -2167,15 +2184,19 @@
                     materialExistente.historicoCompras.push({
                         id: gerarId(),
                         data: dados.dataCompra || agora,
-                        preco: parseFloat(dados.preco),
-                        quantidade: parseFloat(dados.quantidade),
+                        precoTotal: precoTotal,                      // R$ 50,00
+                        quantidadeUnidades: quantidadeUnidades,      // 5 caixas
+                        quantidadePorUnidade: quantidadePorUnidade,  // 1000ml
+                        quantidadeTotal: quantidadeTotalMedida,      // 5000ml
+                        preco: precoTotal,                           // Manter compatibilidade
+                        quantidade: quantidadeTotalMedida,           // Manter compatibilidade
                         fornecedor: dados.fornecedor || '',
                         notaFiscal: dados.notaFiscal || '',
                         removed: false
                     });
                     
                     // Atualizar informações
-                    materialExistente.precoUltimaCompra = parseFloat(dados.preco);
+                    materialExistente.precoUltimaCompra = precoTotal;
                     materialExistente.dataUltimaCompra = dados.dataCompra || agora;
                     materialExistente.atualizadoEm = agora;
                     
@@ -2195,17 +2216,21 @@
                         
                         unidadeCompra: dados.unidadeCompra || 'un',
                         unidadeMedida: dados.unidadeMedida || 'un',
-                        quantidadePorUnidade: parseFloat(dados.quantidadePorUnidade) || 1,
+                        quantidadePorUnidade: quantidadePorUnidade,
                         
-                        precoUltimaCompra: parseFloat(dados.preco),
+                        precoUltimaCompra: precoTotal,
                         dataUltimaCompra: dados.dataCompra || agora,
-                        precoMedio: parseFloat(dados.preco), // Primeiro preço = média
+                        precoMedio: precoPorMedida,
                         
                         historicoCompras: [{
                             id: gerarId(),
                             data: dados.dataCompra || agora,
-                            preco: parseFloat(dados.preco),
-                            quantidade: parseFloat(dados.quantidade),
+                            precoTotal: precoTotal,
+                            quantidadeUnidades: quantidadeUnidades,
+                            quantidadePorUnidade: quantidadePorUnidade,
+                            quantidadeTotal: quantidadeTotalMedida,
+                            preco: precoTotal,
+                            quantidade: quantidadeTotalMedida,
                             fornecedor: dados.fornecedor || '',
                             notaFiscal: dados.notaFiscal || '',
                             removed: false
@@ -2370,7 +2395,7 @@
                                     return `
                                         <tr>
                                             <td><strong>${item.nome}</strong></td>
-                                            <td><strong>${item.quantidadeCompras}</strong></td>
+                                            <td><strong>${item.quantidadeCompras}</strong> ${item.unidadePadrao === 'ml' || item.unidadePadrao === 'l' ? 'cx/pct' : item.unidadePadrao === 'g' || item.unidadePadrao === 'kg' ? 'cx/pct' : 'un'}</td>
                                             <td>${item.totalLancado.toFixed(2)} ${item.unidadePadrao}</td>
                                             <td>${item.totalVendido.toFixed(2)} ${item.unidadePadrao}</td>
                                             <td>${item.totalRemovido.toFixed(2)} ${item.unidadePadrao}</td>
@@ -2497,27 +2522,28 @@
                             <div class="form-row">
                                 <div class="form-col">
                                     <div class="form-group">
-                                        <label for="preco-material">Preço Total: *</label>
+                                        <label for="preco-material">Preço Total da Compra: *</label>
                                         <input type="number" id="preco-material" class="form-control" 
-                                            min="0.01" step="0.01" required>
+                                            min="0.01" step="0.01" required 
+                                            placeholder="Ex: 50.00 (total pago)">
                                     </div>
                                 </div>
                                 <div class="form-col">
                                     <div class="form-group">
-                                        <label for="quantidade-material">Quantidade: *</label>
+                                        <label for="quantidade-material">Quantidade de Unidades: *</label>
                                         <input type="number" id="quantidade-material" class="form-control" 
-                                            min="0.01" step="0.01" value="1" required>
+                                            min="1" step="1" value="1" required
+                                            placeholder="Ex: 5 (caixas/pacotes)">
                                     </div>
                                 </div>
                                 <div class="form-col">
                                     <div class="form-group">
-                                        <label for="unidade-compra-material">Unidade:</label>
+                                        <label for="unidade-compra-material">Tipo de Unidade:</label>
                                         <select id="unidade-compra-material" class="form-control">
-                                            <option value="un">Unidade</option>
-                                            <option value="kg">Quilograma</option>
-                                            <option value="l">Litro</option>
-                                            <option value="pct">Pacote</option>
                                             <option value="cx">Caixa</option>
+                                            <option value="pct">Pacote</option>
+                                            <option value="sc">Saco</option>
+                                            <option value="un">Unidade</option>
                                         </select>
                                     </div>
                                 </div>
@@ -2532,20 +2558,23 @@
                                     <div class="form-group">
                                         <label for="unidade-medida-material">Unidade de Medida:</label>
                                         <select id="unidade-medida-material" class="form-control">
-                                            <option value="g">Gramas (g)</option>
-                                            <option value="kg">Quilogramas (kg)</option>
                                             <option value="ml">Mililitros (ml)</option>
-                                            <option value="l">Litros (l)</option>
-                                            <option value="un">Unidades</option>
+                                            <option value="l">Litros (L)</option>
+                                            <option value="g">Gramas (g)</option>
+                                            <option value="kg">Quilogramas (Kg)</option>
+                                            <option value="un">Unidades (Un)</option>
                                         </select>
                                     </div>
                                 </div>
                                 <div class="form-col">
                                     <div class="form-group">
-                                        <label for="quantidade-por-unidade-material">Quantidade por Unidade:</label>
+                                        <label for="quantidade-por-unidade-material">Quantidade por Unidade Comprada:</label>
                                         <input type="number" id="quantidade-por-unidade-material" 
                                             class="form-control" min="0.01" step="0.01" value="1000" 
-                                            placeholder="Ex: 1000 (1kg = 1000g)">
+                                            placeholder="Ex: 1000 (cada caixa tem 1000ml)">
+                                        <small style="color: var(--cor-texto-claro); font-size: 12px;">
+                                            Ex: Se comprou 5 caixas de 1000ml cada, coloque 1000
+                                        </small>
                                     </div>
                                 </div>
                             </div>
