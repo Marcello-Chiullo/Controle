@@ -4073,6 +4073,128 @@
         // PARTE 5: GESTÃO DE VENDAS
         // ====================================
         
+        // Array temporário para receitas da venda
+        let receitasVendaTemp = [];
+        
+        /**
+         * Adiciona receita ao array temporário da venda
+         */
+        function adicionarReceitaVenda() {
+            const receitaId = document.getElementById('venda-receita-select').value;
+            const quantidade = parseFloat(document.getElementById('venda-receita-quantidade').value) || 0;
+            const precoCustomizado = parseFloat(document.getElementById('venda-receita-preco').value) || 0;
+            
+            if (!receitaId) {
+                mostrarToast('Selecione uma receita', 'warning');
+                return;
+            }
+            
+            if (quantidade <= 0) {
+                mostrarToast('Informe uma quantidade válida', 'warning');
+                return;
+            }
+            
+            const receita = receitas.find(r => r.id === receitaId && r.ativa);
+            if (!receita) {
+                mostrarToast('Receita não encontrada', 'error');
+                return;
+            }
+            
+            // Validar estoque
+            const validacao = validarEstoqueReceita(receita, quantidade);
+            if (!validacao.valido) {
+                mostrarToast('Estoque insuficiente para esta receita', 'error');
+                document.getElementById('alerta-estoque-venda').classList.remove('hidden');
+                document.getElementById('mensagem-estoque-venda').innerHTML = 
+                    '<strong>Faltando:</strong><br>' + validacao.faltando.join('<br>');
+                return;
+            }
+            
+            // Usar preço customizado ou preço da receita
+            const precoUnitario = precoCustomizado > 0 ? precoCustomizado : receita.precoVenda;
+            const subtotal = precoUnitario * quantidade;
+            
+            // Calcular custos (snapshot)
+            const custos = calcularCustoReceita(receita);
+            
+            // Adicionar ao array
+            receitasVendaTemp.push({
+                id: gerarId(),
+                receitaId: receita.id,
+                receitaNome: receita.nome,
+                quantidade: quantidade,
+                precoUnitario: precoUnitario,
+                subtotal: subtotal,
+                custos: custos,
+                ingredientesSnapshot: custos.ingredientesDetalhados
+            });
+            
+            // Limpar campos
+            document.getElementById('venda-receita-select').value = '';
+            document.getElementById('venda-receita-quantidade').value = '1';
+            document.getElementById('venda-receita-preco').value = '';
+            document.getElementById('alerta-estoque-venda').classList.add('hidden');
+            
+            // Renderizar lista
+            renderizarReceitasVendaTemp();
+            
+            // Atualizar resumo
+            atualizarResumoFinanceiroVenda();
+            
+            mostrarToast('Receita adicionada!', 'success', 1500);
+        }
+        
+        /**
+         * Remove receita do array temporário
+         */
+        function removerReceitaVendaTemp(index) {
+            receitasVendaTemp.splice(index, 1);
+            renderizarReceitasVendaTemp();
+            atualizarResumoFinanceiroVenda();
+            mostrarToast('Receita removida', 'info', 1500);
+        }
+        
+        /**
+         * Renderiza lista de receitas temporárias
+         */
+        function renderizarReceitasVendaTemp() {
+            const container = document.getElementById('lista-receitas-venda');
+            if (!container) return;
+            
+            if (receitasVendaTemp.length === 0) {
+                container.innerHTML = `
+                    <p style="text-align: center; color: var(--cor-texto-claro); padding: 20px;">
+                        Nenhuma receita adicionada. Adicione pelo menos uma receita para continuar.
+                    </p>
+                `;
+                return;
+            }
+            
+            let html = '<table style="width: 100%; margin-top: 10px;"><thead><tr>' +
+                '<th>Produto</th><th>Qtd</th><th>Preço Unit.</th><th>Subtotal</th><th>Ações</th>' +
+                '</tr></thead><tbody>';
+            
+            receitasVendaTemp.forEach((item, index) => {
+                html += `
+                    <tr>
+                        <td><strong>${item.receitaNome}</strong></td>
+                        <td>${item.quantidade}</td>
+                        <td>${formatarMoeda(item.precoUnitario)}</td>
+                        <td><strong>${formatarMoeda(item.subtotal)}</strong></td>
+                        <td>
+                            <button type="button" class="btn btn-danger btn-sm" 
+                                onclick="removerReceitaVendaTemp(${index})">
+                                🗑️
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+        
         /**
          * GERA NÚMERO DE VENDA SEQUENCIAL
          */
@@ -4093,119 +4215,106 @@
         function registrarVenda(dados) {
             try {
                 // Validações básicas
-                if (!dados.receitaId) throw new Error('Selecione uma receita');
-                if (!dados.quantidade || dados.quantidade <= 0) throw new Error('Quantidade inválida');
-                if (!dados.cliente || !dados.cliente.nome) throw new Error('Informe o nome do cliente');
-                
-                const receita = receitas.find(r => r.id === dados.receitaId && r.ativa);
-                if (!receita) throw new Error('Receita não encontrada');
-                
-                const quantidade = parseFloat(dados.quantidade);
-                
-                // 1. VALIDAR ESTOQUE
-                const validacao = validarEstoqueReceita(receita, quantidade);
-                if (!validacao.valido) {
-                    throw new Error(
-                        'Estoque insuficiente:\n\n' + 
-                        validacao.faltando.join('\n')
-                    );
+                if (!dados.receitas || dados.receitas.length === 0) {
+                    throw new Error('Adicione pelo menos uma receita');
+                }
+                if (!dados.cliente || !dados.cliente.nome) {
+                    throw new Error('Informe o nome do cliente');
                 }
                 
-                // 2. CRIAR SNAPSHOT DOS INGREDIENTES (custos congelados)
-                const custos = calcularCustoReceita(receita);
-                const ingredientesSnapshot = custos.ingredientesDetalhados.map(ing => ({
-                    materialId: ing.materialId,
-                    materialNome: ing.materialNome,
-                    quantidade: ing.quantidade * quantidade, // Multiplicar pela quantidade vendida
-                    unidadeMedida: ing.unidadeMedida,
-                    precoMedioMomento: ing.precoMedioAtual,
-                    custoTotal: ing.custoIngrediente * quantidade
-                }));
+                // 1. CALCULAR CUSTOS TOTAIS
+                let custoIngredientesTotal = 0;
+                let todosIngredientesSnapshot = [];
                 
-                // 3. CALCULAR CUSTOS TOTAIS (congelados)
-                const custoIngredientesTotal = custos.custoIngredientes * quantidade;
+                dados.receitas.forEach(itemReceita => {
+                    const custoIngredientes = itemReceita.custos.custoIngredientes * itemReceita.quantidade;
+                    custoIngredientesTotal += custoIngredientes;
+                    
+                    // Adicionar ingredientes ao snapshot
+                    itemReceita.ingredientesSnapshot.forEach(ing => {
+                        todosIngredientesSnapshot.push({
+                            ...ing,
+                            quantidade: ing.quantidade * itemReceita.quantidade,
+                            custoTotal: ing.custoIngrediente * itemReceita.quantidade
+                        });
+                    });
+                });
                 
-                // Despesas adicionais
+                // 2. VALORES ADICIONAIS
                 const frete = parseFloat(dados.frete) || 0;
                 const decoracao = parseFloat(dados.decoracao) || 0;
-                const despesasAdicionais = frete + decoracao;
-                
-                // Brindes com acréscimo de 10%
                 const brindes = parseFloat(dados.brindes) || 0;
-                const percentualAcrescimoBrindes = 0.10;
-                const brindesComAcrescimo = brindes * (1 + percentualAcrescimoBrindes);
                 
-                const despesasAdicionaisTotal = despesasAdicionais + brindesComAcrescimo;
+                // 3. VALOR QUE CLIENTE PAGA
+                const valorReceitas = dados.receitas.reduce((sum, item) => sum + item.subtotal, 0);
+                const valorClientePaga = valorReceitas + frete + decoracao;
                 
-                // Custo direto
-                const custoDiretoTotal = custoIngredientesTotal + despesasAdicionaisTotal;
+                // 4. CUSTO TOTAL
+                const custosVariados = custoIngredientesTotal * 0.10;
+                const custoTotal = custoIngredientesTotal + custosVariados + frete + decoracao + brindes;
                 
-                // Custo indireto (10% sobre ingredientes)
-                const percentualCustoIndireto = 0.10;
-                const custoIndiretoTotal = custoIngredientesTotal * percentualCustoIndireto;
+                // 5. LUCRO
+                const lucroBruto = valorClientePaga - custoTotal;
+                const margemLucroBruto = valorClientePaga > 0 ? (lucroBruto / valorClientePaga) * 100 : 0;
                 
-                // Custo total
-                const custoTotal = custoDiretoTotal + custoIndiretoTotal;
-                
-                // 4. CALCULAR RECEITA
-                const precoUnitario = parseFloat(dados.precoVenda) || receita.precoVenda;
-                const valorTotal = precoUnitario * quantidade;
-                
-                // 5. CALCULAR LUCRO (lógica simplificada)
-                const lucroBruto = valorTotal - custoTotal;
-                const margemLucroBruto = (lucroBruto / valorTotal) * 100;
-                
-                // Destinação do lucro (50% reinvestimento, 50% líquido)
-                const percentualReinvestimento = 0.50;
-                const valorReinvestimento = lucroBruto * percentualReinvestimento;
-                const lucroLiquido = lucroBruto * (1 - percentualReinvestimento);
-                const margemLiquida = (lucroLiquido / valorTotal) * 100;
+                const valorReinvestimento = lucroBruto * 0.50;
+                const lucroLiquido = lucroBruto * 0.50;
+                const margemLiquida = valorClientePaga > 0 ? (lucroLiquido / valorClientePaga) * 100 : 0;
                 
                 const agora = new Date().toISOString();
-                
+        
                 // 6. CRIAR OBJETO DE VENDA
                 const novaVenda = {
                     id: gerarId(),
                     numero: gerarNumeroVenda(),
                     
-                    receitaId: receita.id,
-                    receitaNome: receita.nome,
-                    quantidade: quantidade,
+                    // MÚLTIPLAS RECEITAS
+                    receitas: dados.receitas.map(item => ({
+                        receitaId: item.receitaId,
+                        receitaNome: item.receitaNome,
+                        quantidade: item.quantidade,
+                        precoUnitario: item.precoUnitario,
+                        subtotal: item.subtotal,
+                        ingredientesSnapshot: item.ingredientesSnapshot
+                    })),
+                    
+                    // COMPATIBILIDADE (para não quebrar código existente)
+                    receitaId: dados.receitas[0].receitaId,
+                    receitaNome: dados.receitas[0].receitaNome,
+                    quantidade: dados.receitas.reduce((sum, item) => sum + item.quantidade, 0),
                     
                     // SNAPSHOT - custos congelados
-                    ingredientesSnapshot: ingredientesSnapshot,
+                    ingredientesSnapshot: todosIngredientesSnapshot,
                     
                     // CUSTOS
                     custoDireto: {
                         ingredientes: custoIngredientesTotal,
                         frete: frete,
                         decoracao: decoracao,
-                        despesasAdicionais: despesasAdicionais,
                         brindes: brindes,
-                        percentualAcrescimoBrindes: percentualAcrescimoBrindes,
-                        brindesComAcrescimo: brindesComAcrescimo,
-                        despesasAdicionaisTotal: despesasAdicionaisTotal,
-                        total: custoDiretoTotal
+                        total: custoIngredientesTotal + frete + decoracao + brindes
                     },
                     
                     custoIndireto: {
-                        percentual: percentualCustoIndireto,
-                        valor: custoIndiretoTotal,
+                        percentual: 0.10,
+                        valor: custosVariados,
                         descricao: 'Custos indiretos (energia, gás, água)'
                     },
                     
                     custoTotal: custoTotal,
                     
                     // RECEITA
-                    precoUnitario: precoUnitario,
-                    valorTotal: valorTotal,
+                    valorReceitas: valorReceitas,
+                    valorClientePaga: valorClientePaga,
+                    precoUnitario: valorReceitas / dados.receitas.reduce((sum, item) => sum + item.quantidade, 0),
+                    valorTotal: valorClientePaga,
                     
                     // LUCRO
                     lucroBruto: lucroBruto,
                     margemLucroBruto: margemLucroBruto,
                     
                     destinacaoLucro: {
-                        percentualReinvestimento: percentualReinvestimento,
+                        percentualReinvestimento: 0.50,
                         valorReinvestimento: valorReinvestimento,
                         lucroLiquido: lucroLiquido,
                         margemLiquida: margemLiquida
@@ -4485,43 +4594,62 @@
                         <h3>➕ Registrar Nova Venda</h3>
                         
                         <form id="form-nova-venda">
-                            
+    
                             <h4 style="margin-top: 0; margin-bottom: 15px; color: var(--cor-primaria);">
-                                🍰 Produto
+                                🍰 Produtos
                             </h4>
                             
-                            <div class="form-row">
-                                <div class="form-col" style="flex: 2;">
-                                    <div class="form-group">
-                                        <label for="venda-receita">Receita: *</label>
-                                        <select id="venda-receita" class="form-control" required>
-                                            <option value="">Selecione uma receita...</option>
-                                            ${receitas.filter(r => r.ativa).map(r => {
-                                                const custos = calcularCustoReceita(r);
-                                                return `
-                                                    <option value="${r.id}">
-                                                        ${r.nome} - ${formatarMoeda(r.precoVenda)} 
-                                                        (Custo: ${formatarMoeda(custos.custoTotal)})
-                                                    </option>
-                                                `;
-                                            }).join('')}
-                                        </select>
+                            <!-- Área para adicionar receita -->
+                            <div style="background: var(--cor-fundo); padding: 15px; border-radius: var(--borda-radius); margin-bottom: 15px;">
+                                <div class="form-row">
+                                    <div class="form-col" style="flex: 2;">
+                                        <div class="form-group">
+                                            <label for="venda-receita-select">Selecionar Receita:</label>
+                                            <select id="venda-receita-select" class="form-control">
+                                                <option value="">Escolha uma receita...</option>
+                                                ${receitas.filter(r => r.ativa).map(r => {
+                                                    const custos = calcularCustoReceita(r);
+                                                    return `
+                                                        <option value="${r.id}">
+                                                            ${r.nome} - ${formatarMoeda(r.precoVenda)} 
+                                                            (Custo: ${formatarMoeda(custos.custoTotal)})
+                                                        </option>
+                                                    `;
+                                                }).join('')}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="form-col">
+                                        <div class="form-group">
+                                            <label for="venda-receita-quantidade">Quantidade:</label>
+                                            <input type="number" id="venda-receita-quantidade" class="form-control" 
+                                                min="1" step="1" value="1">
+                                        </div>
+                                    </div>
+                                    <div class="form-col">
+                                        <div class="form-group">
+                                            <label for="venda-receita-preco">Preço Unit.:</label>
+                                            <input type="number" id="venda-receita-preco" class="form-control" 
+                                                min="0.01" step="0.01" placeholder="0.00">
+                                        </div>
+                                    </div>
+                                    <div class="form-col" style="flex: 0.5;">
+                                        <div class="form-group">
+                                            <label>&nbsp;</label>
+                                            <button type="button" id="btn-add-receita-venda" class="btn btn-success" 
+                                                style="width: 100%;">
+                                                ➕
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="form-col">
-                                    <div class="form-group">
-                                        <label for="venda-quantidade">Quantidade: *</label>
-                                        <input type="number" id="venda-quantidade" class="form-control" 
-                                            min="1" step="1" value="1" required>
-                                    </div>
-                                </div>
-                                <div class="form-col">
-                                    <div class="form-group">
-                                        <label for="venda-preco">Preço Unit.: *</label>
-                                        <input type="number" id="venda-preco" class="form-control" 
-                                            min="0.01" step="0.01" required readonly>
-                                    </div>
-                                </div>
+                            </div>
+                            
+                            <!-- Lista de receitas adicionadas -->
+                            <div id="lista-receitas-venda">
+                                <p style="text-align: center; color: var(--cor-texto-claro); padding: 20px;">
+                                    Nenhuma receita adicionada. Adicione pelo menos uma receita para continuar.
+                                </p>
                             </div>
                             
                             <div id="alerta-estoque-venda" class="notification notification-warning hidden">
@@ -4613,27 +4741,32 @@
                             </div>
                             
                             <h4 style="margin-top: 25px; margin-bottom: 15px; color: var(--cor-primaria);">
-                                💵 Despesas Adicionais
+                                💵 Valores Adicionais
                             </h4>
+                            
+                            <div class="notification notification-info" style="margin-bottom: 15px;">
+                                ℹ️ <strong>Importante:</strong> Frete e Decoração são cobrados do cliente. 
+                                Brindes são descontados do lucro (não cobrados do cliente).
+                            </div>
                             
                             <div class="form-row">
                                 <div class="form-col">
                                     <div class="form-group">
-                                        <label for="venda-frete">Frete:</label>
+                                        <label for="venda-frete">Frete (cobrado do cliente):</label>
                                         <input type="number" id="venda-frete" class="form-control" 
                                             min="0" step="0.01" value="0">
                                     </div>
                                 </div>
                                 <div class="form-col">
                                     <div class="form-group">
-                                        <label for="venda-decoracao">Decoração:</label>
+                                        <label for="venda-decoracao">Decoração (cobrada do cliente):</label>
                                         <input type="number" id="venda-decoracao" class="form-control" 
                                             min="0" step="0.01" value="0">
                                     </div>
                                 </div>
                                 <div class="form-col">
                                     <div class="form-group">
-                                        <label for="venda-brindes">Brindes (+10%):</label>
+                                        <label for="venda-brindes">Brindes (descontado do lucro):</label>
                                         <input type="number" id="venda-brindes" class="form-control" 
                                             min="0" step="0.01" value="0">
                                     </div>
@@ -4658,13 +4791,25 @@
                                 <h4 style="margin: 0 0 15px 0;">💰 Resumo Financeiro</h4>
                                 <table style="width: 100%; font-size: 15px;">
                                     <tr>
-                                        <td><strong>Valor Total:</strong></td>
-                                        <td id="resumo-valor-total-venda" style="text-align: right; font-size: 20px; font-weight: bold;">
+                                        <td>Valor das Receitas:</td>
+                                        <td id="resumo-valor-receitas" style="text-align: right;">R$ 0,00</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Frete:</td>
+                                        <td id="resumo-frete-venda" style="text-align: right;">R$ 0,00</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Decoração:</td>
+                                        <td id="resumo-decoracao-venda" style="text-align: right;">R$ 0,00</td>
+                                    </tr>
+                                    <tr style="border-top: 2px solid var(--cor-borda); font-weight: bold;">
+                                        <td><strong>VALOR QUE CLIENTE PAGA:</strong></td>
+                                        <td id="resumo-valor-cliente-paga" style="text-align: right; font-size: 20px; color: var(--cor-primaria);">
                                             R$ 0,00
                                         </td>
                                     </tr>
                                     <tr style="border-top: 1px solid var(--cor-borda);">
-                                        <td>Custo Total:</td>
+                                        <td>Custo Total (inclui brindes):</td>
                                         <td id="resumo-custo-total-venda" style="text-align: right;">R$ 0,00</td>
                                     </tr>
                                     <tr>
@@ -4679,7 +4824,7 @@
                                             R$ 0,00
                                         </td>
                                     </tr>
-                                    <tr>
+                                    <tr style="border-top: 2px solid var(--cor-borda);">
                                         <td><strong>Margem Líquida:</strong></td>
                                         <td id="resumo-margem-venda" style="text-align: right; font-size: 18px; font-weight: bold;">
                                             0%
@@ -5003,17 +5148,24 @@
             const form = document.getElementById('form-nova-venda');
             if (!form) return;
             
-            // Ao selecionar receita, preencher preço e validar estoque
-            const selectReceita = document.getElementById('venda-receita');
+            // Limpar receitas temporárias
+            receitasVendaTemp = [];
+            
+            // Botão adicionar receita
+            const btnAddReceita = document.getElementById('btn-add-receita-venda');
+            if (btnAddReceita) {
+                btnAddReceita.addEventListener('click', adicionarReceitaVenda);
+            }
+            
+            // Ao selecionar receita, preencher preço
+            const selectReceita = document.getElementById('venda-receita-select');
             if (selectReceita) {
                 selectReceita.addEventListener('change', function() {
                     const receitaId = this.value;
                     if (receitaId) {
                         const receita = receitas.find(r => r.id === receitaId);
                         if (receita) {
-                            document.getElementById('venda-preco').value = receita.precoVenda.toFixed(2);
-                            validarEstoqueVenda();
-                            atualizarResumoFinanceiroVenda();
+                            document.getElementById('venda-receita-preco').value = receita.precoVenda.toFixed(2);
                         }
                     }
                 });
@@ -5029,7 +5181,7 @@
             }
             
             // Recalcular ao mudar despesas
-            ['venda-preco', 'venda-frete', 'venda-decoracao', 'venda-brindes'].forEach(id => {
+            ['venda-frete', 'venda-decoracao', 'venda-brindes'].forEach(id => {
                 const input = document.getElementById(id);
                 if (input) {
                     input.addEventListener('input', atualizarResumoFinanceiroVenda);
@@ -5040,16 +5192,13 @@
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
                 
-                const receitaId = document.getElementById('venda-receita').value;
-                if (!receitaId) {
-                    mostrarToast('Selecione uma receita', 'warning');
+                if (receitasVendaTemp.length === 0) {
+                    mostrarToast('Adicione pelo menos uma receita', 'warning');
                     return;
                 }
                 
                 const dados = {
-                    receitaId: receitaId,
-                    quantidade: parseFloat(document.getElementById('venda-quantidade').value),
-                    precoVenda: parseFloat(document.getElementById('venda-preco').value),
+                    receitas: receitasVendaTemp,  // ← Array de receitas!
                     
                     cliente: {
                         nome: document.getElementById('venda-cliente-nome').value.trim(),
@@ -5079,8 +5228,10 @@
                     
                     toggleModal(false);
                     
-                    // Limpar formulário
+                    // Limpar formulário e array
                     form.reset();
+                    receitasVendaTemp = [];
+                    renderizarReceitasVendaTemp();
                     document.getElementById('resumo-financeiro-venda').style.display = 'none';
                     
                     // Voltar para lista
@@ -5129,45 +5280,49 @@
         }
         
         /**
-         * Atualiza resumo financeiro da venda
+         * Atualiza resumo financeiro da venda (CORRIGIDO)
          */
         function atualizarResumoFinanceiroVenda() {
-            const receitaId = document.getElementById('venda-receita').value;
-            const quantidade = parseFloat(document.getElementById('venda-quantidade').value) || 0;
-            const precoVenda = parseFloat(document.getElementById('venda-preco').value) || 0;
-            
-            if (!receitaId || quantidade <= 0 || precoVenda <= 0) {
+            if (receitasVendaTemp.length === 0) {
                 document.getElementById('resumo-financeiro-venda').style.display = 'none';
                 return;
             }
             
-            const receita = receitas.find(r => r.id === receitaId);
-            if (!receita) return;
+            // 1. VALOR DAS RECEITAS
+            const valorReceitas = receitasVendaTemp.reduce((sum, item) => sum + item.subtotal, 0);
             
-            // Calcular custos
-            const custos = calcularCustoReceita(receita);
-            const custoIngredientesTotal = custos.custoIngredientes * quantidade;
-            
+            // 2. VALORES ADICIONAIS
             const frete = parseFloat(document.getElementById('venda-frete').value) || 0;
             const decoracao = parseFloat(document.getElementById('venda-decoracao').value) || 0;
             const brindes = parseFloat(document.getElementById('venda-brindes').value) || 0;
-            const brindesComAcrescimo = brindes * 1.10;
             
-            const despesasAdicionaisTotal = frete + decoracao + brindesComAcrescimo;
-            const custoDiretoTotal = custoIngredientesTotal + despesasAdicionaisTotal;
-            const custoIndiretoTotal = custoIngredientesTotal * 0.10;
-            const custoTotal = custoDiretoTotal + custoIndiretoTotal;
+            // 3. VALOR QUE CLIENTE PAGA (receitas + frete + decoracao)
+            const valorClientePaga = valorReceitas + frete + decoracao;
             
-            const valorTotal = precoVenda * quantidade;
-            const lucroBruto = valorTotal - custoTotal;
+            // 4. CUSTO TOTAL
+            // Custo das receitas
+            const custoReceitas = receitasVendaTemp.reduce((sum, item) => {
+                const custoIngredientes = item.custos.custoIngredientes * item.quantidade;
+                const custosVariados = custoIngredientes * 0.10;
+                return sum + custoIngredientes + custosVariados;
+            }, 0);
+            
+            // Custo total (inclui brindes, frete e decoração)
+            const custoTotal = custoReceitas + brindes + frete + decoracao;
+            
+            // 5. LUCRO
+            const lucroBruto = valorClientePaga - custoTotal;
             const lucroLiquido = lucroBruto * 0.50;
-            const margemLiquida = (lucroLiquido / valorTotal) * 100;
+            const margemLiquida = valorClientePaga > 0 ? (lucroLiquido / valorClientePaga) * 100 : 0;
             
             const corMargem = margemLiquida >= 15 ? 'var(--cor-sucesso)' : 
                              margemLiquida >= 10 ? 'var(--cor-aviso)' : 'var(--cor-erro)';
             
             // Atualizar campos
-            document.getElementById('resumo-valor-total-venda').textContent = formatarMoeda(valorTotal);
+            document.getElementById('resumo-valor-receitas').textContent = formatarMoeda(valorReceitas);
+            document.getElementById('resumo-frete-venda').textContent = formatarMoeda(frete);
+            document.getElementById('resumo-decoracao-venda').textContent = formatarMoeda(decoracao);
+            document.getElementById('resumo-valor-cliente-paga').textContent = formatarMoeda(valorClientePaga);
             document.getElementById('resumo-custo-total-venda').textContent = formatarMoeda(custoTotal);
             document.getElementById('resumo-lucro-bruto-venda').textContent = formatarMoeda(lucroBruto);
             document.getElementById('resumo-lucro-liquido-venda').textContent = formatarMoeda(lucroLiquido);
