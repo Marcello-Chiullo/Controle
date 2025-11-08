@@ -1021,17 +1021,50 @@
         }
         
         /**
-         * Formata data para exibição
+         * Formata data para exibição (CORRIGIDO - sem problema de fuso)
          */
         function formatarData(data) {
+            if (!data) return 'Data inválida';
+            
             try {
                 const d = new Date(data);
-                const dia = String(d.getDate()).padStart(2, '0');
-                const mes = String(d.getMonth() + 1).padStart(2, '0');
-                const ano = d.getFullYear();
+                
+                // Usar UTC para evitar problema de fuso horário
+                const dia = String(d.getUTCDate()).padStart(2, '0');
+                const mes = String(d.getUTCMonth() + 1).padStart(2, '0');
+                const ano = d.getUTCFullYear();
+                
                 return `${dia}/${mes}/${ano}`;
             } catch (e) {
                 return 'Data inválida';
+            }
+        }
+
+        /**
+         * Converte data do input (YYYY-MM-DD) para ISO sem problema de fuso horário
+         */
+        function dataInputParaISO(dataInput) {
+            if (!dataInput) return new Date().toISOString();
+            
+            // Adicionar horário meio-dia para evitar problema de fuso
+            return new Date(dataInput + 'T12:00:00').toISOString();
+        }
+        
+        /**
+         * Converte data ISO para formato do input (YYYY-MM-DD)
+         */
+        function dataISOParaInput(dataISO) {
+            if (!dataISO) return '';
+            
+            try {
+                const data = new Date(dataISO);
+                // Usar toLocaleDateString para evitar problema de fuso
+                const ano = data.getFullYear();
+                const mes = String(data.getMonth() + 1).padStart(2, '0');
+                const dia = String(data.getDate()).padStart(2, '0');
+                return `${ano}-${mes}-${dia}`;
+            } catch (e) {
+                return '';
             }
         }
 
@@ -2183,7 +2216,7 @@
                     
                     materialExistente.historicoCompras.push({
                         id: gerarId(),
-                        data: dados.dataCompra || agora,
+                        data: dados.dataCompra ? dataInputParaISO(dados.dataCompra) : agora,
                         precoTotal: precoTotal,                      // R$ 50,00
                         quantidadeUnidades: quantidadeUnidades,      // 5 caixas
                         quantidadePorUnidade: quantidadePorUnidade,  // 1000ml
@@ -2224,7 +2257,7 @@
                         
                         historicoCompras: [{
                             id: gerarId(),
-                            data: dados.dataCompra || agora,
+                            data: dados.dataCompra ? dataInputParaISO(dados.dataCompra) : agora,
                             precoTotal: precoTotal,
                             quantidadeUnidades: quantidadeUnidades,
                             quantidadePorUnidade: quantidadePorUnidade,
@@ -2631,7 +2664,11 @@
             // Definir data atual
             const dataInput = document.getElementById('data-compra-material');
             if (dataInput) {
-                dataInput.valueAsDate = new Date();
+                const hoje = new Date();
+                const ano = hoje.getFullYear();
+                const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+                const dia = String(hoje.getDate()).padStart(2, '0');
+                dataInput.value = `${ano}-${mes}-${dia}`;
             }
         }
         
@@ -4331,7 +4368,7 @@
                     
                     // ENTREGA
                     dataVenda: agora,
-                    dataEntrega: dados.dataEntrega || agora,
+                    dataEntrega: dados.dataEntrega ? dataInputParaISO(dados.dataEntrega) : agora,
                     horaEntrega: dados.horaEntrega || '',
                     statusEntrega: 'pendente',
                     
@@ -4864,7 +4901,11 @@
             // Definir data atual
             const dataInput = document.getElementById('venda-data-entrega');
             if (dataInput) {
-                dataInput.valueAsDate = new Date();
+                const hoje = new Date();
+                const ano = hoje.getFullYear();
+                const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+                const dia = String(hoje.getDate()).padStart(2, '0');
+                dataInput.value = `${ano}-${mes}-${dia}`;
             }
         }
         
@@ -5702,7 +5743,7 @@
                                 <div class="form-group">
                                     <label>Data de Entrega: *</label>
                                     <input type="date" id="edit-data-entrega" class="form-control" 
-                                        value="${venda.dataEntrega ? venda.dataEntrega.split('T')[0] : ''}" required>
+                                        value="${dataISOParaInput(venda.dataEntrega)}" required>
                                 </div>
                             </div>
                             <div class="form-col">
@@ -5770,7 +5811,7 @@
                             email: document.getElementById('edit-cliente-email').value.trim(),
                             endereco: document.getElementById('edit-cliente-endereco').value.trim()
                         },
-                        dataEntrega: document.getElementById('edit-data-entrega').value,
+                        dataEntrega: dataInputParaISO(document.getElementById('edit-data-entrega').value),
                         horaEntrega: document.getElementById('edit-hora-entrega').value,
                         statusEntrega: document.getElementById('edit-status-entrega').value,
                         statusPagamento: document.getElementById('edit-status-pagamento').value,
@@ -5850,16 +5891,18 @@
         }
         
         /**
-         * Busca entregas de um dia específico
+         * Busca entregas de um dia específico (CORRIGIDO)
          */
         function getEntregasDoDia(ano, mes, dia) {
             return vendas.filter(v => {
                 if (v.cancelada) return false;
                 
                 const dataEntrega = new Date(v.dataEntrega);
-                return dataEntrega.getFullYear() === ano &&
-                       dataEntrega.getMonth() === mes &&
-                       dataEntrega.getDate() === dia;
+                
+                // Usar UTC para evitar problema de fuso
+                return dataEntrega.getUTCFullYear() === ano &&
+                       dataEntrega.getUTCMonth() === mes &&
+                       dataEntrega.getUTCDate() === dia;
             }).sort((a, b) => {
                 // Ordenar por horário
                 if (a.horaEntrega && b.horaEntrega) {
@@ -5870,15 +5913,17 @@
         }
         
         /**
-         * Conta entregas do mês
+         * Conta entregas do mês (CORRIGIDO)
          */
         function getEntregasDoMes(ano, mes) {
             return vendas.filter(v => {
                 if (v.cancelada) return false;
                 
                 const dataEntrega = new Date(v.dataEntrega);
-                return dataEntrega.getFullYear() === ano &&
-                       dataEntrega.getMonth() === mes;
+                
+                // Usar UTC para evitar problema de fuso
+                return dataEntrega.getUTCFullYear() === ano &&
+                       dataEntrega.getUTCMonth() === mes;
             });
         }
         
