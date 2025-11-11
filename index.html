@@ -872,6 +872,7 @@
         <ul>
             <li><a href="#estoque" class="nav-link active" data-page="estoque">📦 Estoque</a></li>
             <li><a href="#materiais" class="nav-link" data-page="materiais">🏷️ Materiais</a></li>
+            <li><a href="#sub-receitas" class="nav-link" data-page="sub-receitas">🧩 Sub-Receitas</a></li>
             <li><a href="#receitas" class="nav-link" data-page="receitas">🍰 Receitas</a></li>
             <li><a href="#vendas" class="nav-link" data-page="vendas">💰 Vendas</a></li>
             <li><a href="#calendario" class="nav-link" data-page="calendario">📅 Calendário</a></li>
@@ -899,6 +900,174 @@
             <div class="card">
                 <p>Carregando...</p>
             </div>
+        </div>
+
+        <div id="sub-receitas-page" class="page-content">
+            <div class="page-header">
+                <h2>🧩 Sub-Receitas (Componentes Reutilizáveis)</h2>
+                <p>Crie massas, recheios e coberturas que podem ser usados em vários produtos</p>
+            </div>
+            
+            <div class="tabs">
+                <button class="tab-button active" data-tab="listar-sub">📋 Listar Sub-Receitas</button>
+                <button class="tab-button" data-tab="cadastrar-sub">➕ Cadastrar Sub-Receita</button>
+            </div>
+            
+            <!-- Tab: Listar Sub-Receitas -->
+            <div id="tab-listar-sub" class="tab-content active">
+                
+                <div class="filters-bar" style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <select id="filtro-tipo-sub" style="flex: 1;" onchange="filtrarSubReceitas()">
+                        <option value="">🔍 Todos os Tipos</option>
+                        <option value="massa">Massas</option>
+                        <option value="recheio">Recheios</option>
+                        <option value="cobertura">Coberturas</option>
+                        <option value="base">Bases</option>
+                        <option value="outro">Outros</option>
+                    </select>
+                    
+                    <input 
+                        type="text" 
+                        id="pesquisar-sub-receitas" 
+                        placeholder="🔎 Pesquisar..."
+                        style="flex: 2;"
+                        oninput="filtrarSubReceitas()"
+                    >
+                </div>
+                
+                <div id="lista-sub-receitas-cards" class="cards-grid">
+                    <p style="text-align: center; padding: 40px; color: var(--cor-texto-claro);">
+                        Nenhuma sub-receita cadastrada ainda.<br>
+                        Clique em "Cadastrar Sub-Receita" para começar.
+                    </p>
+                </div>
+                
+            </div>
+            
+            <!-- Tab: Cadastrar Sub-Receita -->
+            <div id="tab-cadastrar-sub" class="tab-content">
+                
+                <form id="form-sub-receita" class="form-card">
+                    <input type="hidden" id="sub-receita-id">
+                    
+                    <h3 id="titulo-form-sub-receita">➕ Nova Sub-Receita</h3>
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Nome *</label>
+                            <input 
+                                type="text" 
+                                id="sub-receita-nome" 
+                                required
+                                placeholder="Ex: Massa de Chocolate"
+                            >
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Tipo *</label>
+                            <select id="sub-receita-tipo" required>
+                                <option value="">Selecione...</option>
+                                <option value="massa">Massa</option>
+                                <option value="recheio">Recheio</option>
+                                <option value="cobertura">Cobertura</option>
+                                <option value="base">Base (para trufas/bombons)</option>
+                                <option value="outro">Outro</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Rendimento *</label>
+                            <input 
+                                type="number" 
+                                id="sub-receita-rendimento" 
+                                step="0.1" 
+                                min="0.1"
+                                required
+                                value="1.0"
+                                placeholder="Ex: 1.0"
+                            >
+                            <small>Quanto essa receita produz (em kg ou unidades)</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Unidade Rendimento</label>
+                            <select id="sub-receita-unidade-rendimento">
+                                <option value="kg">kg</option>
+                                <option value="un">unidades</option>
+                                <option value="l">litros</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group full-width">
+                            <label>Observações</label>
+                            <textarea 
+                                id="sub-receita-observacoes" 
+                                rows="2"
+                                placeholder="Ex: Massa básica para bolos e cupcakes. Tempo de preparo: 30min"
+                            ></textarea>
+                        </div>
+                    </div>
+                    
+                    <hr style="margin: 20px 0; border: none; border-top: 1px solid var(--cor-borda);">
+                    
+                    <h4>Ingredientes da Sub-Receita</h4>
+                    
+                    <div class="form-inline" style="display: flex; gap: 10px; margin-bottom: 15px;">
+                        <select id="sub-ingrediente-material" style="flex: 2;" onchange="preencherUnidadeSubIngrediente()">
+                            <option value="">Selecione o material...</option>
+                        </select>
+                        
+                        <input 
+                            type="number" 
+                            id="sub-ingrediente-quantidade" 
+                            placeholder="Quantidade" 
+                            step="0.001"
+                            style="flex: 1;"
+                        >
+                        
+                        <input 
+                            type="text" 
+                            id="sub-ingrediente-unidade" 
+                            placeholder="Un" 
+                            readonly
+                            style="flex: 0.5;"
+                        >
+                        
+                        <button 
+                            type="button" 
+                            id="btn-add-sub-ingrediente"
+                            class="btn btn-secondary"
+                            onclick="adicionarIngredienteSubReceita()"
+                        >
+                            ➕ Adicionar
+                        </button>
+                    </div>
+                    
+                    <div id="lista-sub-ingredientes" style="margin-top: 20px;">
+                        <p style="text-align: center; color: var(--cor-texto-claro); padding: 20px;">
+                            Nenhum ingrediente adicionado ainda
+                        </p>
+                    </div>
+                    
+                    <div id="resumo-sub-custos" class="card" style="margin-top: 20px; display: none; background: var(--cor-info-claro);">
+                        <!-- Resumo de custos será inserido aqui -->
+                    </div>
+                    
+                    <div class="form-actions" style="display: flex; gap: 10px; margin-top: 20px;">
+                        <button type="submit" class="btn btn-primary" style="flex: 1;">💾 Salvar Sub-Receita</button>
+                        <button 
+                            type="button" 
+                            class="btn btn-secondary" 
+                            onclick="cancelarEdicaoSubReceita()"
+                        >
+                            ❌ Cancelar
+                        </button>
+                    </div>
+                    
+                </form>
+                
+            </div>
+            
         </div>
         
         <!-- PÁGINA: RECEITAS -->
@@ -1002,6 +1171,8 @@
         let receitas = [];
         let vendas = [];
         let estoque = []; // Será sempre calculado, não armazenado
+        let subReceitas = [];
+        let produtosFinais = [];
         
         // Scanner de QR Code
         let html5QrCode = null;
@@ -1215,6 +1386,8 @@
                 localStorage.setItem('materiais', JSON.stringify(materiais));
                 localStorage.setItem('receitas', JSON.stringify(receitas));
                 localStorage.setItem('vendas', JSON.stringify(vendas));
+                localStorage.setItem('subReceitas', JSON.stringify(subReceitas));
+                localStorage.setItem('produtosFinais', JSON.stringify(produtosFinais));
                 localStorage.setItem('ultimaAtualizacao', new Date().toISOString());
                 return true;
             } catch (erro) {
@@ -1231,12 +1404,16 @@
                 materiais = JSON.parse(localStorage.getItem('materiais')) || [];
                 receitas = JSON.parse(localStorage.getItem('receitas')) || [];
                 vendas = JSON.parse(localStorage.getItem('vendas')) || [];
+                subReceitas = JSON.parse(localStorage.getItem('subReceitas')) || [];
+                produtosFinais = JSON.parse(localStorage.getItem('produtosFinais')) || [];
                 return true;
             } catch (erro) {
                 console.error('Erro ao carregar do localStorage:', erro);
                 materiais = [];
                 receitas = [];
                 vendas = [];
+                subReceitas = [];
+                produtosFinais = [];
                 return false;
             }
         }
@@ -1280,6 +1457,9 @@
                     break;
                 case 'materiais':
                     carregarPaginaMateriais();
+                    break;
+                case 'sub-receitas':
+                    carregarPaginaSubReceitas();
                     break;
                 case 'receitas':
                     carregarPaginaReceitas();
@@ -1423,6 +1603,8 @@
                         materiais = dadosNuvem.materiais || [];
                         receitas = dadosNuvem.receitas || [];
                         vendas = dadosNuvem.vendas || [];
+                        subReceitas = dadosNuvem.subReceitas || [];
+                        produtosFinais = dadosNuvem.produtosFinais || [];
                         
                         salvarLocalStorage();
                     } else {
@@ -1460,6 +1642,8 @@
                     materiais: materiais,
                     receitas: receitas,
                     vendas: vendas,
+                    subReceitas: subReceitas,
+                    produtosFinais: produtosFinais,
                     ultimaAtualizacao: new Date().toISOString()
                 };
                 
@@ -1500,6 +1684,8 @@
                     materiais: materiais,
                     receitas: receitas,
                     vendas: vendas,
+                    subReceitas: subReceitas,
+                    produtosFinais: produtosFinais,
                     ultimaAtualizacao: new Date().toISOString()
                 };
                 
@@ -1550,6 +1736,8 @@
                 materiais = dadosNuvem.materiais || [];
                 receitas = dadosNuvem.receitas || [];
                 vendas = dadosNuvem.vendas || [];
+                subReceitas = dadosNuvem.subReceitas || [];
+                produtosFinais = dadosNuvem.produtosFinais || [];
                 
                 // Recalcular estoque
                 estoque = calcularEstoqueCompleto();
@@ -3066,6 +3254,737 @@
         }
         
         console.log('✅ Módulo de Materiais e Estoque carregado');
+        
+        // ====================================
+        // PARTE 4.1: GESTÃO DE SUB-RECEITAS
+        // ====================================
+        
+        console.log('📦 Carregando módulo de Sub-Receitas...');
+        
+        // Array temporário para ingredientes da sub-receita sendo editada
+        let ingredientesSubReceitaTemp = [];
+        
+        /**
+         * CALCULA CUSTO DE UMA SUB-RECEITA
+         */
+        function calcularCustoSubReceita(subReceita) {
+            if (!subReceita.ingredientes || subReceita.ingredientes.length === 0) {
+                return {
+                    custoIngredientes: 0,
+                    custoTotal: 0,
+                    ingredientesDetalhados: [],
+                    custoPorKg: 0
+                };
+            }
+            
+            let custoIngredientes = 0;
+            const ingredientesDetalhados = [];
+            
+            subReceita.ingredientes.forEach(ing => {
+                const material = materiais.find(m => m.id === ing.materialId && !m.removed);
+                
+                if (material) {
+                    const precoMedio = calcularPrecoMedioPonderado(material.nome);
+                    const custoIngrediente = parseFloat(ing.quantidade) * precoMedio;
+                    
+                    custoIngredientes += custoIngrediente;
+                    
+                    ingredientesDetalhados.push({
+                        materialId: ing.materialId,
+                        materialNome: ing.materialNome,
+                        quantidade: ing.quantidade,
+                        unidadeMedida: ing.unidadeMedida,
+                        precoMedio: precoMedio,
+                        custo: custoIngrediente
+                    });
+                }
+            });
+            
+            return {
+                custoIngredientes: custoIngredientes,
+                custoTotal: custoIngredientes,
+                ingredientesDetalhados: ingredientesDetalhados,
+                custoPorKg: subReceita.rendimento > 0 ? custoIngredientes / subReceita.rendimento : 0
+            };
+        }
+        
+        /**
+         * SALVA SUB-RECEITA (nova ou edição)
+         */
+        function salvarSubReceita(dados) {
+            try {
+                if (!dados.nome) throw new Error('Nome da sub-receita é obrigatório');
+                if (!dados.tipo) throw new Error('Tipo da sub-receita é obrigatório');
+                if (!dados.rendimento || dados.rendimento <= 0) throw new Error('Rendimento deve ser maior que zero');
+                if (!dados.ingredientes || dados.ingredientes.length === 0) {
+                    throw new Error('Adicione pelo menos um ingrediente');
+                }
+                
+                const agora = new Date().toISOString();
+                
+                if (dados.id) {
+                    const subReceita = subReceitas.find(sr => sr.id === dados.id);
+                    if (!subReceita) throw new Error('Sub-receita não encontrada');
+                    
+                    subReceita.nome = dados.nome;
+                    subReceita.tipo = dados.tipo;
+                    subReceita.rendimento = parseFloat(dados.rendimento);
+                    subReceita.unidadeRendimento = dados.unidadeRendimento || 'kg';
+                    subReceita.observacoes = dados.observacoes || '';
+                    subReceita.ingredientes = dados.ingredientes;
+                    subReceita.atualizadaEm = agora;
+                    
+                    const custos = calcularCustoSubReceita(subReceita);
+                    subReceita.custoIngredientes = custos.custoIngredientes;
+                    subReceita.custoTotal = custos.custoTotal;
+                    subReceita.custoPorKg = custos.custoPorKg;
+                    
+                    mostrarToast('Sub-receita atualizada com sucesso!', 'success');
+                    
+                } else {
+                    const novaSubReceita = {
+                        id: 'subrec_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 11),
+                        nome: dados.nome,
+                        tipo: dados.tipo,
+                        rendimento: parseFloat(dados.rendimento),
+                        unidadeRendimento: dados.unidadeRendimento || 'kg',
+                        observacoes: dados.observacoes || '',
+                        ingredientes: dados.ingredientes,
+                        custoIngredientes: 0,
+                        custoTotal: 0,
+                        custoPorKg: 0,
+                        criadaEm: agora,
+                        atualizadaEm: agora
+                    };
+                    
+                    const custos = calcularCustoSubReceita(novaSubReceita);
+                    novaSubReceita.custoIngredientes = custos.custoIngredientes;
+                    novaSubReceita.custoTotal = custos.custoTotal;
+                    novaSubReceita.custoPorKg = custos.custoPorKg;
+                    
+                    subReceitas.push(novaSubReceita);
+                    
+                    mostrarToast('Sub-receita cadastrada com sucesso!', 'success');
+                }
+                
+                salvarLocalStorage();
+                sincronizarComNuvem();
+                
+                return true;
+                
+            } catch (erro) {
+                console.error('Erro ao salvar sub-receita:', erro);
+                mostrarToast('Erro: ' + erro.message, 'error');
+                return false;
+            }
+        }
+        
+        /**
+         * REMOVE SUB-RECEITA
+         */
+        function removerSubReceita(subReceitaId) {
+            const confirma = confirm(
+                '⚠️ ATENÇÃO!\n\n' +
+                'Tem certeza que deseja remover esta sub-receita?\n\n' +
+                'Se ela estiver sendo usada em algum produto, você não poderá remover.'
+            );
+            
+            if (!confirma) return false;
+            
+            try {
+                const index = subReceitas.findIndex(sr => sr.id === subReceitaId);
+                if (index === -1) throw new Error('Sub-receita não encontrada');
+                
+                const subReceita = subReceitas[index];
+                subReceitas.splice(index, 1);
+                
+                salvarLocalStorage();
+                sincronizarComNuvem();
+                
+                mostrarToast('Sub-receita removida com sucesso!', 'success');
+                carregarPaginaSubReceitas();
+                
+                return true;
+                
+            } catch (erro) {
+                console.error('Erro ao remover sub-receita:', erro);
+                mostrarToast('Erro: ' + erro.message, 'error');
+                return false;
+            }
+        }
+        
+        /**
+         * CARREGA PÁGINA DE SUB-RECEITAS
+         */
+        function carregarPaginaSubReceitas() {
+            console.log('📄 Carregando página de sub-receitas...');
+            popularSelectMateriaisSubReceita();
+            renderizarSubReceitasCards();
+            configurarTabsSubReceitas();
+            limparFormularioSubReceita();
+        }
+        
+        /**
+         * POPULAR SELECT DE MATERIAIS
+         */
+        function popularSelectMateriaisSubReceita() {
+            const select = document.getElementById('sub-ingrediente-material');
+            if (!select) return;
+            
+            const materiaisAtivos = materiais.filter(m => !m.removed);
+            let html = '<option value="">Selecione o material...</option>';
+            
+            const categorias = [...new Set(materiaisAtivos.map(m => m.categoria || 'Sem Categoria'))];
+            
+            categorias.forEach(categoria => {
+                html += `<optgroup label="${categoria}">`;
+                materiaisAtivos
+                    .filter(m => (m.categoria || 'Sem Categoria') === categoria)
+                    .forEach(m => {
+                        html += `<option value="${m.id}">${m.nome} (${m.unidadeMedida})</option>`;
+                    });
+                html += '</optgroup>';
+            });
+            
+            select.innerHTML = html;
+        }
+        
+        /**
+         * PREENCHE UNIDADE AUTOMATICAMENTE
+         */
+        function preencherUnidadeSubIngrediente() {
+            const selectMaterial = document.getElementById('sub-ingrediente-material');
+            const inputUnidade = document.getElementById('sub-ingrediente-unidade');
+            
+            if (!selectMaterial || !inputUnidade) return;
+            
+            const materialId = selectMaterial.value;
+            if (!materialId) {
+                inputUnidade.value = '';
+                return;
+            }
+            
+            const material = materiais.find(m => m.id === materialId);
+            if (material) {
+                inputUnidade.value = material.unidadeMedida || 'un';
+            }
+        }
+        
+        /**
+         * ADICIONA INGREDIENTE AO ARRAY TEMPORÁRIO
+         */
+        function adicionarIngredienteSubReceita() {
+            const materialId = document.getElementById('sub-ingrediente-material').value;
+            const quantidade = parseFloat(document.getElementById('sub-ingrediente-quantidade').value);
+            const unidade = document.getElementById('sub-ingrediente-unidade').value;
+            
+            if (!materialId) {
+                mostrarToast('Selecione um material', 'warning');
+                return;
+            }
+            
+            if (!quantidade || quantidade <= 0) {
+                mostrarToast('Informe uma quantidade válida', 'warning');
+                return;
+            }
+            
+            const material = materiais.find(m => m.id === materialId);
+            if (!material) {
+                mostrarToast('Material não encontrado', 'error');
+                return;
+            }
+            
+            const jaExiste = ingredientesSubReceitaTemp.find(i => i.materialId === materialId);
+            if (jaExiste) {
+                mostrarToast('Este ingrediente já foi adicionado. Remova-o primeiro se quiser alterar.', 'warning');
+                return;
+            }
+            
+            ingredientesSubReceitaTemp.push({
+                materialId: materialId,
+                materialNome: material.nome,
+                quantidade: quantidade,
+                unidadeMedida: unidade
+            });
+            
+            document.getElementById('sub-ingrediente-material').value = '';
+            document.getElementById('sub-ingrediente-quantidade').value = '';
+            document.getElementById('sub-ingrediente-unidade').value = '';
+            
+            renderizarIngredientesSubReceitaTemp();
+            atualizarResumoSubCustos();
+            
+            mostrarToast('Ingrediente adicionado!', 'success', 1500);
+        }
+        
+        /**
+         * RENDERIZA LISTA DE INGREDIENTES TEMPORÁRIOS
+         */
+        function renderizarIngredientesSubReceitaTemp() {
+            const container = document.getElementById('lista-sub-ingredientes');
+            if (!container) return;
+            
+            if (ingredientesSubReceitaTemp.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: var(--cor-texto-claro); padding: 20px;">Nenhum ingrediente adicionado ainda</p>';
+                return;
+            }
+            
+            let html = '<table style="width: 100%; border-collapse: collapse;"><thead><tr style="background: var(--cor-secundaria); font-weight: 600;"><th style="padding: 10px; text-align: left;">Ingrediente</th><th style="padding: 10px; text-align: center;">Quantidade</th><th style="padding: 10px; text-align: right;">Preço Médio</th><th style="padding: 10px; text-align: right;">Custo</th><th style="padding: 10px; text-align: center;">Ações</th></tr></thead><tbody>';
+            
+            ingredientesSubReceitaTemp.forEach((ing, index) => {
+                const precoMedio = calcularPrecoMedioPonderado(ing.materialNome);
+                const custo = ing.quantidade * precoMedio;
+                
+                html += `
+                    <tr style="border-bottom: 1px solid var(--cor-borda);">
+                        <td style="padding: 10px;"><strong>${ing.materialNome}</strong></td>
+                        <td style="padding: 10px; text-align: center;">${ing.quantidade.toFixed(3)} ${ing.unidadeMedida}</td>
+                        <td style="padding: 10px; text-align: right;">${formatarMoeda(precoMedio)}/${ing.unidadeMedida}</td>
+                        <td style="padding: 10px; text-align: right; font-weight: 600;">${formatarMoeda(custo)}</td>
+                        <td style="padding: 10px; text-align: center;">
+                            <button 
+                                type="button"
+                                class="btn btn-sm btn-danger" 
+                                onclick="removerIngredienteSubReceitaTemp(${index})"
+                                style="padding: 5px 10px; font-size: 12px;"
+                            >
+                                🗑️ Remover
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+        
+        /**
+         * REMOVE INGREDIENTE DO ARRAY TEMPORÁRIO
+         */
+        function removerIngredienteSubReceitaTemp(index) {
+            const ingrediente = ingredientesSubReceitaTemp[index];
+            ingredientesSubReceitaTemp.splice(index, 1);
+            renderizarIngredientesSubReceitaTemp();
+            atualizarResumoSubCustos();
+            mostrarToast(`${ingrediente.materialNome} removido`, 'info', 1500);
+        }
+        
+        /**
+         * ATUALIZA RESUMO DE CUSTOS DA SUB-RECEITA
+         */
+        function atualizarResumoSubCustos() {
+            const resumo = document.getElementById('resumo-sub-custos');
+            if (!resumo) return;
+            
+            if (ingredientesSubReceitaTemp.length === 0) {
+                resumo.style.display = 'none';
+                return;
+            }
+            
+            let custoTotal = 0;
+            ingredientesSubReceitaTemp.forEach(ing => {
+                const precoMedio = calcularPrecoMedioPonderado(ing.materialNome);
+                custoTotal += ing.quantidade * precoMedio;
+            });
+            
+            const rendimento = parseFloat(document.getElementById('sub-receita-rendimento').value) || 1.0;
+            const unidadeRendimento = document.getElementById('sub-receita-unidade-rendimento').value || 'kg';
+            const custoPorUnidade = custoTotal / rendimento;
+            
+            resumo.innerHTML = `
+                <h4>💰 Resumo de Custos</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
+                    <div>
+                        <div style="font-size: 12px; color: var(--cor-texto-claro); margin-bottom: 5px;">Custo Total dos Ingredientes:</div>
+                        <div style="font-size: 24px; font-weight: bold; color: var(--cor-primaria);">${formatarMoeda(custoTotal)}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 12px; color: var(--cor-texto-claro); margin-bottom: 5px;">Custo por ${unidadeRendimento}:</div>
+                        <div style="font-size: 24px; font-weight: bold; color: var(--cor-info);">${formatarMoeda(custoPorUnidade)}</div>
+                    </div>
+                </div>
+                <div style="margin-top: 15px; padding: 10px; background: var(--cor-aviso-claro); border-radius: var(--borda-radius-sm); font-size: 14px;">
+                    ℹ️ <strong>Rendimento:</strong> ${rendimento} ${unidadeRendimento}
+                </div>
+            `;
+            
+            resumo.style.display = 'block';
+        }
+        
+        /**
+         * RENDERIZA CARDS DE SUB-RECEITAS
+         */
+        function renderizarSubReceitasCards() {
+            const container = document.getElementById('lista-sub-receitas-cards');
+            if (!container) return;
+            
+            const filtroTipo = document.getElementById('filtro-tipo-sub') ? document.getElementById('filtro-tipo-sub').value : '';
+            const pesquisa = document.getElementById('pesquisar-sub-receitas') ? document.getElementById('pesquisar-sub-receitas').value.toLowerCase() : '';
+            
+            let subReceitasFiltradas = subReceitas;
+            
+            if (filtroTipo) {
+                subReceitasFiltradas = subReceitasFiltradas.filter(sr => sr.tipo === filtroTipo);
+            }
+            
+            if (pesquisa) {
+                subReceitasFiltradas = subReceitasFiltradas.filter(sr => 
+                    sr.nome.toLowerCase().includes(pesquisa) ||
+                    sr.tipo.toLowerCase().includes(pesquisa) ||
+                    (sr.observacoes && sr.observacoes.toLowerCase().includes(pesquisa))
+                );
+            }
+            
+            if (subReceitasFiltradas.length === 0) {
+                container.innerHTML = `
+                    <p style="text-align: center; padding: 40px; color: var(--cor-texto-claro);">
+                        ${subReceitas.length === 0 
+                            ? 'Nenhuma sub-receita cadastrada ainda.<br>Clique em "Cadastrar Sub-Receita" para começar.'
+                            : 'Nenhuma sub-receita encontrada com os filtros aplicados.'
+                        }
+                    </p>
+                `;
+                return;
+            }
+            
+            const tiposMap = {
+                'massa': '🍰 Massas',
+                'recheio': '🍫 Recheios',
+                'cobertura': '🎨 Coberturas',
+                'base': '🧁 Bases',
+                'outro': '📦 Outros'
+            };
+            
+            const tiposPresentes = [...new Set(subReceitasFiltradas.map(sr => sr.tipo))];
+            
+            let html = '';
+            
+            tiposPresentes.forEach(tipo => {
+                const subReceitasTipo = subReceitasFiltradas.filter(sr => sr.tipo === tipo);
+                
+                html += `
+                    <div style="grid-column: 1 / -1; margin-top: 20px; margin-bottom: 10px;">
+                        <h3 style="font-size: 18px; color: var(--cor-primaria);">${tiposMap[tipo] || tipo}</h3>
+                    </div>
+                `;
+                
+                subReceitasTipo.forEach(sr => {
+                    const custos = calcularCustoSubReceita(sr);
+                    
+                    const tipoEmoji = {
+                        'massa': '🍰',
+                        'recheio': '🍫',
+                        'cobertura': '🎨',
+                        'base': '🧁',
+                        'outro': '📦'
+                    }[sr.tipo] || '🧩';
+                    
+                    html += `
+                        <div class="card" style="cursor: pointer; transition: var(--transicao-rapida);" onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='var(--sombra-forte)'" onmouseout="this.style.transform=''; this.style.boxShadow='var(--sombra-media)'">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+                                <div style="flex: 1;">
+                                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+                                        <span style="font-size: 32px;">${tipoEmoji}</span>
+                                        <div>
+                                            <h4 style="margin: 0; font-size: 18px; color: var(--cor-primaria);">${sr.nome}</h4>
+                                            <div style="font-size: 13px; color: var(--cor-texto-claro);">
+                                                ${sr.ingredientes.length} ingrediente${sr.ingredientes.length !== 1 ? 's' : ''}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div style="text-align: right;">
+                                    <div style="font-size: 20px; font-weight: bold; color: var(--cor-primaria);">
+                                        ${formatarMoeda(custos.custoTotal)}
+                                    </div>
+                                    <div style="font-size: 12px; color: var(--cor-texto-claro);">
+                                        ${formatarMoeda(custos.custoPorKg)}/${sr.unidadeRendimento}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div style="background: var(--cor-fundo); padding: 10px; border-radius: var(--borda-radius-sm); margin-bottom: 15px;">
+                                <div style="font-size: 13px; margin-bottom: 5px;">
+                                    <strong>Rendimento:</strong> ${sr.rendimento} ${sr.unidadeRendimento}
+                                </div>
+                                ${sr.observacoes ? `
+                                    <div style="font-size: 13px; color: var(--cor-texto-claro); margin-top: 5px;">
+                                        💬 ${sr.observacoes}
+                                    </div>
+                                ` : ''}
+                            </div>
+                            
+                            <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                                <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); verDetalhesSubReceita('${sr.id}')">
+                                    👁️ Ver Detalhes
+                                </button>
+                                <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); editarSubReceita('${sr.id}')">
+                                    ✏️ Editar
+                                </button>
+                                <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); removerSubReceita('${sr.id}')">
+                                    🗑️ Remover
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        /**
+         * FILTRA SUB-RECEITAS
+         */
+        function filtrarSubReceitas() {
+            renderizarSubReceitasCards();
+        }
+        
+        /**
+         * CONFIGURA TABS DE SUB-RECEITAS
+         */
+        function configurarTabsSubReceitas() {
+            const tabButtons = document.querySelectorAll('#sub-receitas-page .tab-button');
+            
+            tabButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    tabButtons.forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('#sub-receitas-page .tab-content').forEach(c => c.classList.remove('active'));
+                    
+                    this.classList.add('active');
+                    const tabId = this.getAttribute('data-tab');
+                    const tabContent = document.getElementById('tab-' + tabId);
+                    if (tabContent) {
+                        tabContent.classList.add('active');
+                    }
+                });
+            });
+        }
+        
+        /**
+         * LIMPA FORMULÁRIO DE SUB-RECEITA
+         */
+        function limparFormularioSubReceita() {
+            const form = document.getElementById('form-sub-receita');
+            if (!form) return;
+            
+            form.reset();
+            ingredientesSubReceitaTemp = [];
+            document.getElementById('sub-receita-id').value = '';
+            document.getElementById('sub-receita-rendimento').value = '1.0';
+            document.getElementById('titulo-form-sub-receita').textContent = '➕ Nova Sub-Receita';
+            
+            renderizarIngredientesSubReceitaTemp();
+            
+            const resumo = document.getElementById('resumo-sub-custos');
+            if (resumo) resumo.style.display = 'none';
+        }
+        
+        /**
+         * CONFIGURA FORMULÁRIO DE SUB-RECEITA
+         */
+        function configurarFormularioSubReceita() {
+            const form = document.getElementById('form-sub-receita');
+            if (!form) return;
+            
+            const inputRendimento = document.getElementById('sub-receita-rendimento');
+            const selectUnidade = document.getElementById('sub-receita-unidade-rendimento');
+            
+            if (inputRendimento) {
+                inputRendimento.addEventListener('input', atualizarResumoSubCustos);
+            }
+            if (selectUnidade) {
+                selectUnidade.addEventListener('change', atualizarResumoSubCustos);
+            }
+            
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                if (ingredientesSubReceitaTemp.length === 0) {
+                    mostrarToast('Adicione pelo menos um ingrediente', 'warning');
+                    return;
+                }
+                
+                const dados = {
+                    id: document.getElementById('sub-receita-id').value || null,
+                    nome: document.getElementById('sub-receita-nome').value.trim(),
+                    tipo: document.getElementById('sub-receita-tipo').value,
+                    rendimento: document.getElementById('sub-receita-rendimento').value,
+                    unidadeRendimento: document.getElementById('sub-receita-unidade-rendimento').value,
+                    observacoes: document.getElementById('sub-receita-observacoes').value.trim(),
+                    ingredientes: ingredientesSubReceitaTemp
+                };
+                
+                if (salvarSubReceita(dados)) {
+                    limparFormularioSubReceita();
+                    document.querySelector('.tab-button[data-tab="listar-sub"]').click();
+                    renderizarSubReceitasCards();
+                }
+            });
+        }
+        
+        /**
+         * EDITA SUB-RECEITA
+         */
+        function editarSubReceita(subReceitaId) {
+            const subReceita = subReceitas.find(sr => sr.id === subReceitaId);
+            if (!subReceita) {
+                mostrarToast('Sub-receita não encontrada', 'error');
+                return;
+            }
+            
+            document.querySelector('.tab-button[data-tab="cadastrar-sub"]').click();
+            
+            setTimeout(() => {
+                document.getElementById('sub-receita-id').value = subReceita.id;
+                document.getElementById('sub-receita-nome').value = subReceita.nome;
+                document.getElementById('sub-receita-tipo').value = subReceita.tipo;
+                document.getElementById('sub-receita-rendimento').value = subReceita.rendimento;
+                document.getElementById('sub-receita-unidade-rendimento').value = subReceita.unidadeRendimento || 'kg';
+                document.getElementById('sub-receita-observacoes').value = subReceita.observacoes || '';
+                
+                ingredientesSubReceitaTemp = [...subReceita.ingredientes];
+                renderizarIngredientesSubReceitaTemp();
+                atualizarResumoSubCustos();
+                
+                document.getElementById('titulo-form-sub-receita').textContent = '✏️ Editar Sub-Receita';
+                mostrarToast('Editando: ' + subReceita.nome, 'info');
+                
+                document.getElementById('form-sub-receita').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
+        
+        /**
+         * CANCELA EDIÇÃO DE SUB-RECEITA
+         */
+        function cancelarEdicaoSubReceita() {
+            const confirma = confirm('Descartar alterações?');
+            if (!confirma) return;
+            
+            limparFormularioSubReceita();
+            document.querySelector('.tab-button[data-tab="listar-sub"]').click();
+        }
+        
+        /**
+         * VER DETALHES DA SUB-RECEITA
+         */
+        function verDetalhesSubReceita(subReceitaId) {
+            const subReceita = subReceitas.find(sr => sr.id === subReceitaId);
+            if (!subReceita) {
+                mostrarToast('Sub-receita não encontrada', 'error');
+                return;
+            }
+            
+            const custos = calcularCustoSubReceita(subReceita);
+            
+            const tipoEmoji = {
+                'massa': '🍰',
+                'recheio': '🍫',
+                'cobertura': '🎨',
+                'base': '🧁',
+                'outro': '📦'
+            }[subReceita.tipo] || '🧩';
+            
+            const tipoNome = {
+                'massa': 'Massa',
+                'recheio': 'Recheio',
+                'cobertura': 'Cobertura',
+                'base': 'Base',
+                'outro': 'Outro'
+            }[subReceita.tipo] || subReceita.tipo;
+            
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 900px;">
+                    <div class="modal-header">
+                        <h3>${tipoEmoji} ${subReceita.nome}</h3>
+                        <button class="modal-close" onclick="this.parentElement.parentElement.parentElement.remove()">×</button>
+                    </div>
+                    
+                    <div class="card" style="background: var(--cor-info-claro); margin-bottom: 20px;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                            <div>
+                                <div style="font-size: 12px; color: var(--cor-texto-claro); margin-bottom: 5px;">Tipo:</div>
+                                <div style="font-weight: 600;">${tipoNome}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 12px; color: var(--cor-texto-claro); margin-bottom: 5px;">Rendimento:</div>
+                                <div style="font-weight: 600;">${subReceita.rendimento} ${subReceita.unidadeRendimento}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 12px; color: var(--cor-texto-claro); margin-bottom: 5px;">Custo Total:</div>
+                                <div style="font-size: 20px; font-weight: bold; color: var(--cor-primaria);">${formatarMoeda(custos.custoTotal)}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 12px; color: var(--cor-texto-claro); margin-bottom: 5px;">Custo por ${subReceita.unidadeRendimento}:</div>
+                                <div style="font-size: 20px; font-weight: bold; color: var(--cor-info);">${formatarMoeda(custos.custoPorKg)}</div>
+                            </div>
+                        </div>
+                        ${subReceita.observacoes ? `
+                            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--cor-borda);">
+                                <div style="font-size: 12px; color: var(--cor-texto-claro); margin-bottom: 5px;">Observações:</div>
+                                <div style="font-style: italic;">${subReceita.observacoes}</div>
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    <h4>📋 Ingredientes (${subReceita.ingredientes.length})</h4>
+                    
+                    <table style="width: 100%; margin-top: 15px; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: var(--cor-secundaria); font-weight: 600;">
+                                <th style="padding: 10px; text-align: left;">Ingrediente</th>
+                                <th style="padding: 10px; text-align: center;">Quantidade</th>
+                                <th style="padding: 10px; text-align: right;">Preço Médio</th>
+                                <th style="padding: 10px; text-align: right;">Custo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${custos.ingredientesDetalhados.map(ing => `
+                                <tr style="border-bottom: 1px solid var(--cor-borda);">
+                                    <td style="padding: 10px;">${ing.materialNome}</td>
+                                    <td style="padding: 10px; text-align: center;">${ing.quantidade.toFixed(3)} ${ing.unidadeMedida}</td>
+                                    <td style="padding: 10px; text-align: right;">${formatarMoeda(ing.precoMedio)}/${ing.unidadeMedida}</td>
+                                    <td style="padding: 10px; text-align: right; font-weight: 600;">${formatarMoeda(ing.custo)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                        <tfoot>
+                            <tr style="background: var(--cor-secundaria-clara); font-weight: bold;">
+                                <td colspan="3" style="padding: 10px; text-align: right;">TOTAL:</td>
+                                <td style="padding: 10px; text-align: right; font-size: 18px; color: var(--cor-primaria);">${formatarMoeda(custos.custoTotal)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    
+                    <div style="margin-top: 20px; padding: 15px; background: var(--cor-aviso-claro); border-radius: var(--borda-radius);">
+                        ℹ️ <strong>Atenção:</strong> Os custos exibidos são calculados com base no preço médio ponderado atual dos ingredientes. 
+                        Os valores podem variar conforme novas compras são registradas no estoque.
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; margin-top: 20px;">
+                        <button class="btn btn-secondary" onclick="editarSubReceita('${subReceita.id}'); this.parentElement.parentElement.parentElement.remove();" style="flex: 1;">
+                            ✏️ Editar
+                        </button>
+                        <button class="btn btn-primary" onclick="this.parentElement.parentElement.parentElement.remove()" style="flex: 1;">
+                            ✅ Fechar
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            configurarFormularioSubReceita();
+        });
+        
+        console.log('✅ Módulo de Sub-Receitas carregado'); 
+        
         // ====================================
         // PARTE 4: GESTÃO DE RECEITAS
         // ====================================
@@ -6430,9 +7349,10 @@
         console.log('   1. Base + Firebase');
         console.log('   2. Autenticação Hierárquica');
         console.log('   3. Materiais + Estoque');
-        console.log('   4. Receitas');
-        console.log('   5. Vendas');
-        console.log('   6. Calendário de Entregas');
+        console.log('   4. Sub-Receitas (FASE 1) 🆕');
+        console.log('   5. Receitas');
+        console.log('   6. Vendas');
+        console.log('   7. Calendário de Entregas');
         console.log('');
         console.log('📦 Funcionalidades disponíveis:');
         console.log('   • Sistema ADM/Usuário');
