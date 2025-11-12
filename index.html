@@ -2535,58 +2535,74 @@
         }
         
         /**
-         * Salva os custos fixos
+         * Salva os custos fixos (CORRIGIDO)
          */
         function salvarCustosFixos() {
-            // Capturar valores dos campos
-            configuracaoCustos.custosFixos.espacoFisico = {
-                aluguel: parseFloat(document.getElementById('custo-aluguel').value) || 0,
-                condominio: parseFloat(document.getElementById('custo-condominio').value) || 0,
-                iptu: parseFloat(document.getElementById('custo-iptu').value) || 0,
-                seguro: parseFloat(document.getElementById('custo-seguro').value) || 0
-            };
-            
-            configuracaoCustos.custosFixos.utilidades = {
-                energia: parseFloat(document.getElementById('custo-energia').value) || 0,
-                agua: parseFloat(document.getElementById('custo-agua').value) || 0,
-                gas: parseFloat(document.getElementById('custo-gas').value) || 0,
-                internet: parseFloat(document.getElementById('custo-internet').value) || 0,
-                telefone: parseFloat(document.getElementById('custo-telefone').value) || 0
-            };
-            
-            configuracaoCustos.custosFixos.equipamentos = {
-                valorTotal: parseFloat(document.getElementById('custo-equipamentos-valor').value) || 0,
-                mesesDepreciacao: parseInt(document.getElementById('custo-equipamentos-meses').value) || 60,
-                depreciacao: parseFloat(document.getElementById('custo-equipamentos-depreciacao').value) || 0
-            };
-            
-            configuracaoCustos.custosFixos.marketing = {
-                redesSociais: parseFloat(document.getElementById('custo-redes-sociais').value) || 0,
-                materialGrafico: parseFloat(document.getElementById('custo-material-grafico').value) || 0,
-                site: parseFloat(document.getElementById('custo-site').value) || 0
-            };
-            
-            configuracaoCustos.custosFixos.administrativo = {
-                contador: parseFloat(document.getElementById('custo-contador').value) || 0,
-                softwares: parseFloat(document.getElementById('custo-softwares').value) || 0,
-                escritorio: parseFloat(document.getElementById('custo-escritorio').value) || 0
-            };
-            
-            configuracaoCustos.custosFixos.pessoal = {
-                salarios: parseFloat(document.getElementById('custo-salarios').value) || 0,
-                prolabore: parseFloat(document.getElementById('custo-prolabore').value) || 0,
-                encargos: parseFloat(document.getElementById('custo-encargos').value) || 0
-            };
-            
-            // Salvar no localStorage
-            salvarLocalStorage();
-            
-            // Sincronizar com Firebase
-            sincronizarComNuvem();
-            
-            mostrarToast('✅ Custos fixos salvos com sucesso!', 'success');
-            
-            console.log('💰 Custos fixos salvos:', configuracaoCustos.custosFixos);
+            try {
+                console.log('💾 Salvando custos fixos...');
+                
+                // Capturar valores dos campos
+                configuracaoCustos.custosFixos.espacoFisico = {
+                    aluguel: parseFloat(document.getElementById('custo-aluguel').value) || 0,
+                    condominio: parseFloat(document.getElementById('custo-condominio').value) || 0,
+                    iptu: parseFloat(document.getElementById('custo-iptu').value) || 0,
+                    seguro: parseFloat(document.getElementById('custo-seguro').value) || 0
+                };
+                
+                configuracaoCustos.custosFixos.utilidades = {
+                    energia: parseFloat(document.getElementById('custo-energia').value) || 0,
+                    agua: parseFloat(document.getElementById('custo-agua').value) || 0,
+                    gas: parseFloat(document.getElementById('custo-gas').value) || 0,
+                    internet: parseFloat(document.getElementById('custo-internet').value) || 0,
+                    telefone: parseFloat(document.getElementById('custo-telefone').value) || 0
+                };
+                
+                configuracaoCustos.custosFixos.equipamentos = {
+                    valorTotal: parseFloat(document.getElementById('custo-equipamentos-valor').value) || 0,
+                    mesesDepreciacao: parseInt(document.getElementById('custo-equipamentos-meses').value) || 60,
+                    depreciacao: parseFloat(document.getElementById('custo-equipamentos-depreciacao').value) || 0
+                };
+                
+                configuracaoCustos.custosFixos.marketing = {
+                    redesSociais: parseFloat(document.getElementById('custo-redes-sociais').value) || 0,
+                    materialGrafico: parseFloat(document.getElementById('custo-material-grafico').value) || 0,
+                    site: parseFloat(document.getElementById('custo-site').value) || 0
+                };
+                
+                configuracaoCustos.custosFixos.administrativo = {
+                    contador: parseFloat(document.getElementById('custo-contador').value) || 0,
+                    softwares: parseFloat(document.getElementById('custo-softwares').value) || 0,
+                    escritorio: parseFloat(document.getElementById('custo-escritorio').value) || 0
+                };
+                
+                configuracaoCustos.custosFixos.pessoal = {
+                    salarios: parseFloat(document.getElementById('custo-salarios').value) || 0,
+                    prolabore: parseFloat(document.getElementById('custo-prolabore').value) || 0,
+                    encargos: parseFloat(document.getElementById('custo-encargos').value) || 0
+                };
+                
+                // Salvar no localStorage
+                const salvouLocal = salvarLocalStorage();
+                
+                if (!salvouLocal) {
+                    throw new Error('Erro ao salvar no localStorage');
+                }
+                
+                // Sincronizar com Firebase
+                sincronizarComNuvem().then(() => {
+                    console.log('✅ Custos fixos salvos com sucesso!');
+                    mostrarToast('✅ Custos fixos salvos com sucesso!', 'success');
+                }).catch(erro => {
+                    console.error('Erro na sincronização:', erro);
+                    mostrarToast('⚠️ Salvo localmente, mas falhou sincronização com nuvem', 'warning');
+                });
+                
+                console.log('💰 Custos fixos salvos:', configuracaoCustos.custosFixos);
+                
+            } catch (erro) {
+                console.error('❌ Erro ao salvar custos fixos:', erro);
+                mostrarToast('❌ Erro ao salvar: ' + erro.message, 'error');
+            }
         }
         
         console.log('✅ Funções de configuração de custos carregadas');
@@ -3125,6 +3141,12 @@
                     carregarMaoDeObraNaInterface(); 
                     carregarMetaProducaoNaInterface(); 
                     carregarCustosVariaveisNaInterface();
+                    
+                    // Inicializar listeners DEPOIS de carregar a interface
+                    setTimeout(() => {
+                        inicializarListenersCustosFixos();
+                        atualizarResumoCustosFixos(); // Atualizar resumo inicial
+                    }, 100);
                     break;
                 
             }
@@ -9420,6 +9442,49 @@
                     </div>
                 </div>
             `;
+        }
+
+        /**
+         * Inicializa event listeners de custos quando navegar para Configurações
+         */
+        function inicializarListenersCustosFixos() {
+            console.log('🔧 Inicializando listeners de custos...');
+            
+            // Todos os inputs de custos fixos
+            const camposCustos = [
+                'custo-aluguel', 'custo-condominio', 'custo-iptu', 'custo-seguro',
+                'custo-energia', 'custo-agua', 'custo-gas', 'custo-internet', 'custo-telefone',
+                'custo-equipamentos-valor', 'custo-equipamentos-meses',
+                'custo-redes-sociais', 'custo-material-grafico', 'custo-site',
+                'custo-contador', 'custo-softwares', 'custo-escritorio',
+                'custo-salarios', 'custo-prolabore', 'custo-encargos'
+            ];
+            
+            camposCustos.forEach(campoId => {
+                const campo = document.getElementById(campoId);
+                if (campo) {
+                    // Remover listeners antigos
+                    campo.removeEventListener('input', atualizarResumoCustosFixos);
+                    // Adicionar novo listener
+                    campo.addEventListener('input', atualizarResumoCustosFixos);
+                }
+            });
+            
+            // Listener especial para equipamentos
+            const campoEquipValor = document.getElementById('custo-equipamentos-valor');
+            const campoEquipMeses = document.getElementById('custo-equipamentos-meses');
+            
+            if (campoEquipValor) {
+                campoEquipValor.removeEventListener('change', calcularDepreciacao);
+                campoEquipValor.addEventListener('change', calcularDepreciacao);
+            }
+            
+            if (campoEquipMeses) {
+                campoEquipMeses.removeEventListener('change', calcularDepreciacao);
+                campoEquipMeses.addEventListener('change', calcularDepreciacao);
+            }
+            
+            console.log('✅ Listeners de custos inicializados!');
         }
         
         /**
