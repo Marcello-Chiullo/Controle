@@ -2140,9 +2140,9 @@
                     telefone: 0
                 },
                 equipamentos: {
-                    valorTotal: 0,        // Valor total dos equipamentos
-                    mesesDepreciacao: 60, // Padrão: 5 anos
-                    depreciacao: 0        // Calculado automaticamente
+                    valorTotal: 0,
+                    mesesDepreciacao: 60,
+                    depreciacao: 0
                 },
                 marketing: {
                     redesSociais: 0,
@@ -2163,7 +2163,7 @@
             
             // Mão de Obra
             maoDeObra: {
-                metodoCalculo: 'ambos', // 'fixo', 'complexidade', 'ambos'
+                metodoCalculo: 'ambos',
                 valorHoraFixo: 30,
                 valoresPorComplexidade: {
                     simples: 25,
@@ -2175,18 +2175,18 @@
             
             // Meta de Produção Mensal
             metaProducao: {
-                quantidadeMensal: 50, // Quantidade de produtos/mês
-                unidade: 'produtos'   // 'produtos', 'kg', 'unidades'
+                quantidadeMensal: 50,
+                unidade: 'produtos'
             },
             
             // Custos Variáveis Padrão (por produto)
             custosVariaveisPadrao: {
-                embalagemPrimaria: 3.00,    // Caixa, fita
-                embalagemSecundaria: 1.50,  // Sacola, papel
-                decoracaoEspecial: 0,       // Flores, toppers (opcional)
-                entrega: 5.00,              // Combustível
-                brindes: 2.00,              // Cartão, adesivo
-                perdas: 2                   // Percentual de perdas (2%)
+                embalagemPrimaria: 3.00,
+                embalagemSecundaria: 1.50,
+                decoracaoEspecial: 0,
+                entrega: 5.00,
+                brindes: 2.00,
+                perdas: 2
             }
         };
         
@@ -2540,6 +2540,17 @@
         function salvarCustosFixos() {
             try {
                 console.log('💾 Salvando custos fixos...');
+                
+                // 🛡️ PROTEÇÃO: Garantir que a estrutura existe
+                if (!configuracaoCustos) {
+                    console.error('❌ configuracaoCustos não existe!');
+                    configuracaoCustos = {};
+                }
+                
+                if (!configuracaoCustos.custosFixos) {
+                    console.warn('⚠️ custosFixos não existe, criando...');
+                    configuracaoCustos.custosFixos = {};
+                }
                 
                 // Capturar valores dos campos
                 configuracaoCustos.custosFixos.espacoFisico = {
