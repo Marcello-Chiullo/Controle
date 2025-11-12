@@ -838,6 +838,144 @@
             font-size: 10px;
             margin-top: 2px;
         }
+
+        /* ====================================
+           ABAS (TABS)
+           ==================================== */
+        
+        .tabs {
+            display: flex;
+            gap: var(--espacamento-sm);
+            margin-bottom: var(--espacamento-lg);
+            border-bottom: 2px solid var(--cor-borda);
+            flex-wrap: wrap;
+        }
+        
+        .tab-btn {
+            padding: var(--espacamento-md) var(--espacamento-lg);
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--cor-texto-claro);
+            transition: var(--transicao-rapida);
+            white-space: nowrap;
+        }
+        
+        .tab-btn:hover {
+            color: var(--cor-primaria);
+            background: var(--cor-secundaria-clara);
+        }
+        
+        .tab-btn.active {
+            color: var(--cor-primaria);
+            border-bottom-color: var(--cor-primaria);
+            font-weight: 600;
+        }
+        
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* ====================================
+           FORMULÁRIO EM GRID
+           ==================================== */
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: var(--espacamento-md);
+            margin-bottom: var(--espacamento-lg);
+        }
+        
+        .form-section {
+            margin-bottom: var(--espacamento-xl);
+            padding-bottom: var(--espacamento-lg);
+            border-bottom: 1px solid var(--cor-borda);
+        }
+        
+        .form-section:last-child {
+            border-bottom: none;
+        }
+        
+        .form-section h4 {
+            color: var(--cor-primaria);
+            margin-bottom: var(--espacamento-md);
+            font-size: 18px;
+        }
+        
+        .hint {
+            color: var(--cor-texto-claro);
+            font-size: 14px;
+            margin-bottom: var(--espacamento-lg);
+            font-style: italic;
+        }
+        
+        .form-group small {
+            display: block;
+            margin-top: 5px;
+            color: var(--cor-texto-claro);
+            font-size: 12px;
+        }
+        
+        /* ====================================
+           RESUMO DE CUSTOS
+           ==================================== */
+        
+        .card[style*="background: var(--cor-secundaria-clara)"] div > strong {
+            display: block;
+            margin-bottom: 5px;
+            color: var(--cor-texto);
+        }
+        
+        .card[style*="background: var(--cor-secundaria-clara)"] div > div {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--cor-primaria);
+        }
+        
+        /* ====================================
+           ANIMAÇÃO DE FADE IN
+           ==================================== */
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* ====================================
+           RESPONSIVIDADE DAS ABAS
+           ==================================== */
+        
+        @media (max-width: 768px) {
+            .tabs {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            .tab-btn {
+                flex-shrink: 0;
+                padding: var(--espacamento-sm) var(--espacamento-md);
+                font-size: 14px;
+            }
+            
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
@@ -876,6 +1014,7 @@
             <li><a href="#produtos" class="nav-link" data-page="produtos">🎂 Produtos</a></li>
             <li><a href="#vendas" class="nav-link" data-page="vendas">💰 Vendas</a></li>
             <li><a href="#calendario" class="nav-link" data-page="calendario">📅 Calendário</a></li>
+            <li><a href="#configuracoes" class="nav-link" data-page="configuracoes">⚙️ Configurações</a></li>
         </ul>
     </nav>
     
@@ -931,6 +1070,239 @@
             <h2>📅 Calendário de Entregas</h2>
             <div class="card">
                 <p>Carregando...</p>
+            </div>
+        </div>
+
+        <!-- ====================================
+             PÁGINA: CONFIGURAÇÕES DE CUSTOS
+             ==================================== -->
+        
+        <div class="page hidden" id="page-configuracoes">
+            <div class="page-header">
+                <h2>⚙️ Configurações de Custos</h2>
+                <p>Configure todos os custos do seu negócio para cálculos precisos</p>
+            </div>
+        
+            <!-- Abas de Configuração -->
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="custos-fixos">
+                    🏢 Custos Fixos Mensais
+                </button>
+                <button class="tab-btn" data-tab="mao-obra">
+                    👷 Mão de Obra
+                </button>
+                <button class="tab-btn" data-tab="meta-producao">
+                    🎯 Meta de Produção
+                </button>
+                <button class="tab-btn" data-tab="custos-variaveis">
+                    📦 Custos Variáveis Padrão
+                </button>
+            </div>
+        
+            <!-- ABA 1: CUSTOS FIXOS MENSAIS -->
+            <div class="tab-content active" id="tab-custos-fixos">
+                <div class="card">
+                    <h3>💰 Custos Fixos Mensais</h3>
+                    <p class="hint">Despesas que você tem todo mês, independente de quantos produtos vender</p>
+        
+                    <!-- ESPAÇO FÍSICO -->
+                    <div class="form-section">
+                        <h4>🏠 Espaço Físico</h4>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Aluguel</label>
+                                <input type="number" id="custo-aluguel" step="0.01" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label>Condomínio</label>
+                                <input type="number" id="custo-condominio" step="0.01" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label>IPTU (mensal)</label>
+                                <input type="number" id="custo-iptu" step="0.01" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label>Seguro</label>
+                                <input type="number" id="custo-seguro" step="0.01" placeholder="0.00">
+                            </div>
+                        </div>
+                    </div>
+        
+                    <!-- UTILIDADES -->
+                    <div class="form-section">
+                        <h4>💡 Utilidades</h4>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Energia Elétrica</label>
+                                <input type="number" id="custo-energia" step="0.01" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label>Água</label>
+                                <input type="number" id="custo-agua" step="0.01" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label>Gás</label>
+                                <input type="number" id="custo-gas" step="0.01" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label>Internet</label>
+                                <input type="number" id="custo-internet" step="0.01" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label>Telefone</label>
+                                <input type="number" id="custo-telefone" step="0.01" placeholder="0.00">
+                            </div>
+                        </div>
+                    </div>
+        
+                    <!-- EQUIPAMENTOS -->
+                    <div class="form-section">
+                        <h4>🔧 Equipamentos (Depreciação)</h4>
+                        <p class="hint">Valor dos equipamentos dividido pelo tempo de vida útil</p>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Valor Total dos Equipamentos</label>
+                                <input type="number" id="custo-equipamentos-valor" step="0.01" placeholder="0.00" 
+                                       onchange="calcularDepreciacao()">
+                                <small>Ex: Forno (R$ 3.000) + Batedeira (R$ 1.500) + Geladeira (R$ 2.000) = R$ 6.500</small>
+                            </div>
+                            <div class="form-group">
+                                <label>Tempo de Vida Útil (meses)</label>
+                                <input type="number" id="custo-equipamentos-meses" value="60" 
+                                       onchange="calcularDepreciacao()">
+                                <small>Padrão: 60 meses (5 anos)</small>
+                            </div>
+                            <div class="form-group">
+                                <label>Depreciação Mensal (calculado)</label>
+                                <input type="number" id="custo-equipamentos-depreciacao" step="0.01" 
+                                       placeholder="0.00" disabled>
+                            </div>
+                        </div>
+                    </div>
+        
+                    <!-- MARKETING -->
+                    <div class="form-section">
+                        <h4>📢 Marketing</h4>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Redes Sociais (anúncios)</label>
+                                <input type="number" id="custo-redes-sociais" step="0.01" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label>Material Gráfico</label>
+                                <input type="number" id="custo-material-grafico" step="0.01" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label>Site/Domínio</label>
+                                <input type="number" id="custo-site" step="0.01" placeholder="0.00">
+                            </div>
+                        </div>
+                    </div>
+        
+                    <!-- ADMINISTRATIVO -->
+                    <div class="form-section">
+                        <h4>📋 Administrativo</h4>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Contador</label>
+                                <input type="number" id="custo-contador" step="0.01" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label>Softwares/Assinaturas</label>
+                                <input type="number" id="custo-softwares" step="0.01" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label>Material de Escritório</label>
+                                <input type="number" id="custo-escritorio" step="0.01" placeholder="0.00">
+                            </div>
+                        </div>
+                    </div>
+        
+                    <!-- PESSOAL -->
+                    <div class="form-section">
+                        <h4>👥 Pessoal</h4>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Salários (funcionários)</label>
+                                <input type="number" id="custo-salarios" step="0.01" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label>Pró-labore (seu salário)</label>
+                                <input type="number" id="custo-prolabore" step="0.01" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label>Encargos</label>
+                                <input type="number" id="custo-encargos" step="0.01" placeholder="0.00">
+                            </div>
+                        </div>
+                    </div>
+        
+                    <!-- RESUMO CUSTOS FIXOS -->
+                    <div class="card" style="background: var(--cor-secundaria-clara); margin-top: 20px;">
+                        <h4>📊 Resumo dos Custos Fixos</h4>
+                        <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                            <div>
+                                <strong>Espaço Físico:</strong>
+                                <div id="resumo-espaco-fisico">R$ 0,00</div>
+                            </div>
+                            <div>
+                                <strong>Utilidades:</strong>
+                                <div id="resumo-utilidades">R$ 0,00</div>
+                            </div>
+                            <div>
+                                <strong>Equipamentos:</strong>
+                                <div id="resumo-equipamentos">R$ 0,00</div>
+                            </div>
+                            <div>
+                                <strong>Marketing:</strong>
+                                <div id="resumo-marketing">R$ 0,00</div>
+                            </div>
+                            <div>
+                                <strong>Administrativo:</strong>
+                                <div id="resumo-administrativo">R$ 0,00</div>
+                            </div>
+                            <div>
+                                <strong>Pessoal:</strong>
+                                <div id="resumo-pessoal">R$ 0,00</div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid var(--cor-primaria);">
+                            <h3 style="color: var(--cor-primaria);">
+                                💰 TOTAL MENSAL: <span id="total-custos-fixos">R$ 0,00</span>
+                            </h3>
+                        </div>
+                    </div>
+        
+                    <div class="form-actions">
+                        <button class="btn btn-primary" onclick="salvarCustosFixos()">
+                            💾 Salvar Custos Fixos
+                        </button>
+                    </div>
+                </div>
+            </div>
+        
+            <!-- ABA 2: MÃO DE OBRA (Placeholder por enquanto) -->
+            <div class="tab-content" id="tab-mao-obra">
+                <div class="card">
+                    <h3>👷 Configuração de Mão de Obra</h3>
+                    <p>Esta seção será implementada na próxima etapa...</p>
+                </div>
+            </div>
+        
+            <!-- ABA 3: META DE PRODUÇÃO (Placeholder por enquanto) -->
+            <div class="tab-content" id="tab-meta-producao">
+                <div class="card">
+                    <h3>🎯 Meta de Produção Mensal</h3>
+                    <p>Esta seção será implementada na próxima etapa...</p>
+                </div>
+            </div>
+        
+            <!-- ABA 4: CUSTOS VARIÁVEIS (Placeholder por enquanto) -->
+            <div class="tab-content" id="tab-custos-variaveis">
+                <div class="card">
+                    <h3>📦 Custos Variáveis Padrão</h3>
+                    <p>Esta seção será implementada na próxima etapa...</p>
+                </div>
             </div>
         </div>
         
@@ -1015,6 +1387,74 @@
         
         // Arrays temporários para formulários
         let produtosVendaTemp = []; // 🆕 NOVO - substitui receitasVendaTemp
+
+        // 🆕 MÓDULO 5: SISTEMA DE CUSTOS REALISTA
+        let configuracaoCustos = {
+            // Custos Fixos Mensais
+            custosFixos: {
+                espacoFisico: {
+                    aluguel: 0,
+                    condominio: 0,
+                    iptu: 0,
+                    seguro: 0
+                },
+                utilidades: {
+                    energia: 0,
+                    agua: 0,
+                    gas: 0,
+                    internet: 0,
+                    telefone: 0
+                },
+                equipamentos: {
+                    valorTotal: 0,        // Valor total dos equipamentos
+                    mesesDepreciacao: 60, // Padrão: 5 anos
+                    depreciacao: 0        // Calculado automaticamente
+                },
+                marketing: {
+                    redesSociais: 0,
+                    materialGrafico: 0,
+                    site: 0
+                },
+                administrativo: {
+                    contador: 0,
+                    softwares: 0,
+                    escritorio: 0
+                },
+                pessoal: {
+                    salarios: 0,
+                    prolabore: 0,
+                    encargos: 0
+                }
+            },
+            
+            // Mão de Obra
+            maoDeObra: {
+                metodoCalculo: 'ambos', // 'fixo', 'complexidade', 'ambos'
+                valorHoraFixo: 30,
+                valoresPorComplexidade: {
+                    simples: 25,
+                    medio: 35,
+                    complexo: 50,
+                    premium: 70
+                }
+            },
+            
+            // Meta de Produção Mensal
+            metaProducao: {
+                quantidadeMensal: 50, // Quantidade de produtos/mês
+                unidade: 'produtos'   // 'produtos', 'kg', 'unidades'
+            },
+            
+            // Custos Variáveis Padrão (por produto)
+            custosVariaveisPadrao: {
+                embalagemPrimaria: 3.00,    // Caixa, fita
+                embalagemSecundaria: 1.50,  // Sacola, papel
+                decoracaoEspecial: 0,       // Flores, toppers (opcional)
+                entrega: 5.00,              // Combustível
+                brindes: 2.00,              // Cartão, adesivo
+                perdas: 2                   // Percentual de perdas (2%)
+            }
+        };
         
         // Scanner de QR Code
         let html5QrCode = null;
@@ -1101,6 +1541,349 @@
             if (isNaN(valor)) valor = 0;
             return 'R$ ' + parseFloat(valor).toFixed(2).replace('.', ',');
         }
+
+        // ====================================
+        // MÓDULO 5: FUNÇÕES DE CÁLCULO DE CUSTOS
+        // ====================================
+        
+        /**
+         * Calcula o total de custos fixos mensais
+         */
+        function calcularTotalCustosFixos() {
+            const cf = configuracaoCustos.custosFixos;
+            
+            let total = 0;
+            
+            // Somar todas as categorias
+            Object.keys(cf).forEach(categoria => {
+                Object.keys(cf[categoria]).forEach(item => {
+                    const valor = parseFloat(cf[categoria][item]) || 0;
+                    total += valor;
+                });
+            });
+            
+            return total;
+        }
+        
+        /**
+         * Calcula o custo fixo rateado por unidade
+         */
+        function calcularCustoFixoPorUnidade() {
+            const totalFixo = calcularTotalCustosFixos();
+            const metaMensal = parseFloat(configuracaoCustos.metaProducao.quantidadeMensal) || 1;
+            
+            return totalFixo / metaMensal;
+        }
+        
+        /**
+         * Calcula o custo de mão de obra para um produto
+         * @param {number} tempoProducao - Tempo em horas
+         * @param {string} complexidade - 'simples', 'medio', 'complexo', 'premium'
+         */
+        function calcularCustoMaoDeObra(tempoProducao, complexidade = 'medio') {
+            const config = configuracaoCustos.maoDeObra;
+            tempoProducao = parseFloat(tempoProducao) || 0;
+            
+            if (tempoProducao === 0) return 0;
+            
+            let custoTotal = 0;
+            
+            switch(config.metodoCalculo) {
+                case 'fixo':
+                    custoTotal = tempoProducao * config.valorHoraFixo;
+                    break;
+                    
+                case 'complexidade':
+                    const valorHora = config.valoresPorComplexidade[complexidade] || config.valoresPorComplexidade.medio;
+                    custoTotal = tempoProducao * valorHora;
+                    break;
+                    
+                case 'ambos':
+                    // Usa a média entre fixo e complexidade
+                    const valorComplexidade = config.valoresPorComplexidade[complexidade] || config.valoresPorComplexidade.medio;
+                    const media = (config.valorHoraFixo + valorComplexidade) / 2;
+                    custoTotal = tempoProducao * media;
+                    break;
+            }
+            
+            return custoTotal;
+        }
+        
+        /**
+         * Calcula o custo total de um produto (NOVO CÁLCULO COMPLETO)
+         * @param {object} produto - Objeto do produto final
+         * @returns {object} - Breakdown detalhado dos custos
+         */
+        function calcularCustoTotalProduto(produto) {
+            // 1. Custo de Ingredientes (já existe no sistema)
+            const custoIngredientes = parseFloat(produto.custoTotal) || 0;
+            
+            // 2. Custos Variáveis Padrão
+            const custosVar = configuracaoCustos.custosVariaveisPadrao;
+            const custoEmbalagem = (custosVar.embalagemPrimaria || 0) + (custosVar.embalagemSecundaria || 0);
+            const custoDecoracao = parseFloat(produto.custoDecoracao) || custosVar.decoracaoEspecial || 0;
+            const custoEntrega = parseFloat(produto.custoEntrega) || custosVar.entrega || 0;
+            const custoBrindes = custosVar.brindes || 0;
+            
+            // 3. Mão de Obra
+            const tempoProducao = parseFloat(produto.tempoProducao) || 0;
+            const complexidade = produto.complexidade || 'medio';
+            const custoMaoObra = calcularCustoMaoDeObra(tempoProducao, complexidade);
+            
+            // 4. Rateio de Custos Fixos
+            const custoFixoRateado = calcularCustoFixoPorUnidade();
+            
+            // 5. Subtotal
+            const subtotal = custoIngredientes + custoEmbalagem + custoDecoracao + 
+                             custoEntrega + custoBrindes + custoMaoObra + custoFixoRateado;
+            
+            // 6. Perdas (percentual sobre o subtotal)
+            const percentualPerdas = (custosVar.perdas || 2) / 100;
+            const custoPerdas = subtotal * percentualPerdas;
+            
+            // 7. CUSTO TOTAL FINAL
+            const custoTotal = subtotal + custoPerdas;
+            
+            // Retornar breakdown detalhado
+            return {
+                custoIngredientes: custoIngredientes,
+                custoEmbalagem: custoEmbalagem,
+                custoDecoracao: custoDecoracao,
+                custoEntrega: custoEntrega,
+                custoBrindes: custoBrindes,
+                custoMaoObra: custoMaoObra,
+                custoFixoRateado: custoFixoRateado,
+                subtotal: subtotal,
+                custoPerdas: custoPerdas,
+                custoTotal: custoTotal,
+                
+                // Informações adicionais
+                tempoProducao: tempoProducao,
+                complexidade: complexidade,
+                percentualPerdas: custosVar.perdas || 2
+            };
+        }
+        
+        /**
+         * Calcula margem de lucro
+         * @param {number} precoVenda 
+         * @param {number} custoTotal 
+         */
+        function calcularMargem(precoVenda, custoTotal) {
+            if (custoTotal === 0) return 100;
+            
+            const lucro = precoVenda - custoTotal;
+            const margem = (lucro / precoVenda) * 100;
+            
+            return {
+                lucro: lucro,
+                margemPercentual: margem,
+                margemBruta: lucro, // Mesmo que lucro para produtos
+                margemLiquida: lucro // Será diferente quando tiver impostos
+            };
+        }
+        
+        console.log('✅ Funções de cálculo de custos carregadas');
+
+        // ====================================
+        // MÓDULO 5: CARREGAR E SALVAR CONFIGURAÇÕES
+        // ====================================
+        
+        /**
+         * Carrega as configurações de custos nos campos do formulário
+         */
+        function carregarConfiguracoesNaInterface() {
+            const cf = configuracaoCustos.custosFixos;
+            
+            // Espaço Físico
+            document.getElementById('custo-aluguel').value = cf.espacoFisico.aluguel || '';
+            document.getElementById('custo-condominio').value = cf.espacoFisico.condominio || '';
+            document.getElementById('custo-iptu').value = cf.espacoFisico.iptu || '';
+            document.getElementById('custo-seguro').value = cf.espacoFisico.seguro || '';
+            
+            // Utilidades
+            document.getElementById('custo-energia').value = cf.utilidades.energia || '';
+            document.getElementById('custo-agua').value = cf.utilidades.agua || '';
+            document.getElementById('custo-gas').value = cf.utilidades.gas || '';
+            document.getElementById('custo-internet').value = cf.utilidades.internet || '';
+            document.getElementById('custo-telefone').value = cf.utilidades.telefone || '';
+            
+            // Equipamentos
+            document.getElementById('custo-equipamentos-valor').value = cf.equipamentos.valorTotal || '';
+            document.getElementById('custo-equipamentos-meses').value = cf.equipamentos.mesesDepreciacao || 60;
+            document.getElementById('custo-equipamentos-depreciacao').value = cf.equipamentos.depreciacao || '';
+            
+            // Marketing
+            document.getElementById('custo-redes-sociais').value = cf.marketing.redesSociais || '';
+            document.getElementById('custo-material-grafico').value = cf.marketing.materialGrafico || '';
+            document.getElementById('custo-site').value = cf.marketing.site || '';
+            
+            // Administrativo
+            document.getElementById('custo-contador').value = cf.administrativo.contador || '';
+            document.getElementById('custo-softwares').value = cf.administrativo.softwares || '';
+            document.getElementById('custo-escritorio').value = cf.administrativo.escritorio || '';
+            
+            // Pessoal
+            document.getElementById('custo-salarios').value = cf.pessoal.salarios || '';
+            document.getElementById('custo-prolabore').value = cf.pessoal.prolabore || '';
+            document.getElementById('custo-encargos').value = cf.pessoal.encargos || '';
+            
+            // Atualizar resumo
+            atualizarResumoCustosFixos();
+        }
+        
+        /**
+         * Calcula a depreciação dos equipamentos
+         */
+        function calcularDepreciacao() {
+            const valorTotal = parseFloat(document.getElementById('custo-equipamentos-valor').value) || 0;
+            const meses = parseInt(document.getElementById('custo-equipamentos-meses').value) || 60;
+            
+            const depreciacao = valorTotal / meses;
+            
+            document.getElementById('custo-equipamentos-depreciacao').value = depreciacao.toFixed(2);
+            
+            // Atualizar resumo
+            atualizarResumoCustosFixos();
+        }
+        
+        /**
+         * Atualiza o resumo dos custos fixos em tempo real
+         */
+        function atualizarResumoCustosFixos() {
+            // Espaço Físico
+            const espacoFisico = 
+                (parseFloat(document.getElementById('custo-aluguel').value) || 0) +
+                (parseFloat(document.getElementById('custo-condominio').value) || 0) +
+                (parseFloat(document.getElementById('custo-iptu').value) || 0) +
+                (parseFloat(document.getElementById('custo-seguro').value) || 0);
+            
+            // Utilidades
+            const utilidades = 
+                (parseFloat(document.getElementById('custo-energia').value) || 0) +
+                (parseFloat(document.getElementById('custo-agua').value) || 0) +
+                (parseFloat(document.getElementById('custo-gas').value) || 0) +
+                (parseFloat(document.getElementById('custo-internet').value) || 0) +
+                (parseFloat(document.getElementById('custo-telefone').value) || 0);
+            
+            // Equipamentos
+            const equipamentos = parseFloat(document.getElementById('custo-equipamentos-depreciacao').value) || 0;
+            
+            // Marketing
+            const marketing = 
+                (parseFloat(document.getElementById('custo-redes-sociais').value) || 0) +
+                (parseFloat(document.getElementById('custo-material-grafico').value) || 0) +
+                (parseFloat(document.getElementById('custo-site').value) || 0);
+            
+            // Administrativo
+            const administrativo = 
+                (parseFloat(document.getElementById('custo-contador').value) || 0) +
+                (parseFloat(document.getElementById('custo-softwares').value) || 0) +
+                (parseFloat(document.getElementById('custo-escritorio').value) || 0);
+            
+            // Pessoal
+            const pessoal = 
+                (parseFloat(document.getElementById('custo-salarios').value) || 0) +
+                (parseFloat(document.getElementById('custo-prolabore').value) || 0) +
+                (parseFloat(document.getElementById('custo-encargos').value) || 0);
+            
+            // Total
+            const total = espacoFisico + utilidades + equipamentos + marketing + administrativo + pessoal;
+            
+            // Atualizar interface
+            document.getElementById('resumo-espaco-fisico').textContent = formatarMoeda(espacoFisico);
+            document.getElementById('resumo-utilidades').textContent = formatarMoeda(utilidades);
+            document.getElementById('resumo-equipamentos').textContent = formatarMoeda(equipamentos);
+            document.getElementById('resumo-marketing').textContent = formatarMoeda(marketing);
+            document.getElementById('resumo-administrativo').textContent = formatarMoeda(administrativo);
+            document.getElementById('resumo-pessoal').textContent = formatarMoeda(pessoal);
+            document.getElementById('total-custos-fixos').textContent = formatarMoeda(total);
+        }
+        
+        /**
+         * Salva os custos fixos
+         */
+        function salvarCustosFixos() {
+            // Capturar valores dos campos
+            configuracaoCustos.custosFixos.espacoFisico = {
+                aluguel: parseFloat(document.getElementById('custo-aluguel').value) || 0,
+                condominio: parseFloat(document.getElementById('custo-condominio').value) || 0,
+                iptu: parseFloat(document.getElementById('custo-iptu').value) || 0,
+                seguro: parseFloat(document.getElementById('custo-seguro').value) || 0
+            };
+            
+            configuracaoCustos.custosFixos.utilidades = {
+                energia: parseFloat(document.getElementById('custo-energia').value) || 0,
+                agua: parseFloat(document.getElementById('custo-agua').value) || 0,
+                gas: parseFloat(document.getElementById('custo-gas').value) || 0,
+                internet: parseFloat(document.getElementById('custo-internet').value) || 0,
+                telefone: parseFloat(document.getElementById('custo-telefone').value) || 0
+            };
+            
+            configuracaoCustos.custosFixos.equipamentos = {
+                valorTotal: parseFloat(document.getElementById('custo-equipamentos-valor').value) || 0,
+                mesesDepreciacao: parseInt(document.getElementById('custo-equipamentos-meses').value) || 60,
+                depreciacao: parseFloat(document.getElementById('custo-equipamentos-depreciacao').value) || 0
+            };
+            
+            configuracaoCustos.custosFixos.marketing = {
+                redesSociais: parseFloat(document.getElementById('custo-redes-sociais').value) || 0,
+                materialGrafico: parseFloat(document.getElementById('custo-material-grafico').value) || 0,
+                site: parseFloat(document.getElementById('custo-site').value) || 0
+            };
+            
+            configuracaoCustos.custosFixos.administrativo = {
+                contador: parseFloat(document.getElementById('custo-contador').value) || 0,
+                softwares: parseFloat(document.getElementById('custo-softwares').value) || 0,
+                escritorio: parseFloat(document.getElementById('custo-escritorio').value) || 0
+            };
+            
+            configuracaoCustos.custosFixos.pessoal = {
+                salarios: parseFloat(document.getElementById('custo-salarios').value) || 0,
+                prolabore: parseFloat(document.getElementById('custo-prolabore').value) || 0,
+                encargos: parseFloat(document.getElementById('custo-encargos').value) || 0
+            };
+            
+            // Salvar no localStorage
+            salvarLocalStorage();
+            
+            // Sincronizar com Firebase
+            sincronizarComNuvem();
+            
+            mostrarToast('✅ Custos fixos salvos com sucesso!', 'success');
+            
+            console.log('💰 Custos fixos salvos:', configuracaoCustos.custosFixos);
+        }
+        
+        console.log('✅ Funções de configuração de custos carregadas');
+
+        /**
+         * Adiciona event listeners para atualização em tempo real
+         */
+        function inicializarEventListenersCustos() {
+            // Todos os inputs de custos fixos
+            const camposCustos = [
+                'custo-aluguel', 'custo-condominio', 'custo-iptu', 'custo-seguro',
+                'custo-energia', 'custo-agua', 'custo-gas', 'custo-internet', 'custo-telefone',
+                'custo-redes-sociais', 'custo-material-grafico', 'custo-site',
+                'custo-contador', 'custo-softwares', 'custo-escritorio',
+                'custo-salarios', 'custo-prolabore', 'custo-encargos'
+            ];
+            
+            camposCustos.forEach(campoId => {
+                const campo = document.getElementById(campoId);
+                if (campo) {
+                    campo.addEventListener('input', atualizarResumoCustosFixos);
+                }
+            });
+            
+            console.log('✅ Event listeners de custos inicializados');
+        }
+        
+        // Inicializar quando navegar para a página
+        document.addEventListener('DOMContentLoaded', () => {
+            inicializarEventListenersCustos();
+        });
         
         /**
          * Normaliza nome para comparação (remove acentos, lowercase, trim)
@@ -1229,6 +2012,7 @@
                 localStorage.setItem('subReceitas', JSON.stringify(subReceitas));
                 localStorage.setItem('produtosFinais', JSON.stringify(produtosFinais));
                 localStorage.setItem('vendas', JSON.stringify(vendas));
+                localStorage.setItem('configuracaoCustos', JSON.stringify(configuracaoCustos));
                 localStorage.setItem('ultimaAtualizacao', new Date().toISOString());
                 return true;
             } catch (erro) {
@@ -1246,6 +2030,7 @@
                 subReceitas = JSON.parse(localStorage.getItem('subReceitas')) || [];
                 produtosFinais = JSON.parse(localStorage.getItem('produtosFinais')) || [];
                 vendas = JSON.parse(localStorage.getItem('vendas')) || [];
+                configuracaoCustos = JSON.parse(localStorage.getItem('configuracaoCustos')) || [];
                 return true;
             } catch (erro) {
                 console.error('Erro ao carregar do localStorage:', erro);
@@ -1253,6 +2038,7 @@
                 subReceitas = [];
                 produtosFinais = [];
                 vendas = [];
+                configuracaoCustos = [];
                 return false;
             }
         }
@@ -1309,8 +2095,43 @@
                 case 'calendario':
                     carregarPaginaCalendario();
                     break;
+                case 'configuracoes':
+                    carregarConfiguracoesNaInterface();
+                    break;
             }
         }
+
+        // ====================================
+        // MÓDULO 5: SISTEMA DE ABAS
+        // ====================================
+        
+        /**
+         * Inicializa o sistema de abas
+         */
+        function inicializarAbas() {
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const tabId = this.getAttribute('data-tab');
+                    
+                    // Remover active de todos os botões e conteúdos
+                    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    
+                    // Adicionar active no botão clicado e conteúdo correspondente
+                    this.classList.add('active');
+                    document.getElementById(`tab-${tabId}`).classList.add('active');
+                });
+            });
+        }
+        
+        // Inicializar abas quando o DOM carregar
+        document.addEventListener('DOMContentLoaded', () => {
+            inicializarAbas();
+        });
+        
+        console.log('✅ Sistema de abas inicializado');
         
         // ====================================
         // NAVEGAÇÃO - EVENT LISTENERS
@@ -1478,6 +2299,7 @@
                     subReceitas: subReceitas, // 🆕 NOVO
                     produtosFinais: produtosFinais, // 🆕 NOVO
                     vendas: vendas,
+                    configuracaoCustos: configuracaoCustos,
                     ultimaAtualizacao: new Date().toISOString()
                 };
                 
@@ -1519,6 +2341,7 @@
                     subReceitas: subReceitas, // 🆕 NOVO
                     produtosFinais: produtosFinais, // 🆕 NOVO
                     vendas: vendas,
+                    configuracaoCustos: configuracaoCustos,
                     ultimaAtualizacao: new Date().toISOString()
                 };
                 
@@ -1570,6 +2393,7 @@
                 subReceitas = dadosNuvem.subReceitas || [];
                 produtosFinais = dadosNuvem.produtosFinais || [];
                 vendas = dadosNuvem.vendas || [];
+                configuracaoCustos = dadosNuvem.configuracaoCustos || [];
                 
                 // Recalcular estoque
                 estoque = calcularEstoqueCompleto();
