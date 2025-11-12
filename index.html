@@ -976,6 +976,382 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* ====================================
+           RADIO CARDS (CARDS SELECIONÁVEIS)
+           ==================================== */
+        
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: var(--espacamento-md);
+        }
+        
+        .radio-card {
+            display: block;
+            position: relative;
+            cursor: pointer;
+        }
+        
+        .radio-card input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .radio-content {
+            padding: var(--espacamento-lg);
+            border: 2px solid var(--cor-borda);
+            border-radius: var(--borda-radius);
+            background: var(--cor-branco);
+            transition: var(--transicao-rapida);
+        }
+        
+        .radio-card:hover .radio-content {
+            border-color: var(--cor-primaria);
+            box-shadow: var(--sombra-leve);
+            transform: translateY(-2px);
+        }
+        
+        .radio-card input[type="radio"]:checked + .radio-content {
+            border-color: var(--cor-primaria);
+            background: var(--cor-secundaria-clara);
+            box-shadow: var(--sombra-media);
+        }
+        
+        .radio-content strong {
+            display: block;
+            font-size: 16px;
+            color: var(--cor-texto);
+            margin-bottom: 5px;
+        }
+        
+        .radio-content p {
+            margin: 5px 0;
+            color: var(--cor-texto-claro);
+            font-size: 14px;
+        }
+        
+        .radio-content small {
+            display: block;
+            margin-top: 8px;
+            color: var(--cor-texto-claro);
+            font-size: 12px;
+            font-style: italic;
+        }
+        
+        /* ====================================
+           SIMULADOR DE RESULTADOS
+           ==================================== */
+        
+        .simulador-resultados {
+            display: flex;
+            flex-direction: column;
+            gap: var(--espacamento-sm);
+        }
+        
+        .resultado-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--espacamento-sm) var(--espacamento-md);
+            background: var(--cor-branco);
+            border-radius: var(--borda-radius-sm);
+        }
+        
+        .resultado-item strong {
+            font-size: 14px;
+            color: var(--cor-texto);
+        }
+        
+        .resultado-item span {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--cor-primaria);
+        }
+        
+        /* ====================================
+           RESPONSIVIDADE
+           ==================================== */
+        
+        @media (max-width: 768px) {
+            .radio-content {
+                padding: var(--espacamento-md);
+            }
+            
+            .resultado-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 5px;
+            }
+        }
+
+        /* ====================================
+           SIMULADOR DE META DE PRODUÇÃO
+           ==================================== */
+        
+        .simulador-meta {
+            padding: var(--espacamento-lg);
+        }
+        
+        .meta-info {
+            display: flex;
+            flex-direction: column;
+            gap: var(--espacamento-md);
+        }
+        
+        .meta-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--espacamento-sm) var(--espacamento-md);
+            background: var(--cor-branco);
+            border-radius: var(--borda-radius-sm);
+        }
+        
+        .meta-item.destacado {
+            border: 2px solid var(--cor-aviso);
+            background: var(--cor-branco);
+            padding: var(--espacamento-md);
+        }
+        
+        .meta-item.destacado strong {
+            font-size: 16px;
+        }
+        
+        .meta-item.destacado span {
+            font-size: 22px;
+            color: var(--cor-aviso);
+        }
+        
+        .comparacao-metas {
+            padding: var(--espacamento-md);
+            background: var(--cor-branco);
+            border-radius: var(--borda-radius);
+        }
+        
+        .comparacao-metas h5 {
+            margin-bottom: var(--espacamento-md);
+            color: var(--cor-texto);
+        }
+        
+        .comparacao-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: var(--espacamento-sm);
+        }
+        
+        .comparacao-item {
+            padding: var(--espacamento-md);
+            background: var(--cor-fundo);
+            border-radius: var(--borda-radius-sm);
+            text-align: center;
+        }
+        
+        .comparacao-label {
+            font-size: 13px;
+            color: var(--cor-texto-claro);
+            margin-bottom: 5px;
+        }
+        
+        .comparacao-valor {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--cor-primaria);
+        }
+        
+        .alerta-info {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        /* ====================================
+           RESPONSIVIDADE
+           ==================================== */
+        
+        @media (max-width: 768px) {
+            .meta-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 5px;
+            }
+            
+            .comparacao-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* ====================================
+           SIMULADOR DE CUSTOS VARIÁVEIS
+           ==================================== */
+        
+        .simulador-variaveis {
+            padding: var(--espacamento-lg);
+        }
+        
+        .exemplo-produto {
+            background: var(--cor-branco);
+            padding: var(--espacamento-lg);
+            border-radius: var(--borda-radius);
+            margin-bottom: var(--espacamento-lg);
+        }
+        
+        .exemplo-produto h5 {
+            margin-bottom: var(--espacamento-md);
+            color: var(--cor-primaria);
+            font-size: 16px;
+        }
+        
+        .custo-breakdown {
+            display: flex;
+            flex-direction: column;
+            gap: var(--espacamento-sm);
+        }
+        
+        .custo-linha {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--espacamento-sm) var(--espacamento-md);
+            background: var(--cor-fundo);
+            border-radius: var(--borda-radius-sm);
+            font-size: 14px;
+        }
+        
+        .custo-linha.destaque {
+            background: var(--cor-secundaria-clara);
+            border-left: 3px solid var(--cor-primaria);
+        }
+        
+        .custo-linha.separador {
+            border-top: 2px solid var(--cor-borda);
+            margin-top: var(--espacamento-sm);
+            padding-top: var(--espacamento-md);
+            background: var(--cor-fundo);
+        }
+        
+        .custo-linha.total {
+            background: var(--cor-primaria);
+            color: var(--cor-branco);
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: var(--espacamento-sm);
+            padding: var(--espacamento-md);
+        }
+        
+        .custo-linha.total strong {
+            color: var(--cor-branco);
+            font-size: 18px;
+        }
+        
+        .custo-linha span {
+            color: var(--cor-texto);
+        }
+        
+        .custo-linha strong {
+            color: var(--cor-primaria);
+            font-weight: 600;
+        }
+        
+        .comparacao-impacto {
+            background: var(--cor-branco);
+            padding: var(--espacamento-lg);
+            border-radius: var(--borda-radius);
+        }
+        
+        .comparacao-impacto h5 {
+            margin-bottom: var(--espacamento-md);
+            color: var(--cor-info);
+            font-size: 16px;
+        }
+        
+        .impacto-grid {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: var(--espacamento-md);
+            align-items: center;
+            margin-bottom: var(--espacamento-md);
+        }
+        
+        .impacto-item {
+            padding: var(--espacamento-md);
+            background: var(--cor-fundo);
+            border-radius: var(--borda-radius);
+            text-align: center;
+        }
+        
+        .impacto-item.destaque {
+            background: var(--cor-sucesso-claro);
+            border: 2px solid var(--cor-sucesso);
+        }
+        
+        .impacto-label {
+            font-size: 13px;
+            color: var(--cor-texto-claro);
+            margin-bottom: 5px;
+        }
+        
+        .impacto-valor {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--cor-primaria);
+            margin-bottom: 5px;
+        }
+        
+        .impacto-item.destaque .impacto-valor {
+            color: var(--cor-sucesso);
+        }
+        
+        .impacto-desc {
+            font-size: 12px;
+            color: var(--cor-texto-claro);
+        }
+        
+        .impacto-seta {
+            font-size: 24px;
+            color: var(--cor-primaria);
+            text-align: center;
+        }
+        
+        .impacto-diferenca {
+            padding: var(--espacamento-md);
+            background: var(--cor-aviso-claro);
+            border-radius: var(--borda-radius);
+            text-align: center;
+            border-left: 4px solid var(--cor-aviso);
+        }
+        
+        .impacto-diferenca strong {
+            color: var(--cor-texto);
+            margin-right: 10px;
+        }
+        
+        .impacto-diferenca span {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--cor-aviso);
+        }
+        
+        /* ====================================
+           RESPONSIVIDADE
+           ==================================== */
+        
+        @media (max-width: 768px) {
+            .impacto-grid {
+                grid-template-columns: 1fr;
+                gap: var(--espacamento-sm);
+            }
+            
+            .impacto-seta {
+                transform: rotate(90deg);
+            }
+            
+            .custo-linha {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 5px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1281,27 +1657,385 @@
                 </div>
             </div>
         
-            <!-- ABA 2: MÃO DE OBRA (Placeholder por enquanto) -->
+            <!-- ABA 2: MÃO DE OBRA -->
             <div class="tab-content" id="tab-mao-obra">
                 <div class="card">
                     <h3>👷 Configuração de Mão de Obra</h3>
-                    <p>Esta seção será implementada na próxima etapa...</p>
+                    <p class="hint">Defina como calcular o custo do seu tempo de trabalho</p>
+            
+                    <!-- MÉTODO DE CÁLCULO -->
+                    <div class="form-section">
+                        <h4>🎯 Método de Cálculo</h4>
+                        <p class="hint">Escolha como você quer calcular o valor da sua mão de obra</p>
+                        
+                        <div class="radio-group">
+                            <label class="radio-card">
+                                <input type="radio" name="metodo-mao-obra" value="fixo" 
+                                       onchange="atualizarMetodoMaoObra()">
+                                <div class="radio-content">
+                                    <strong>💰 Valor Fixo por Hora</strong>
+                                    <p>Você define um valor único por hora trabalhada</p>
+                                    <small>Ex: R$ 30/hora para qualquer produto</small>
+                                </div>
+                            </label>
+            
+                            <label class="radio-card">
+                                <input type="radio" name="metodo-mao-obra" value="complexidade" 
+                                       onchange="atualizarMetodoMaoObra()">
+                                <div class="radio-content">
+                                    <strong>📊 Valor por Complexidade</strong>
+                                    <p>Valor diferente baseado na complexidade do produto</p>
+                                    <small>Ex: Simples R$ 25/h, Médio R$ 35/h, Complexo R$ 50/h</small>
+                                </div>
+                            </label>
+            
+                            <label class="radio-card">
+                                <input type="radio" name="metodo-mao-obra" value="ambos" 
+                                       onchange="atualizarMetodoMaoObra()" checked>
+                                <div class="radio-content">
+                                    <strong>🎯 Ambos (Recomendado)</strong>
+                                    <p>Usa a média entre valor fixo e complexidade</p>
+                                    <small>Mais justo e equilibrado</small>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+            
+                    <!-- VALOR FIXO POR HORA -->
+                    <div class="form-section" id="secao-valor-fixo">
+                        <h4>💰 Valor Fixo por Hora</h4>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Quanto você cobra por hora de trabalho?</label>
+                                <input type="number" id="mao-obra-valor-fixo" step="0.01" 
+                                       placeholder="30.00" onchange="atualizarSimuladorMaoObra()">
+                                <small>Considere: experiência, qualidade, mercado local</small>
+                            </div>
+                        </div>
+                    </div>
+            
+                    <!-- VALORES POR COMPLEXIDADE -->
+                    <div class="form-section" id="secao-complexidade">
+                        <h4>📊 Valores por Complexidade</h4>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>🟢 Simples (R$/hora)</label>
+                                <input type="number" id="mao-obra-simples" step="0.01" 
+                                       placeholder="25.00" onchange="atualizarSimuladorMaoObra()">
+                                <small>Produtos básicos, sem decoração elaborada</small>
+                            </div>
+                            <div class="form-group">
+                                <label>🟡 Médio (R$/hora)</label>
+                                <input type="number" id="mao-obra-medio" step="0.01" 
+                                       placeholder="35.00" onchange="atualizarSimuladorMaoObra()">
+                                <small>Produtos com acabamento intermediário</small>
+                            </div>
+                            <div class="form-group">
+                                <label>🟠 Complexo (R$/hora)</label>
+                                <input type="number" id="mao-obra-complexo" step="0.01" 
+                                       placeholder="50.00" onchange="atualizarSimuladorMaoObra()">
+                                <small>Produtos elaborados, técnicas avançadas</small>
+                            </div>
+                            <div class="form-group">
+                                <label>💎 Premium (R$/hora)</label>
+                                <input type="number" id="mao-obra-premium" step="0.01" 
+                                       placeholder="70.00" onchange="atualizarSimuladorMaoObra()">
+                                <small>Alta complexidade, trabalho artístico</small>
+                            </div>
+                        </div>
+                    </div>
+            
+                    <!-- SIMULADOR DE MÃO DE OBRA -->
+                    <div class="card" style="background: var(--cor-info-claro); margin-top: 20px;">
+                        <h4>🧮 Simulador de Cálculo</h4>
+                        <p class="hint">Veja quanto ficaria a mão de obra em diferentes cenários</p>
+                        
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Tempo de Produção (horas)</label>
+                                <input type="number" id="simulador-tempo" step="0.5" value="2" 
+                                       placeholder="2.0" onchange="atualizarSimuladorMaoObra()">
+                            </div>
+                            <div class="form-group">
+                                <label>Complexidade</label>
+                                <select id="simulador-complexidade" onchange="atualizarSimuladorMaoObra()">
+                                    <option value="simples">🟢 Simples</option>
+                                    <option value="medio" selected>🟡 Médio</option>
+                                    <option value="complexo">🟠 Complexo</option>
+                                    <option value="premium">💎 Premium</option>
+                                </select>
+                            </div>
+                        </div>
+            
+                        <div class="simulador-resultados" style="margin-top: 20px;">
+                            <div class="resultado-item">
+                                <strong>Método Fixo:</strong>
+                                <span id="resultado-fixo">R$ 0,00</span>
+                            </div>
+                            <div class="resultado-item">
+                                <strong>Método Complexidade:</strong>
+                                <span id="resultado-complexidade">R$ 0,00</span>
+                            </div>
+                            <div class="resultado-item" style="border-top: 2px solid var(--cor-info); padding-top: 10px; margin-top: 10px;">
+                                <strong>Método Ambos (será usado):</strong>
+                                <span id="resultado-ambos" style="font-size: 20px; color: var(--cor-info);">R$ 0,00</span>
+                            </div>
+                        </div>
+                    </div>
+            
+                    <div class="form-actions">
+                        <button class="btn btn-primary" onclick="salvarMaoDeObra()">
+                            💾 Salvar Configurações de Mão de Obra
+                        </button>
+                    </div>
                 </div>
             </div>
         
-            <!-- ABA 3: META DE PRODUÇÃO (Placeholder por enquanto) -->
+            <!-- ABA 3: META DE PRODUÇÃO -->
             <div class="tab-content" id="tab-meta-producao">
                 <div class="card">
                     <h3>🎯 Meta de Produção Mensal</h3>
-                    <p>Esta seção será implementada na próxima etapa...</p>
+                    <p class="hint">Defina quantos produtos você pretende vender por mês. Isso afeta o rateio dos custos fixos.</p>
+            
+                    <div class="form-section">
+                        <h4>📊 Configure sua Meta</h4>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Quantidade Mensal Estimada</label>
+                                <input type="number" id="meta-quantidade" step="1" placeholder="50" 
+                                       onchange="atualizarSimuladorMeta()">
+                                <small>Quantos produtos você pretende vender/produzir por mês?</small>
+                            </div>
+                            <div class="form-group">
+                                <label>Unidade de Medida</label>
+                                <select id="meta-unidade" onchange="atualizarSimuladorMeta()">
+                                    <option value="produtos">Produtos (unidades)</option>
+                                    <option value="kg">Quilogramas (kg)</option>
+                                    <option value="unidades">Unidades variadas</option>
+                                </select>
+                                <small>Como você mede sua produção?</small>
+                            </div>
+                        </div>
+                    </div>
+            
+                    <!-- SIMULADOR DE IMPACTO -->
+                    <div class="card" style="background: var(--cor-aviso-claro); margin-top: 20px;">
+                        <h4>📈 Impacto no Custo por Produto</h4>
+                        <p class="hint">Veja como a meta de produção afeta o rateio dos custos fixos</p>
+                        
+                        <div class="simulador-meta">
+                            <div class="meta-info">
+                                <div class="meta-item">
+                                    <strong>Total de Custos Fixos:</strong>
+                                    <span id="meta-total-fixos">R$ 0,00</span>
+                                </div>
+                                <div class="meta-item">
+                                    <strong>Meta Atual:</strong>
+                                    <span id="meta-atual">0 produtos/mês</span>
+                                </div>
+                                <div class="meta-item destacado">
+                                    <strong>Custo Fixo por Produto:</strong>
+                                    <span id="meta-custo-unitario">R$ 0,00</span>
+                                </div>
+                            </div>
+            
+                            <div class="comparacao-metas" style="margin-top: 20px;">
+                                <h5>🔍 Comparação: E se você produzir...</h5>
+                                <div class="comparacao-grid">
+                                    <div class="comparacao-item">
+                                        <div class="comparacao-label">30 produtos/mês</div>
+                                        <div class="comparacao-valor" id="comparacao-30">R$ 0,00/un</div>
+                                    </div>
+                                    <div class="comparacao-item">
+                                        <div class="comparacao-label">50 produtos/mês</div>
+                                        <div class="comparacao-valor" id="comparacao-50">R$ 0,00/un</div>
+                                    </div>
+                                    <div class="comparacao-item">
+                                        <div class="comparacao-label">70 produtos/mês</div>
+                                        <div class="comparacao-valor" id="comparacao-70">R$ 0,00/un</div>
+                                    </div>
+                                    <div class="comparacao-item">
+                                        <div class="comparacao-label">100 produtos/mês</div>
+                                        <div class="comparacao-valor" id="comparacao-100">R$ 0,00/un</div>
+                                    </div>
+                                </div>
+                            </div>
+            
+                            <div class="alerta-info" style="margin-top: 20px; padding: 15px; background: white; border-left: 4px solid var(--cor-info); border-radius: 5px;">
+                                <strong>💡 Dica:</strong> Quanto maior a meta de produção, menor o custo fixo rateado por produto. 
+                                Mas seja realista! É melhor uma meta alcançável do que uma meta muito alta.
+                            </div>
+                        </div>
+                    </div>
+            
+                    <div class="form-actions">
+                        <button class="btn btn-primary" onclick="salvarMetaProducao()">
+                            💾 Salvar Meta de Produção
+                        </button>
+                    </div>
                 </div>
             </div>
         
-            <!-- ABA 4: CUSTOS VARIÁVEIS (Placeholder por enquanto) -->
+            <!-- ABA 4: CUSTOS VARIÁVEIS PADRÃO -->
             <div class="tab-content" id="tab-custos-variaveis">
                 <div class="card">
-                    <h3>📦 Custos Variáveis Padrão</h3>
-                    <p>Esta seção será implementada na próxima etapa...</p>
+                    <h3>📦 Custos Variáveis Padrão por Produto</h3>
+                    <p class="hint">Custos que variam conforme a quantidade de produtos vendidos. Esses valores são sugestões padrão que podem ser ajustados produto por produto.</p>
+            
+                    <!-- EMBALAGENS -->
+                    <div class="form-section">
+                        <h4>📦 Embalagens</h4>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Embalagem Primária (R$)</label>
+                                <input type="number" id="custo-emb-primaria" step="0.01" placeholder="3.00" 
+                                       onchange="atualizarSimuladorVariaveis()">
+                                <small>Caixa, fita adesiva, proteção interna</small>
+                            </div>
+                            <div class="form-group">
+                                <label>Embalagem Secundária (R$)</label>
+                                <input type="number" id="custo-emb-secundaria" step="0.01" placeholder="1.50" 
+                                       onchange="atualizarSimuladorVariaveis()">
+                                <small>Sacola, papel de presente, laço</small>
+                            </div>
+                        </div>
+                    </div>
+            
+                    <!-- EXTRAS -->
+                    <div class="form-section">
+                        <h4>✨ Extras e Decoração</h4>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Decoração Especial (R$)</label>
+                                <input type="number" id="custo-decoracao" step="0.01" placeholder="0.00" 
+                                       onchange="atualizarSimuladorVariaveis()">
+                                <small>Flores comestíveis, toppers, velas (opcional)</small>
+                            </div>
+                            <div class="form-group">
+                                <label>Brindes e Cartões (R$)</label>
+                                <input type="number" id="custo-brindes" step="0.01" placeholder="2.00" 
+                                       onchange="atualizarSimuladorVariaveis()">
+                                <small>Cartão personalizado, adesivo, brinde</small>
+                            </div>
+                        </div>
+                    </div>
+            
+                    <!-- LOGÍSTICA -->
+                    <div class="form-section">
+                        <h4>🚗 Logística</h4>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Entrega Padrão (R$)</label>
+                                <input type="number" id="custo-entrega" step="0.01" placeholder="5.00" 
+                                       onchange="atualizarSimuladorVariaveis()">
+                                <small>Combustível, manutenção, tempo de deslocamento</small>
+                            </div>
+                        </div>
+                    </div>
+            
+                    <!-- PERDAS -->
+                    <div class="form-section">
+                        <h4>⚠️ Perdas e Desperdícios</h4>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Percentual de Perdas (%)</label>
+                                <input type="number" id="custo-perdas" step="0.1" placeholder="2.0" 
+                                       onchange="atualizarSimuladorVariaveis()">
+                                <small>Margem de segurança para perdas (recomendado: 2-5%)</small>
+                            </div>
+                        </div>
+                        <div class="alerta-info" style="margin-top: 10px; padding: 12px; background: var(--cor-aviso-claro); border-left: 4px solid var(--cor-aviso); border-radius: 5px;">
+                            <strong>📊 Como funciona:</strong> O percentual de perdas é aplicado sobre o subtotal de todos os custos (ingredientes + embalagens + mão de obra + custos fixos) como margem de segurança.
+                        </div>
+                    </div>
+            
+                    <!-- SIMULADOR -->
+                    <div class="card" style="background: linear-gradient(135deg, var(--cor-secundaria-clara) 0%, var(--cor-info-claro) 100%); margin-top: 20px;">
+                        <h4>🧮 Simulador de Custos Variáveis</h4>
+                        <p class="hint">Exemplo de como esses custos se aplicam a um produto</p>
+                        
+                        <div class="simulador-variaveis">
+                            <!-- Produto Base Exemplo -->
+                            <div class="exemplo-produto">
+                                <h5>📊 Exemplo: Bolo Tradicional 2kg</h5>
+                                <div class="custo-breakdown">
+                                    <div class="custo-linha">
+                                        <span>Ingredientes (exemplo):</span>
+                                        <strong>R$ 25,00</strong>
+                                    </div>
+                                    <div class="custo-linha">
+                                        <span>Mão de Obra (2h × média):</span>
+                                        <strong id="sim-var-mao-obra">R$ 0,00</strong>
+                                    </div>
+                                    <div class="custo-linha">
+                                        <span>Custo Fixo Rateado:</span>
+                                        <strong id="sim-var-fixo">R$ 0,00</strong>
+                                    </div>
+                                    <div class="custo-linha destaque">
+                                        <span>➕ Embalagem Primária:</span>
+                                        <strong id="sim-var-emb-prim">R$ 0,00</strong>
+                                    </div>
+                                    <div class="custo-linha destaque">
+                                        <span>➕ Embalagem Secundária:</span>
+                                        <strong id="sim-var-emb-sec">R$ 0,00</strong>
+                                    </div>
+                                    <div class="custo-linha destaque">
+                                        <span>➕ Decoração Especial:</span>
+                                        <strong id="sim-var-decoracao">R$ 0,00</strong>
+                                    </div>
+                                    <div class="custo-linha destaque">
+                                        <span>➕ Entrega:</span>
+                                        <strong id="sim-var-entrega">R$ 0,00</strong>
+                                    </div>
+                                    <div class="custo-linha destaque">
+                                        <span>➕ Brindes:</span>
+                                        <strong id="sim-var-brindes">R$ 0,00</strong>
+                                    </div>
+                                    <div class="custo-linha separador">
+                                        <span>Subtotal:</span>
+                                        <strong id="sim-var-subtotal">R$ 0,00</strong>
+                                    </div>
+                                    <div class="custo-linha destaque">
+                                        <span>➕ Perdas (<span id="sim-var-percent">2</span>%):</span>
+                                        <strong id="sim-var-perdas-valor">R$ 0,00</strong>
+                                    </div>
+                                    <div class="custo-linha total">
+                                        <span>💰 CUSTO TOTAL:</span>
+                                        <strong id="sim-var-total">R$ 0,00</strong>
+                                    </div>
+                                </div>
+                            </div>
+            
+                            <!-- Comparação Antes/Depois -->
+                            <div class="comparacao-impacto">
+                                <h5>📈 Impacto dos Custos Variáveis</h5>
+                                <div class="impacto-grid">
+                                    <div class="impacto-item">
+                                        <div class="impacto-label">Sem custos variáveis</div>
+                                        <div class="impacto-valor" id="impacto-sem">R$ 0,00</div>
+                                        <div class="impacto-desc">Apenas ingredientes + mão de obra + fixos</div>
+                                    </div>
+                                    <div class="impacto-seta">➜</div>
+                                    <div class="impacto-item destaque">
+                                        <div class="impacto-label">Com custos variáveis</div>
+                                        <div class="impacto-valor" id="impacto-com">R$ 0,00</div>
+                                        <div class="impacto-desc">Custo REAL e completo</div>
+                                    </div>
+                                </div>
+                                <div class="impacto-diferenca">
+                                    <strong>Diferença:</strong> 
+                                    <span id="impacto-diferenca-valor">R$ 0,00</span>
+                                    (<span id="impacto-diferenca-percent">0%</span> a mais)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+            
+                    <div class="form-actions">
+                        <button class="btn btn-primary" onclick="salvarCustosVariaveis()">
+                            💾 Salvar Custos Variáveis Padrão
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1857,6 +2591,297 @@
         
         console.log('✅ Funções de configuração de custos carregadas');
 
+        // ====================================
+        // MÓDULO 5: CONFIGURAÇÃO DE MÃO DE OBRA
+        // ====================================
+        
+        /**
+         * Carrega configurações de mão de obra na interface
+         */
+        function carregarMaoDeObraNaInterface() {
+            const mo = configuracaoCustos.maoDeObra;
+            
+            // Selecionar método
+            const metodo = mo.metodoCalculo || 'ambos';
+            document.querySelector(`input[name="metodo-mao-obra"][value="${metodo}"]`).checked = true;
+            
+            // Valor fixo
+            document.getElementById('mao-obra-valor-fixo').value = mo.valorHoraFixo || 30;
+            
+            // Valores por complexidade
+            document.getElementById('mao-obra-simples').value = mo.valoresPorComplexidade.simples || 25;
+            document.getElementById('mao-obra-medio').value = mo.valoresPorComplexidade.medio || 35;
+            document.getElementById('mao-obra-complexo').value = mo.valoresPorComplexidade.complexo || 50;
+            document.getElementById('mao-obra-premium').value = mo.valoresPorComplexidade.premium || 70;
+            
+            // Atualizar visibilidade das seções
+            atualizarMetodoMaoObra();
+            
+            // Atualizar simulador
+            atualizarSimuladorMaoObra();
+        }
+        
+        /**
+         * Atualiza visibilidade das seções baseado no método escolhido
+         */
+        function atualizarMetodoMaoObra() {
+            const metodoSelecionado = document.querySelector('input[name="metodo-mao-obra"]:checked').value;
+            
+            const secaoFixo = document.getElementById('secao-valor-fixo');
+            const secaoComplexidade = document.getElementById('secao-complexidade');
+            
+            // Mostrar/esconder seções baseado no método
+            switch(metodoSelecionado) {
+                case 'fixo':
+                    secaoFixo.style.display = 'block';
+                    secaoComplexidade.style.display = 'none';
+                    break;
+                    
+                case 'complexidade':
+                    secaoFixo.style.display = 'none';
+                    secaoComplexidade.style.display = 'block';
+                    break;
+                    
+                case 'ambos':
+                    secaoFixo.style.display = 'block';
+                    secaoComplexidade.style.display = 'block';
+                    break;
+            }
+            
+            // Atualizar simulador
+            atualizarSimuladorMaoObra();
+        }
+        
+        /**
+         * Atualiza o simulador de mão de obra em tempo real
+         */
+        function atualizarSimuladorMaoObra() {
+            const metodo = document.querySelector('input[name="metodo-mao-obra"]:checked').value;
+            const tempo = parseFloat(document.getElementById('simulador-tempo').value) || 0;
+            const complexidade = document.getElementById('simulador-complexidade').value;
+            
+            const valorFixo = parseFloat(document.getElementById('mao-obra-valor-fixo').value) || 30;
+            
+            const valoresComplexidade = {
+                simples: parseFloat(document.getElementById('mao-obra-simples').value) || 25,
+                medio: parseFloat(document.getElementById('mao-obra-medio').value) || 35,
+                complexo: parseFloat(document.getElementById('mao-obra-complexo').value) || 50,
+                premium: parseFloat(document.getElementById('mao-obra-premium').value) || 70
+            };
+            
+            // Calcular custos
+            const custoFixo = tempo * valorFixo;
+            const custoComplexidade = tempo * valoresComplexidade[complexidade];
+            const custoAmbos = (custoFixo + custoComplexidade) / 2;
+            
+            // Atualizar interface
+            document.getElementById('resultado-fixo').textContent = formatarMoeda(custoFixo);
+            document.getElementById('resultado-complexidade').textContent = formatarMoeda(custoComplexidade);
+            document.getElementById('resultado-ambos').textContent = formatarMoeda(custoAmbos);
+            
+            // Destacar o método que será usado
+            document.getElementById('resultado-fixo').parentElement.style.fontWeight = (metodo === 'fixo') ? '600' : '400';
+            document.getElementById('resultado-complexidade').parentElement.style.fontWeight = (metodo === 'complexidade') ? '600' : '400';
+            document.getElementById('resultado-ambos').parentElement.style.fontWeight = (metodo === 'ambos') ? '600' : '400';
+        }
+        
+        /**
+         * Salva configurações de mão de obra
+         */
+        function salvarMaoDeObra() {
+            const metodo = document.querySelector('input[name="metodo-mao-obra"]:checked').value;
+            
+            configuracaoCustos.maoDeObra = {
+                metodoCalculo: metodo,
+                valorHoraFixo: parseFloat(document.getElementById('mao-obra-valor-fixo').value) || 30,
+                valoresPorComplexidade: {
+                    simples: parseFloat(document.getElementById('mao-obra-simples').value) || 25,
+                    medio: parseFloat(document.getElementById('mao-obra-medio').value) || 35,
+                    complexo: parseFloat(document.getElementById('mao-obra-complexo').value) || 50,
+                    premium: parseFloat(document.getElementById('mao-obra-premium').value) || 70
+                }
+            };
+            
+            // Salvar no localStorage
+            salvarLocalStorage();
+            
+            // Sincronizar com Firebase
+            sincronizarComNuvem();
+            
+            mostrarToast('✅ Configurações de mão de obra salvas!', 'success');
+            
+            console.log('👷 Mão de obra configurada:', configuracaoCustos.maoDeObra);
+        }
+        
+        console.log('✅ Funções de mão de obra carregadas');
+
+        // ====================================
+        // MÓDULO 5: META DE PRODUÇÃO
+        // ====================================
+        
+        /**
+         * Carrega meta de produção na interface
+         */
+        function carregarMetaProducaoNaInterface() {
+            const meta = configuracaoCustos.metaProducao;
+            
+            document.getElementById('meta-quantidade').value = meta.quantidadeMensal || 50;
+            document.getElementById('meta-unidade').value = meta.unidade || 'produtos';
+            
+            atualizarSimuladorMeta();
+        }
+        
+        /**
+         * Atualiza simulador de meta de produção
+         */
+        function atualizarSimuladorMeta() {
+            const quantidade = parseFloat(document.getElementById('meta-quantidade').value) || 1;
+            const unidade = document.getElementById('meta-unidade').value;
+            
+            // Calcular custo total fixo
+            const totalFixos = calcularTotalCustosFixos();
+            
+            // Calcular custo unitário
+            const custoUnitario = totalFixos / quantidade;
+            
+            // Atualizar interface
+            document.getElementById('meta-total-fixos').textContent = formatarMoeda(totalFixos);
+            document.getElementById('meta-atual').textContent = `${quantidade} ${unidade}/mês`;
+            document.getElementById('meta-custo-unitario').textContent = formatarMoeda(custoUnitario);
+            
+            // Calcular comparações
+            document.getElementById('comparacao-30').textContent = formatarMoeda(totalFixos / 30);
+            document.getElementById('comparacao-50').textContent = formatarMoeda(totalFixos / 50);
+            document.getElementById('comparacao-70').textContent = formatarMoeda(totalFixos / 70);
+            document.getElementById('comparacao-100').textContent = formatarMoeda(totalFixos / 100);
+        }
+        
+        /**
+         * Salva meta de produção
+         */
+        function salvarMetaProducao() {
+            configuracaoCustos.metaProducao = {
+                quantidadeMensal: parseFloat(document.getElementById('meta-quantidade').value) || 50,
+                unidade: document.getElementById('meta-unidade').value || 'produtos'
+            };
+            
+            // Salvar no localStorage
+            salvarLocalStorage();
+            
+            // Sincronizar com Firebase
+            sincronizarComNuvem();
+            
+            mostrarToast('✅ Meta de produção salva!', 'success');
+            
+            console.log('🎯 Meta de produção configurada:', configuracaoCustos.metaProducao);
+        }
+        
+        console.log('✅ Funções de meta de produção carregadas');
+
+        // ====================================
+        // MÓDULO 5: CUSTOS VARIÁVEIS PADRÃO
+        // ====================================
+        
+        /**
+         * Carrega custos variáveis na interface
+         */
+        function carregarCustosVariaveisNaInterface() {
+            const cv = configuracaoCustos.custosVariaveisPadrao;
+            
+            document.getElementById('custo-emb-primaria').value = cv.embalagemPrimaria || 3.00;
+            document.getElementById('custo-emb-secundaria').value = cv.embalagemSecundaria || 1.50;
+            document.getElementById('custo-decoracao').value = cv.decoracaoEspecial || 0;
+            document.getElementById('custo-brindes').value = cv.brindes || 2.00;
+            document.getElementById('custo-entrega').value = cv.entrega || 5.00;
+            document.getElementById('custo-perdas').value = cv.perdas || 2;
+            
+            atualizarSimuladorVariaveis();
+        }
+        
+        /**
+         * Atualiza simulador de custos variáveis
+         */
+        function atualizarSimuladorVariaveis() {
+            // Capturar valores dos campos
+            const embPrimaria = parseFloat(document.getElementById('custo-emb-primaria').value) || 0;
+            const embSecundaria = parseFloat(document.getElementById('custo-emb-secundaria').value) || 0;
+            const decoracao = parseFloat(document.getElementById('custo-decoracao').value) || 0;
+            const brindes = parseFloat(document.getElementById('custo-brindes').value) || 0;
+            const entrega = parseFloat(document.getElementById('custo-entrega').value) || 0;
+            const percentualPerdas = parseFloat(document.getElementById('custo-perdas').value) || 2;
+            
+            // Valores fixos do exemplo (Bolo 2kg)
+            const ingredientes = 25.00;
+            const tempoProducao = 2; // 2 horas
+            
+            // Calcular mão de obra (usando configuração atual)
+            const custoMaoObra = calcularCustoMaoDeObra(tempoProducao, 'medio');
+            
+            // Calcular custo fixo rateado
+            const custoFixoRateado = calcularCustoFixoPorUnidade();
+            
+            // Calcular subtotal (sem perdas)
+            const subtotal = ingredientes + custoMaoObra + custoFixoRateado + 
+                             embPrimaria + embSecundaria + decoracao + entrega + brindes;
+            
+            // Calcular perdas
+            const custoPerdas = subtotal * (percentualPerdas / 100);
+            
+            // Custo total
+            const custoTotal = subtotal + custoPerdas;
+            
+            // Custo sem variáveis (para comparação)
+            const custoSemVariaveis = ingredientes + custoMaoObra + custoFixoRateado;
+            const custoVariaveis = embPrimaria + embSecundaria + decoracao + entrega + brindes;
+            const diferenca = custoTotal - custoSemVariaveis;
+            const percentualDiferenca = ((diferenca / custoSemVariaveis) * 100).toFixed(1);
+            
+            // Atualizar interface - Breakdown
+            document.getElementById('sim-var-mao-obra').textContent = formatarMoeda(custoMaoObra);
+            document.getElementById('sim-var-fixo').textContent = formatarMoeda(custoFixoRateado);
+            document.getElementById('sim-var-emb-prim').textContent = formatarMoeda(embPrimaria);
+            document.getElementById('sim-var-emb-sec').textContent = formatarMoeda(embSecundaria);
+            document.getElementById('sim-var-decoracao').textContent = formatarMoeda(decoracao);
+            document.getElementById('sim-var-entrega').textContent = formatarMoeda(entrega);
+            document.getElementById('sim-var-brindes').textContent = formatarMoeda(brindes);
+            document.getElementById('sim-var-subtotal').textContent = formatarMoeda(subtotal);
+            document.getElementById('sim-var-percent').textContent = percentualPerdas.toFixed(1);
+            document.getElementById('sim-var-perdas-valor').textContent = formatarMoeda(custoPerdas);
+            document.getElementById('sim-var-total').textContent = formatarMoeda(custoTotal);
+            
+            // Atualizar interface - Comparação
+            document.getElementById('impacto-sem').textContent = formatarMoeda(custoSemVariaveis);
+            document.getElementById('impacto-com').textContent = formatarMoeda(custoTotal);
+            document.getElementById('impacto-diferenca-valor').textContent = formatarMoeda(diferenca);
+            document.getElementById('impacto-diferenca-percent').textContent = percentualDiferenca;
+        }
+        
+        /**
+         * Salva custos variáveis padrão
+         */
+        function salvarCustosVariaveis() {
+            configuracaoCustos.custosVariaveisPadrao = {
+                embalagemPrimaria: parseFloat(document.getElementById('custo-emb-primaria').value) || 3.00,
+                embalagemSecundaria: parseFloat(document.getElementById('custo-emb-secundaria').value) || 1.50,
+                decoracaoEspecial: parseFloat(document.getElementById('custo-decoracao').value) || 0,
+                brindes: parseFloat(document.getElementById('custo-brindes').value) || 2.00,
+                entrega: parseFloat(document.getElementById('custo-entrega').value) || 5.00,
+                perdas: parseFloat(document.getElementById('custo-perdas').value) || 2
+            };
+            
+            // Salvar no localStorage
+            salvarLocalStorage();
+            
+            // Sincronizar com Firebase
+            sincronizarComNuvem();
+            
+            mostrarToast('✅ Custos variáveis padrão salvos!', 'success');
+            
+            console.log('📦 Custos variáveis configurados:', configuracaoCustos.custosVariaveisPadrao);
+        }
+        
+        console.log('✅ Funções de custos variáveis carregadas');
+
         /**
          * Adiciona event listeners para atualização em tempo real
          */
@@ -2097,7 +3122,11 @@
                     break;
                 case 'configuracoes':
                     carregarConfiguracoesNaInterface();
+                    carregarMaoDeObraNaInterface(); 
+                    carregarMetaProducaoNaInterface(); 
+                    carregarCustosVariaveisNaInterface();
                     break;
+                
             }
         }
 
