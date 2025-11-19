@@ -6307,7 +6307,8 @@
 
             // Limpar arrays temporários ao carregar página
             produtosVendaTemp = [];
-            let clienteAtualVenda = null; // 🆕 Cliente selecionado na venda
+            let clienteAtualVenda = null; // Cliente selecionado na venda
+            let revendedorAtualVenda = null; // 🆕 Revendedor selecionado na venda
             
             page.innerHTML = `
                 <h2>💰 Gestão de Vendas</h2>
@@ -7646,7 +7647,7 @@
 
             // 🆕 LISTENER PARA SELEÇÃO DE REVENDEDOR
             const selectRevendedor = document.getElementById('venda-revendedor');
-            let revendedorAtualVenda = null; // Armazena revendedor selecionado
+            // revendedorAtualVenda já está declarado no escopo da página
             
             if (selectRevendedor) {
                 selectRevendedor.addEventListener('change', function() {
