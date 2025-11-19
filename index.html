@@ -1610,13 +1610,24 @@
         function atualizarEstatisticasCliente(clienteId, valorVenda) {
             try {
                 const cliente = clientes.find(c => c.id === clienteId);
-                if (!cliente) return false;
+                if (!cliente) {
+                    console.warn('Cliente não encontrado:', clienteId);
+                    return false;
+                }
+                
+                console.log(`📊 Atualizando estatísticas do cliente: ${cliente.nome}`);
+                console.log(`   Total Gasto ANTES: ${formatarMoeda(cliente.totalGasto)}`);
+                console.log(`   Total Pedidos ANTES: ${cliente.totalPedidos}`);
                 
                 // Atualizar estatísticas
                 cliente.totalGasto += valorVenda;
                 cliente.totalPedidos += 1;
                 cliente.ticketMedio = cliente.totalGasto / cliente.totalPedidos;
                 cliente.ultimoPedido = new Date().toISOString();
+                cliente.atualizadoEm = new Date().toISOString();
+                
+                console.log(`   Total Gasto DEPOIS: ${formatarMoeda(cliente.totalGasto)}`);
+                console.log(`   Total Pedidos DEPOIS: ${cliente.totalPedidos}`);
                 
                 // Recalcular nível
                 const nivelAnterior = cliente.nivel;
@@ -1633,13 +1644,14 @@
                     );
                 }
                 
-                // Salvar
-                salvarLocalStorage();
+                // Salvar (mas NÃO sincronizar aqui - será feito na venda)
+                // Removido: salvarLocalStorage();
                 
+                console.log(`✅ Estatísticas do cliente atualizadas com sucesso`);
                 return true;
                 
             } catch (erro) {
-                console.error('Erro ao atualizar estatísticas do cliente:', erro);
+                console.error('❌ Erro ao atualizar estatísticas do cliente:', erro);
                 return false;
             }
         }
@@ -3191,6 +3203,176 @@
             
             if (inputPesquisa) inputPesquisa.addEventListener('input', filtrar);
             if (selectTipo) selectTipo.addEventListener('change', filtrar);
+        }
+
+        /**
+         * VER DETALHES COMPLETOS DA SUB-RECEITA
+         */
+        function verDetalhesSubReceita(subReceitaId) {
+            const subReceita = subReceitas.find(s => s.id === subReceitaId);
+            if (!subReceita) {
+                mostrarToast('Sub-receita não encontrada', 'error');
+                return;
+            }
+            
+            const custos = calcularCustoSubReceita(subReceita);
+            
+            // Criar modal
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 700px; max-height: 90vh; overflow-y: auto;">
+                    <div class="modal-header">
+                        <h3>🧩 ${subReceita.nome}</h3>
+                        <button class="modal-close" onclick="this.parentElement.parentElement.parentElement.remove()">×</button>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <span class="badge badge-info">${getTipoSubReceitaInfo(subReceita.tipo)}</span>
+                        <span class="badge badge-success">Rendimento: ${subReceita.rendimento} ${subReceita.unidadeRendimento}</span>
+                    </div>
+                    
+                    ${subReceita.observacoes ? `
+                        <div style="background: var(--cor-info-claro); padding: 15px; border-radius: var(--borda-radius); 
+                            margin-bottom: 20px; border-left: 4px solid var(--cor-info);">
+                            <strong>📝 Observações:</strong><br>
+                            ${subReceita.observacoes}
+                        </div>
+                    ` : ''}
+                    
+                    <h4 style="margin-bottom: 10px; color: var(--cor-primaria);">🥄 Ingredientes (${subReceita.ingredientes.length})</h4>
+                    <table style="margin-bottom: 20px;">
+                        <thead>
+                            <tr>
+                                <th>Material</th>
+                                <th>Quantidade</th>
+                                <th>Custo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${subReceita.ingredientes.map(ing => {
+                                const material = materiais.find(m => m.id === ing.materialId);
+                                if (!material) return '';
+                                
+                                const precoMedio = calcularPrecoMedioPonderado(material.nome);
+                                const custoIngrediente = (ing.quantidade / 1000) * precoMedio;
+                                
+                                return `
+                                    <tr>
+                                        <td>${material.nome}</td>
+                                        <td>${ing.quantidade} ${material.unidadeMedida}</td>
+                                        <td style="font-weight: 600;">${formatarMoeda(custoIngrediente)}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                    
+                    <h4 style="margin-bottom: 10px; color: var(--cor-primaria);">💰 Resumo de Custos</h4>
+                    <div style="background: var(--cor-info-claro); padding: 15px; border-radius: var(--borda-radius);">
+                        <table style="width: 100%;">
+                            <tr>
+                                <td><strong>Custo Total:</strong></td>
+                                <td style="text-align: right; font-size: 18px; font-weight: bold; color: var(--cor-primaria);">
+                                    ${formatarMoeda(custos.custoTotal)}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Custo por ${subReceita.unidadeRendimento}:</strong></td>
+                                <td style="text-align: right; font-size: 20px; font-weight: bold; color: var(--cor-primaria);">
+                                    ${formatarMoeda(custos.custoPorKg)}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td colspan="2" style="padding-top: 10px; font-size: 13px; color: var(--cor-texto-claro);">
+                                    Baseado em rendimento de ${subReceita.rendimento} ${subReceita.unidadeRendimento}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div style="margin-top: 25px; display: flex; gap: 10px;">
+                        <button class="btn btn-success" onclick="editarSubReceita('${subReceita.id}'); this.closest('.modal-overlay').remove();">
+                            ✏️ Editar
+                        </button>
+                        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">
+                            ❌ Fechar
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+        }
+        
+        /**
+         * EDITAR SUB-RECEITA EXISTENTE
+         */
+        function editarSubReceita(subReceitaId) {
+            const subReceita = subReceitas.find(s => s.id === subReceitaId);
+            if (!subReceita) {
+                mostrarToast('Sub-receita não encontrada', 'error');
+                return;
+            }
+            
+            // Mudar para aba de adicionar
+            document.querySelector('#sub-receitas-page .tab-button[data-tab="adicionar-sub"]').click();
+            
+            // Alterar título
+            document.getElementById('titulo-form-sub-receita').textContent = '✏️ Editar Sub-Receita';
+            
+            // Preencher formulário
+            document.getElementById('sub-receita-id').value = subReceita.id;
+            document.getElementById('sub-receita-nome').value = subReceita.nome;
+            document.getElementById('sub-receita-tipo').value = subReceita.tipo;
+            document.getElementById('sub-receita-rendimento').value = subReceita.rendimento;
+            document.getElementById('sub-receita-unidade-rendimento').value = subReceita.unidadeRendimento;
+            document.getElementById('sub-receita-observacoes').value = subReceita.observacoes || '';
+            
+            // Carregar ingredientes temporários
+            subIngredientesTemp = [...subReceita.ingredientes];
+            
+            // Renderizar ingredientes
+            renderizarSubIngredientesTemp();
+            
+            // Atualizar resumo de custos
+            atualizarResumoSubReceita();
+            
+            mostrarToast('Sub-receita carregada para edição', 'info');
+        }
+        
+        /**
+         * CANCELA EDIÇÃO DE SUB-RECEITA E LIMPA FORMULÁRIO
+         */
+        function cancelarEdicaoSubReceita() {
+            // Limpar formulário
+            document.getElementById('form-sub-receita').reset();
+            document.getElementById('sub-receita-id').value = '';
+            document.getElementById('titulo-form-sub-receita').textContent = '➕ Nova Sub-Receita';
+            
+            // Limpar ingredientes temporários
+            subIngredientesTemp = [];
+            renderizarSubIngredientesTemp();
+            atualizarResumoSubReceita();
+            
+            // Voltar para aba de listagem
+            document.querySelector('#sub-receitas-page .tab-button[data-tab="listar-sub"]').click();
+            
+            mostrarToast('Edição cancelada', 'info');
+        }
+        
+        /**
+         * RETORNA INFO DO TIPO DE SUB-RECEITA
+         */
+        function getTipoSubReceitaInfo(tipo) {
+            const tipos = {
+                massa: '🍰 Massa',
+                recheio: '🍫 Recheio',
+                cobertura: '🎨 Cobertura',
+                base: '🧁 Base',
+                outro: '📦 Outro'
+            };
+            return tipos[tipo] || '📦 Outro';
         }
         
         /**
@@ -5936,8 +6118,12 @@
                 const frete = parseFloat(dados.frete) || 0;
                 const decoracao = parseFloat(dados.decoracao) || 0;
                 const brindes = parseFloat(dados.brindes) || 0;
+                const desconto = parseFloat(dados.desconto) || 0;
                 
-                const custoDiretoExtra = frete + decoracao + brindes;
+                // IMPORTANTE: Frete e Decoração são cobrados do cliente (somam no valor pago)
+                // mas NÃO são custos nossos, então não entram no cálculo de custo
+                // Apenas BRINDES são custos reais que saem do nosso bolso
+                const custoDiretoExtra = brindes; // APENAS brindes são custo
                 const custoDiretoTotal = custoTotalIngredientes + custoDiretoExtra;
                 
                 // 5. CALCULAR CUSTOS INDIRETOS (10% sobre custo direto)
@@ -5946,9 +6132,13 @@
                 
                 // 6. CALCULAR VALORES E LUCRO
                 const valorProdutos = produtosProcessados.reduce((sum, p) => sum + p.subtotal, 0);
-                const valorClientePaga = valorProdutos + frete + decoracao;
+                
+                // Valor que o cliente paga = produtos + frete + decoracao - desconto
+                const valorClientePaga = valorProdutos + frete + decoracao - desconto;
                 const valorTotal = valorClientePaga;
                 
+                // LUCRO = O que cliente paga - Nossos custos (produtos + brindes + indiretos)
+                // Frete e Decoração não entram porque são repassados ao cliente (custo zero para nós)
                 const lucroBruto = valorTotal - custoTotal;
                 const margemLucroBruto = valorTotal > 0 ? (lucroBruto / valorTotal) * 100 : 0;
                 
@@ -5991,6 +6181,9 @@
                         brindes: brindes,
                         total: custoDiretoTotal
                     },
+                    
+                    // DESCONTO
+                    desconto: desconto,
                     
                     custoIndireto: {
                         percentual: 0.10,
@@ -6051,17 +6244,24 @@
                     historicoEdicoes: []
                 };
 
-                // 9.1. GERENCIAR CLIENTE (CRIAR OU ATUALIZAR)
+               // 9.1. GERENCIAR CLIENTE (CRIAR OU ATUALIZAR)
                 let clienteVendaId = null;
+                
+                console.log('🔄 Gerenciando cliente da venda...');
                 
                 if (clienteAtualVenda) {
                     // Cliente existente - atualizar estatísticas
                     clienteVendaId = clienteAtualVenda.id;
+                    console.log(`   Cliente existente encontrado: ${clienteAtualVenda.nome} (ID: ${clienteVendaId})`);
+                    
+                    // ⚠️ CHAMADA ÚNICA de atualização de estatísticas
                     atualizarEstatisticasCliente(clienteVendaId, valorTotal);
                     
                 } else {
                     // Cliente novo - criar automaticamente
                     const novoClienteId = gerarId();
+                    
+                    console.log(`   Criando novo cliente: ${dados.cliente.nome}`);
                     
                     const novoCliente = {
                         id: novoClienteId,
@@ -6095,6 +6295,8 @@
                 
                 // Adicionar ID do cliente na venda
                 novaVenda.clienteId = clienteVendaId;
+                
+                console.log(`✅ Cliente vinculado à venda (ID: ${clienteVendaId})`);
 
                 // 🆕 9.2. GERENCIAR REVENDEDOR (SE HOUVER)
                 if (revendedorAtualVenda) {
@@ -6686,9 +6888,18 @@
                                 </div>
                                 <div class="form-col">
                                     <div class="form-group">
-                                        <label for="venda-brindes">Brindes (descontado do lucro):</label>
+                                        <label for="venda-brindes">Brindes (R$):</label>
                                         <input type="number" id="venda-brindes" class="form-control" 
                                             min="0" step="0.01" value="0">
+                                        <small style="color: var(--cor-texto-claro);">Custo de brindes oferecidos</small>
+                                    </div>
+                                </div>
+                                <div class="form-col">
+                                    <div class="form-group">
+                                        <label for="venda-desconto">Desconto (R$):</label>
+                                        <input type="number" id="venda-desconto" class="form-control" 
+                                            min="0" step="0.01" value="0">
+                                        <small style="color: var(--cor-texto-claro);">Desconto aplicado ao cliente</small>
                                     </div>
                                 </div>
                             </div>
@@ -7467,8 +7678,8 @@
                 });
             }
             
-            // Recalcular ao mudar despesas
-            ['venda-frete', 'venda-decoracao', 'venda-brindes'].forEach(id => {
+            // Recalcular ao mudar despesas e desconto
+            ['venda-frete', 'venda-decoracao', 'venda-brindes', 'venda-desconto'].forEach(id => {
                 const input = document.getElementById(id);
                 if (input) {
                     input.addEventListener('input', atualizarResumoFinanceiroVenda);
@@ -7486,6 +7697,16 @@
                         return;
                     }
                     
+                    // 🆕 CALCULAR PREVIEW FINANCEIRO ANTES DE CONFIRMAR
+                    const previewFinanceiro = calcularPreviewFinanceiroVenda();
+                    
+                    // 🆕 MOSTRAR MODAL DE CONFIRMAÇÃO COM VISÃO GERENCIAL
+                    const confirmacao = await mostrarModalConfirmacaoVenda(previewFinanceiro);
+                    
+                    if (!confirmacao) {
+                        return; // Usuário cancelou
+                    }
+                    
                     // Coletar dados do formulário
                     const dados = {
                         produtos: produtosVendaTemp,
@@ -7501,6 +7722,7 @@
                         frete: document.getElementById('venda-frete').value || 0,
                         decoracao: document.getElementById('venda-decoracao').value || 0,
                         brindes: document.getElementById('venda-brindes').value || 0,
+                        desconto: document.getElementById('venda-desconto').value || 0,
                         formaPagamento: document.getElementById('venda-forma-pagamento').value,
                         statusPagamento: document.getElementById('venda-status-pagamento').value,
                         observacoes: document.getElementById('venda-observacoes').value || '',
@@ -7742,6 +7964,316 @@
                 renderizarProdutosVendaTemp();
                 atualizarResumoFinanceiroVenda();
             }    
+        }
+
+        /**
+         * CALCULA PREVIEW FINANCEIRO DA VENDA (antes de confirmar)
+         */
+        function calcularPreviewFinanceiroVenda() {
+            // 1. VALOR DOS PRODUTOS
+            const valorProdutos = produtosVendaTemp.reduce((sum, item) => {
+                const produto = produtosFinais.find(p => p.id === item.produtoId);
+                if (!produto) return sum;
+                
+                let preco = item.precoCustomizado || 0;
+                
+                if (!preco) {
+                    if (produto.tipoPrecificacao === 'peso') {
+                        preco = produto.precoVendaKg || 0;
+                    } else {
+                        preco = produto.precoVendaUnidade || 0;
+                    }
+                }
+                
+                const quantidade = parseFloat(item.quantidade) || 0;
+                return sum + (preco * quantidade);
+            }, 0);
+            
+            // 2. VALORES ADICIONAIS
+            const frete = parseFloat(document.getElementById('venda-frete').value) || 0;
+            const decoracao = parseFloat(document.getElementById('venda-decoracao').value) || 0;
+            const brindes = parseFloat(document.getElementById('venda-brindes').value) || 0;
+            const desconto = parseFloat(document.getElementById('venda-desconto').value) || 0;
+            
+            // 3. VALOR QUE CLIENTE PAGA
+            const valorClientePaga = valorProdutos + frete + decoracao - desconto;
+            
+            // 4. CALCULAR CUSTOS
+            let custoTotalIngredientes = 0;
+            const detalheProdutos = [];
+            
+            produtosVendaTemp.forEach(item => {
+                const produto = produtosFinais.find(p => p.id === item.produtoId);
+                if (!produto) return;
+                
+                const custos = calcularCustoProdutoFinal(produto);
+                const quantidade = parseFloat(item.quantidade);
+                
+                let precoUnitario = item.precoCustomizado || 0;
+                if (!precoUnitario) {
+                    precoUnitario = produto.tipoPrecificacao === 'peso' ? 
+                        produto.precoVendaKg : produto.precoVendaUnidade;
+                }
+                
+                const custoTotalProduto = produto.tipoPrecificacao === 'peso' ?
+                    custos.custoPorKg * quantidade : custos.custoPorUnidade * quantidade;
+                
+                const subtotal = precoUnitario * quantidade;
+                const lucro = subtotal - custoTotalProduto;
+                const margem = subtotal > 0 ? (lucro / subtotal) * 100 : 0;
+                
+                custoTotalIngredientes += custoTotalProduto;
+                
+                detalheProdutos.push({
+                    nome: produto.nome,
+                    quantidade: quantidade,
+                    unidade: produto.tipoPrecificacao === 'peso' ? 'kg' : 'un',
+                    precoUnitario: precoUnitario,
+                    subtotal: subtotal,
+                    custoTotal: custoTotalProduto,
+                    lucro: lucro,
+                    margem: margem
+                });
+            });
+            
+            // 5. CUSTOS TOTAIS
+            const custoDiretoExtra = brindes; // Apenas brindes são custo
+            const custoDiretoTotal = custoTotalIngredientes + custoDiretoExtra;
+            const custoIndireto = custoDiretoTotal * 0.10;
+            const custoTotal = custoDiretoTotal + custoIndireto;
+            
+            // 6. LUCRO
+            const lucroBruto = valorClientePaga - custoTotal;
+            const margemLucroBruto = valorClientePaga > 0 ? (lucroBruto / valorClientePaga) * 100 : 0;
+            const lucroLiquido = lucroBruto * 0.50;
+            const margemLiquida = valorClientePaga > 0 ? (lucroLiquido / valorClientePaga) * 100 : 0;
+            
+            // 7. COMISSÃO REVENDEDOR (se houver)
+            let comissaoRevendedor = 0;
+            let lucroLiquidoFinal = lucroLiquido;
+            
+            if (revendedorAtualVenda) {
+                comissaoRevendedor = valorClientePaga * (revendedorAtualVenda.percentualComissao / 100);
+                lucroLiquidoFinal = lucroLiquido - comissaoRevendedor;
+            }
+            
+            return {
+                detalheProdutos,
+                valorProdutos,
+                frete,
+                decoracao,
+                brindes,
+                desconto,
+                valorClientePaga,
+                custoIngredientes: custoTotalIngredientes,
+                custoBrindes: brindes,
+                custoIndireto,
+                custoTotal,
+                lucroBruto,
+                margemLucroBruto,
+                lucroLiquido,
+                margemLiquida,
+                comissaoRevendedor,
+                lucroLiquidoFinal,
+                revendedor: revendedorAtualVenda ? {
+                    nome: revendedorAtualVenda.nome,
+                    percentual: revendedorAtualVenda.percentualComissao
+                } : null
+            };
+        }
+
+        /**
+         * MOSTRA MODAL DE CONFIRMAÇÃO COM VISÃO GERENCIAL COMPLETA
+         */
+        function mostrarModalConfirmacaoVenda(preview) {
+            return new Promise((resolve) => {
+                // Determinar cor da margem
+                const corMargem = preview.margemLiquida >= 15 ? 'var(--cor-sucesso)' : 
+                                 preview.margemLiquida >= 10 ? 'var(--cor-aviso)' : 'var(--cor-erro)';
+                
+                const modal = document.createElement('div');
+                modal.className = 'modal-overlay';
+                modal.innerHTML = `
+                    <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
+                        <div class="modal-header">
+                            <h3>💰 Confirmar Venda - Análise Financeira</h3>
+                            <button class="modal-close" onclick="this.parentElement.parentElement.parentElement.remove()">×</button>
+                        </div>
+                        
+                        <!-- ALERTA DE MARGEM -->
+                        ${preview.margemLiquida < 10 ? `
+                            <div class="notification notification-error" style="margin-bottom: 20px;">
+                                <strong>⚠️ ATENÇÃO: Margem de lucro abaixo do recomendado!</strong><br>
+                                A margem líquida está em ${preview.margemLiquida.toFixed(1)}%. Recomendado: mínimo 15%.
+                            </div>
+                        ` : ''}
+                        
+                        <!-- PRODUTOS -->
+                        <h4 style="margin-bottom: 10px; color: var(--cor-primaria);">🎂 Produtos da Venda</h4>
+                        <table style="margin-bottom: 20px; font-size: 14px;">
+                            <thead>
+                                <tr>
+                                    <th>Produto</th>
+                                    <th>Qtd</th>
+                                    <th>Preço Unit.</th>
+                                    <th>Subtotal</th>
+                                    <th>Custo</th>
+                                    <th>Lucro</th>
+                                    <th>Margem</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${preview.detalheProdutos.map(p => {
+                                    const corMargemProd = p.margem >= 20 ? 'var(--cor-sucesso)' : 
+                                                         p.margem >= 10 ? 'var(--cor-aviso)' : 'var(--cor-erro)';
+                                    return `
+                                        <tr>
+                                            <td><strong>${p.nome}</strong></td>
+                                            <td>${p.quantidade} ${p.unidade}</td>
+                                            <td>${formatarMoeda(p.precoUnitario)}</td>
+                                            <td style="font-weight: 600;">${formatarMoeda(p.subtotal)}</td>
+                                            <td>${formatarMoeda(p.custoTotal)}</td>
+                                            <td style="color: var(--cor-sucesso);">${formatarMoeda(p.lucro)}</td>
+                                            <td style="color: ${corMargemProd}; font-weight: 600;">${p.margem.toFixed(1)}%</td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                        
+                        <!-- VALORES -->
+                        <h4 style="margin-bottom: 10px; color: var(--cor-primaria);">💵 Composição do Valor</h4>
+                        <div style="background: var(--cor-fundo); padding: 15px; border-radius: var(--borda-radius); margin-bottom: 20px;">
+                            <table style="width: 100%; font-size: 15px;">
+                                <tr>
+                                    <td>Valor dos Produtos:</td>
+                                    <td style="text-align: right; font-weight: 600;">${formatarMoeda(preview.valorProdutos)}</td>
+                                </tr>
+                                ${preview.frete > 0 ? `
+                                    <tr>
+                                        <td>+ Frete (repassado ao cliente):</td>
+                                        <td style="text-align: right; color: var(--cor-info);">${formatarMoeda(preview.frete)}</td>
+                                    </tr>
+                                ` : ''}
+                                ${preview.decoracao > 0 ? `
+                                    <tr>
+                                        <td>+ Decoração (repassada ao cliente):</td>
+                                        <td style="text-align: right; color: var(--cor-info);">${formatarMoeda(preview.decoracao)}</td>
+                                    </tr>
+                                ` : ''}
+                                ${preview.desconto > 0 ? `
+                                    <tr>
+                                        <td>- Desconto:</td>
+                                        <td style="text-align: right; color: var(--cor-erro);">-${formatarMoeda(preview.desconto)}</td>
+                                    </tr>
+                                ` : ''}
+                                <tr style="border-top: 2px solid var(--cor-borda); font-size: 18px;">
+                                    <td><strong>VALOR TOTAL (Cliente Paga):</strong></td>
+                                    <td style="text-align: right; font-weight: bold; color: var(--cor-primaria);">
+                                        ${formatarMoeda(preview.valorClientePaga)}
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                        
+                        <!-- CUSTOS -->
+                        <h4 style="margin-bottom: 10px; color: var(--cor-primaria);">📊 Análise de Custos</h4>
+                        <div style="background: var(--cor-erro-claro); padding: 15px; border-radius: var(--borda-radius); margin-bottom: 20px;">
+                            <table style="width: 100%; font-size: 15px;">
+                                <tr>
+                                    <td>Custo de Ingredientes:</td>
+                                    <td style="text-align: right;">${formatarMoeda(preview.custoIngredientes)}</td>
+                                </tr>
+                                ${preview.custoBrindes > 0 ? `
+                                    <tr>
+                                        <td>Custo de Brindes:</td>
+                                        <td style="text-align: right;">${formatarMoeda(preview.custoBrindes)}</td>
+                                    </tr>
+                                ` : ''}
+                                <tr>
+                                    <td>Custos Indiretos (10%):</td>
+                                    <td style="text-align: right;">${formatarMoeda(preview.custoIndireto)}</td>
+                                </tr>
+                                <tr style="border-top: 2px solid var(--cor-borda); font-weight: bold;">
+                                    <td>CUSTO TOTAL:</td>
+                                    <td style="text-align: right; color: var(--cor-erro);">${formatarMoeda(preview.custoTotal)}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        
+                        <!-- LUCRO -->
+                        <h4 style="margin-bottom: 10px; color: var(--cor-primaria);">💰 Lucratividade</h4>
+                        <div style="background: var(--cor-sucesso-claro); padding: 20px; border-radius: var(--borda-radius); margin-bottom: 20px;">
+                            <table style="width: 100%; font-size: 16px;">
+                                <tr>
+                                    <td><strong>Lucro Bruto (100%):</strong></td>
+                                    <td style="text-align: right; font-weight: bold; color: var(--cor-sucesso); font-size: 18px;">
+                                        ${formatarMoeda(preview.lucroBruto)}
+                                    </td>
+                                    <td style="text-align: right; color: var(--cor-sucesso); font-weight: 600;">
+                                        ${preview.margemLucroBruto.toFixed(1)}%
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Lucro Líquido (50% após reinvestimento):</td>
+                                    <td style="text-align: right; font-weight: bold; font-size: 18px;">
+                                        ${formatarMoeda(preview.lucroLiquido)}
+                                    </td>
+                                    <td style="text-align: right; color: ${corMargem}; font-weight: 600;">
+                                        ${preview.margemLiquida.toFixed(1)}%
+                                    </td>
+                                </tr>
+                                ${preview.revendedor ? `
+                                    <tr style="border-top: 1px solid var(--cor-borda);">
+                                        <td colspan="3" style="padding-top: 10px;">
+                                            <strong>🤝 Comissão Revendedor (${preview.revendedor.nome}):</strong>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>Comissão ${preview.revendedor.percentual}%:</td>
+                                        <td style="text-align: right; color: var(--cor-info); font-weight: 600;">
+                                            -${formatarMoeda(preview.comissaoRevendedor)}
+                                        </td>
+                                        <td></td>
+                                    </tr>
+                                    <tr style="border-top: 2px solid var(--cor-borda);">
+                                        <td><strong>Lucro Líquido FINAL (após comissão):</strong></td>
+                                        <td style="text-align: right; font-weight: bold; font-size: 20px; color: var(--cor-primaria);">
+                                            ${formatarMoeda(preview.lucroLiquidoFinal)}
+                                        </td>
+                                        <td></td>
+                                    </tr>
+                                ` : ''}
+                            </table>
+                        </div>
+                        
+                        <!-- BOTÕES -->
+                        <div style="display: flex; gap: 10px; margin-top: 25px;">
+                            <button class="btn btn-primary" onclick="this.closest('.modal-overlay').dataset.confirmado = 'true'; this.closest('.modal-overlay').remove();" style="flex: 1;">
+                                ✅ CONFIRMAR VENDA
+                            </button>
+                            <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove();" style="flex: 0.5;">
+                                ❌ Cancelar
+                            </button>
+                        </div>
+                        
+                        <div style="margin-top: 15px; padding: 10px; background: var(--cor-info-claro); border-radius: var(--borda-radius); text-align: center; font-size: 13px;">
+                            💡 <strong>Dica:</strong> Revise os valores antes de confirmar. Esta é sua última chance de ajustar preços ou descontos!
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+                // Aguardar decisão do usuário
+                const verificarDecisao = setInterval(() => {
+                    if (!document.body.contains(modal)) {
+                        clearInterval(verificarDecisao);
+                        const confirmado = modal.dataset.confirmado === 'true';
+                        resolve(confirmado);
+                    }
+                }, 100);
+            });
         }
         
         /**
