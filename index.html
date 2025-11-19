@@ -9473,6 +9473,723 @@
         }
         
         console.log('✅ Módulo de CRM carregado');
+
+        // ====================================
+        // SISTEMA DE REVENDEDORES
+        // ====================================
+        
+        /**
+         * SALVA OU ATUALIZA REVENDEDOR
+         */
+        function salvarRevendedor(dados) {
+            try {
+                // Validações
+                if (!dados.nome || dados.nome.trim() === '') {
+                    throw new Error('Nome do revendedor é obrigatório');
+                }
+                
+                if (!dados.telefone || dados.telefone.trim() === '') {
+                    throw new Error('Telefone é obrigatório');
+                }
+                
+                const percentualComissao = parseFloat(dados.percentualComissao);
+                if (isNaN(percentualComissao) || percentualComissao < 0 || percentualComissao > 100) {
+                    throw new Error('Percentual de comissão deve estar entre 0 e 100');
+                }
+                
+                const agora = new Date().toISOString();
+                
+                if (dados.id) {
+                    // ATUALIZAR EXISTENTE
+                    const index = revendedores.findIndex(r => r.id === dados.id);
+                    if (index === -1) throw new Error('Revendedor não encontrado');
+                    
+                    revendedores[index] = {
+                        ...revendedores[index],
+                        nome: dados.nome.trim(),
+                        telefone: dados.telefone.trim(),
+                        email: dados.email || '',
+                        cpf: dados.cpf || '',
+                        endereco: dados.endereco || '',
+                        percentualComissao: percentualComissao,
+                        pix: dados.pix || '',
+                        observacoes: dados.observacoes || '',
+                        atualizadoEm: agora
+                    };
+                    
+                    mostrarToast('Revendedor atualizado com sucesso!', 'success');
+                    
+                } else {
+                    // CRIAR NOVO
+                    const novoRevendedor = {
+                        id: gerarId(),
+                        nome: dados.nome.trim(),
+                        telefone: dados.telefone.trim(),
+                        email: dados.email || '',
+                        cpf: dados.cpf || '',
+                        endereco: dados.endereco || '',
+                        percentualComissao: percentualComissao,
+                        pix: dados.pix || '',
+                        observacoes: dados.observacoes || '',
+                        
+                        // Estatísticas
+                        totalVendas: 0,
+                        faturamentoTotal: 0,
+                        comissaoTotal: 0,
+                        comissaoPaga: 0,
+                        comissaoPendente: 0,
+                        ultimaVenda: null,
+                        
+                        // Histórico de pagamentos
+                        pagamentos: [],
+                        
+                        // Controle
+                        ativo: true,
+                        criadoEm: agora,
+                        atualizadoEm: agora
+                    };
+                    
+                    revendedores.push(novoRevendedor);
+                    mostrarToast('Revendedor cadastrado com sucesso!', 'success');
+                }
+                
+                // Salvar
+                salvarLocalStorage();
+                sincronizarComNuvem();
+                
+                return true;
+                
+            } catch (erro) {
+                console.error('Erro ao salvar revendedor:', erro);
+                mostrarToast(erro.message, 'error');
+                return false;
+            }
+        }
+        
+        /**
+         * ATUALIZA ESTATÍSTICAS DO REVENDEDOR após uma venda
+         */
+        function atualizarEstatisticasRevendedor(revendedorId, valorVenda) {
+            try {
+                const revendedor = revendedores.find(r => r.id === revendedorId);
+                if (!revendedor) return false;
+                
+                // Calcular comissão
+                const comissao = valorVenda * (revendedor.percentualComissao / 100);
+                
+                // Atualizar estatísticas
+                revendedor.totalVendas += 1;
+                revendedor.faturamentoTotal += valorVenda;
+                revendedor.comissaoTotal += comissao;
+                revendedor.comissaoPendente += comissao;
+                revendedor.ultimaVenda = new Date().toISOString();
+                
+                // Salvar
+                salvarLocalStorage();
+                
+                console.log('✅ Estatísticas do revendedor atualizadas:', revendedor.nome);
+                
+                return true;
+                
+            } catch (erro) {
+                console.error('Erro ao atualizar estatísticas do revendedor:', erro);
+                return false;
+            }
+        }
+        
+        /**
+         * REGISTRA PAGAMENTO DE COMISSÃO
+         */
+        function registrarPagamentoComissao(revendedorId, valor, observacao) {
+            try {
+                const revendedor = revendedores.find(r => r.id === revendedorId);
+                if (!revendedor) throw new Error('Revendedor não encontrado');
+                
+                if (valor <= 0) throw new Error('Valor deve ser maior que zero');
+                if (valor > revendedor.comissaoPendente) {
+                    throw new Error('Valor maior que comissão pendente');
+                }
+                
+                // Criar histórico de pagamentos se não existir
+                if (!revendedor.pagamentos) {
+                    revendedor.pagamentos = [];
+                }
+                
+                // Registrar pagamento
+                const pagamento = {
+                    id: gerarId(),
+                    valor: valor,
+                    data: new Date().toISOString(),
+                    observacao: observacao || '',
+                    registradoPor: getUsuarioAtual()
+                };
+                
+                revendedor.pagamentos.push(pagamento);
+                
+                // Atualizar saldos
+                revendedor.comissaoPaga += valor;
+                revendedor.comissaoPendente -= valor;
+                
+                // Salvar
+                salvarLocalStorage();
+                sincronizarComNuvem();
+                
+                mostrarToast(`Pagamento de ${formatarMoeda(valor)} registrado!`, 'success');
+                
+                return true;
+                
+            } catch (erro) {
+                console.error('Erro ao registrar pagamento:', erro);
+                mostrarToast(erro.message, 'error');
+                return false;
+            }
+        }
+        
+        /**
+         * BUSCA REVENDEDOR POR TELEFONE
+         */
+        function buscarRevendedorPorTelefone(telefone) {
+            if (!telefone) return null;
+            
+            const telNormalizado = telefone.replace(/\D/g, '');
+            
+            return revendedores.find(r => {
+                const telRevendedor = (r.telefone || '').replace(/\D/g, '');
+                return telRevendedor === telNormalizado && r.ativo;
+            });
+        }
+        
+        /**
+         * REMOVE REVENDEDOR (soft delete)
+         */
+        function removerRevendedor(revendedorId) {
+            try {
+                const revendedor = revendedores.find(r => r.id === revendedorId);
+                if (!revendedor) throw new Error('Revendedor não encontrado');
+                
+                // Verificar se tem vendas
+                const vendasRevendedor = vendas.filter(v => v.revendedorId === revendedorId);
+                
+                if (vendasRevendedor.length > 0) {
+                    const confirma = confirm(
+                        `O revendedor "${revendedor.nome}" tem ${vendasRevendedor.length} venda(s) registrada(s).\n\n` +
+                        `Deseja realmente remover? O histórico de vendas será mantido.`
+                    );
+                    
+                    if (!confirma) return false;
+                }
+                
+                // Verificar comissão pendente
+                if (revendedor.comissaoPendente > 0) {
+                    const confirma = confirm(
+                        `ATENÇÃO: O revendedor tem ${formatarMoeda(revendedor.comissaoPendente)} em comissões pendentes!\n\n` +
+                        `Deseja realmente remover?`
+                    );
+                    
+                    if (!confirma) return false;
+                }
+                
+                // Soft delete
+                revendedor.ativo = false;
+                revendedor.removidoEm = new Date().toISOString();
+                
+                // Salvar
+                salvarLocalStorage();
+                sincronizarComNuvem();
+                
+                mostrarToast('Revendedor removido com sucesso!', 'success');
+                return true;
+                
+            } catch (erro) {
+                console.error('Erro ao remover revendedor:', erro);
+                mostrarToast(erro.message, 'error');
+                return false;
+            }
+        }
+        
+        console.log('✅ Módulo de Revendedores carregado');
+
+        /**
+         * CARREGA PÁGINA DE REVENDEDORES
+         */
+        function carregarPaginaRevendedores() {
+            const page = document.getElementById('revendedores-page');
+            if (!page) return;
+            
+            page.innerHTML = `
+                <h2>🤝 Gestão de Revendedores</h2>
+                
+                <div class="tab-buttons">
+                    <button class="tab-button active" data-tab="lista-revendedores">📋 Lista de Revendedores</button>
+                    <button class="tab-button" data-tab="novo-revendedor">➕ Novo Revendedor</button>
+                    <button class="tab-button" data-tab="pagamentos">💰 Pagamentos</button>
+                    <button class="tab-button" data-tab="relatorios-rev">📊 Relatórios</button>
+                </div>
+                
+                <!-- TAB: Lista de Revendedores -->
+                <div class="tab-content active" id="tab-lista-revendedores">
+                    <div class="card">
+                        <h3>Lista de Revendedores</h3>
+                        
+                        <!-- Filtros -->
+                        <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                            <input type="text" id="pesquisar-revendedores" class="form-control" 
+                                placeholder="🔍 Pesquisar por nome, telefone..." style="flex: 1; min-width: 200px;">
+                            
+                            <select id="ordenar-revendedores" class="form-control" style="width: 200px;">
+                                <option value="nome">Nome (A-Z)</option>
+                                <option value="faturamento">Maior Faturamento</option>
+                                <option value="comissao">Maior Comissão</option>
+                                <option value="vendas">Mais Vendas</option>
+                                <option value="recente">Mais Recente</option>
+                            </select>
+                        </div>
+                        
+                        <div id="lista-revendedores-cards">
+                            ${renderizarListaRevendedores()}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- TAB: Novo Revendedor -->
+                <div class="tab-content" id="tab-novo-revendedor">
+                    <div class="card">
+                        <h3 id="titulo-form-revendedor">➕ Cadastrar Novo Revendedor</h3>
+                        
+                        <form id="form-revendedor">
+                            <input type="hidden" id="revendedor-id" value="">
+                            
+                            <h4 style="margin-bottom: 15px; color: var(--cor-primaria);">📋 Dados Pessoais</h4>
+                            
+                            <div class="form-group">
+                                <label for="revendedor-nome">Nome Completo: *</label>
+                                <input type="text" id="revendedor-nome" class="form-control" 
+                                    placeholder="Ex: João Silva" required>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-col">
+                                    <div class="form-group">
+                                        <label for="revendedor-telefone">Telefone: *</label>
+                                        <input type="tel" id="revendedor-telefone" class="form-control" 
+                                            placeholder="(00) 00000-0000" required>
+                                    </div>
+                                </div>
+                                <div class="form-col">
+                                    <div class="form-group">
+                                        <label for="revendedor-email">Email:</label>
+                                        <input type="email" id="revendedor-email" class="form-control" 
+                                            placeholder="revendedor@email.com">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-col">
+                                    <div class="form-group">
+                                        <label for="revendedor-cpf">CPF:</label>
+                                        <input type="text" id="revendedor-cpf" class="form-control" 
+                                            placeholder="000.000.000-00">
+                                    </div>
+                                </div>
+                                <div class="form-col">
+                                    <div class="form-group">
+                                        <label for="revendedor-pix">Chave PIX:</label>
+                                        <input type="text" id="revendedor-pix" class="form-control" 
+                                            placeholder="CPF, telefone, email ou chave aleatória">
+                                        <small style="color: var(--cor-texto-claro);">
+                                            Para facilitar pagamentos de comissão
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="revendedor-endereco">Endereço:</label>
+                                <input type="text" id="revendedor-endereco" class="form-control" 
+                                    placeholder="Rua, número, bairro, cidade">
+                            </div>
+                            
+                            <h4 style="margin-top: 25px; margin-bottom: 15px; color: var(--cor-primaria);">
+                                💰 Comissão
+                            </h4>
+                            
+                            <div class="form-group">
+                                <label for="revendedor-comissao">Percentual de Comissão (%): *</label>
+                                <input type="number" id="revendedor-comissao" class="form-control" 
+                                    min="0" max="100" step="0.5" value="10" required>
+                                <small style="color: var(--cor-texto-claro);">
+                                    💡 Ex: 10% significa que o revendedor ganha R$10 a cada R$100 em vendas
+                                </small>
+                            </div>
+                            
+                            <div id="simulacao-comissao" style="background: var(--cor-info-claro); 
+                                padding: 15px; border-radius: var(--borda-radius); margin-top: 10px;">
+                                <strong>💡 Simulação:</strong>
+                                <div style="margin-top: 10px;">
+                                    Em uma venda de <strong>R$ 100,00</strong>, 
+                                    o revendedor receberá <strong id="valor-comissao-simulacao">R$ 10,00</strong>
+                                </div>
+                            </div>
+                            
+                            <h4 style="margin-top: 25px; margin-bottom: 15px; color: var(--cor-primaria);">
+                                📝 Observações
+                            </h4>
+                            
+                            <div class="form-group">
+                                <label for="revendedor-observacoes">Observações:</label>
+                                <textarea id="revendedor-observacoes" class="form-control" rows="3" 
+                                    placeholder="Ex: Atende região sul, trabalha com encomendas grandes"></textarea>
+                            </div>
+                            
+                            <div style="margin-top: 25px; display: flex; gap: 10px;">
+                                <button type="submit" class="btn btn-primary">💾 Salvar Revendedor</button>
+                                <button type="button" class="btn btn-secondary" onclick="cancelarEdicaoRevendedor()">
+                                    ❌ Cancelar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- TAB: Pagamentos -->
+                <div class="tab-content" id="tab-pagamentos">
+                    <div class="card">
+                        <h3>💰 Controle de Pagamentos de Comissão</h3>
+                        ${renderizarControlePagamentos()}
+                    </div>
+                </div>
+                
+                <!-- TAB: Relatórios -->
+                <div class="tab-content" id="tab-relatorios-rev">
+                    <div class="card">
+                        <h3>📊 Relatórios de Revendedores</h3>
+                        ${renderizarRelatoriosRevendedores()}
+                    </div>
+                </div>
+            `;
+            
+            // Configurar tabs
+            configurarTabsRevendedores();
+            
+            // Configurar formulário
+            configurarFormularioRevendedor();
+            
+            // Configurar filtros
+            configurarFiltrosRevendedores();
+        }
+        
+        /**
+         * RENDERIZA LISTA DE REVENDEDORES
+         */
+        function renderizarListaRevendedores() {
+            const revendedoresAtivos = revendedores.filter(r => r.ativo);
+            
+            if (revendedoresAtivos.length === 0) {
+                return `
+                    <div style="text-align: center; padding: 40px; color: var(--cor-texto-claro);">
+                        <div style="font-size: 48px; margin-bottom: 10px;">🤝</div>
+                        <p>Nenhum revendedor cadastrado ainda.</p>
+                        <button class="btn btn-primary" onclick="document.querySelector('.tab-button[data-tab=\\'novo-revendedor\\']').click()">
+                            ➕ Cadastrar Primeiro Revendedor
+                        </button>
+                    </div>
+                `;
+            }
+            
+            let html = '';
+            
+            revendedoresAtivos.forEach(revendedor => {
+                const ticketMedio = revendedor.totalVendas > 0 ? 
+                    revendedor.faturamentoTotal / revendedor.totalVendas : 0;
+                
+                const diasDesdeUltimaVenda = revendedor.ultimaVenda ? 
+                    Math.floor((new Date() - new Date(revendedor.ultimaVenda)) / (1000 * 60 * 60 * 24)) : null;
+                
+                // Cor da comissão pendente
+                const corPendente = revendedor.comissaoPendente > 500 ? 'var(--cor-erro)' :
+                                   revendedor.comissaoPendente > 200 ? 'var(--cor-aviso)' : 'var(--cor-sucesso)';
+                
+                html += `
+                    <div class="card" style="margin-bottom: 15px; border-left: 4px solid var(--cor-primaria);">
+                        <div style="display: flex; justify-content: space-between; align-items: start; gap: 20px; flex-wrap: wrap;">
+                            <!-- Informações Principais -->
+                            <div style="flex: 1; min-width: 300px;">
+                                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                    <div style="font-size: 32px;">🤝</div>
+                                    <div>
+                                        <h4 style="margin: 0;">${revendedor.nome}</h4>
+                                        <div style="font-size: 13px; color: var(--cor-texto-claro);">
+                                            ${revendedor.telefone ? `📞 ${revendedor.telefone}` : ''}
+                                            ${revendedor.email ? ` • 📧 ${revendedor.email}` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Estatísticas -->
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); 
+                                    gap: 15px; margin-top: 15px; padding: 15px; background: var(--cor-fundo); 
+                                    border-radius: var(--borda-radius);">
+                                    <div>
+                                        <div style="font-size: 12px; color: var(--cor-texto-claro);">Total Vendido</div>
+                                        <div style="font-size: 18px; font-weight: bold; color: var(--cor-primaria);">
+                                            ${formatarMoeda(revendedor.faturamentoTotal)}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 12px; color: var(--cor-texto-claro);">Nº de Vendas</div>
+                                        <div style="font-size: 18px; font-weight: bold;">
+                                            ${revendedor.totalVendas}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 12px; color: var(--cor-texto-claro);">Ticket Médio</div>
+                                        <div style="font-size: 18px; font-weight: bold;">
+                                            ${formatarMoeda(ticketMedio)}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 12px; color: var(--cor-texto-claro);">Última Venda</div>
+                                        <div style="font-size: 14px; font-weight: 600;">
+                                            ${diasDesdeUltimaVenda !== null ? 
+                                                diasDesdeUltimaVenda === 0 ? 'Hoje' :
+                                                diasDesdeUltimaVenda === 1 ? 'Ontem' :
+                                                `Há ${diasDesdeUltimaVenda} dias` 
+                                                : 'Nunca'}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Informações de Comissão -->
+                            <div style="min-width: 250px;">
+                                <div style="background: var(--cor-primaria); color: white; padding: 15px; 
+                                    border-radius: var(--borda-radius); text-align: center; margin-bottom: 10px;">
+                                    <div style="font-size: 14px; opacity: 0.9;">Comissão</div>
+                                    <div style="font-size: 32px; font-weight: bold;">
+                                        ${revendedor.percentualComissao}%
+                                    </div>
+                                </div>
+                                
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                    <div style="background: var(--cor-sucesso-claro); padding: 10px; 
+                                        border-radius: var(--borda-radius); text-align: center;">
+                                        <div style="font-size: 11px; color: var(--cor-texto-claro);">Total Gerado</div>
+                                        <div style="font-size: 16px; font-weight: bold; color: var(--cor-sucesso);">
+                                            ${formatarMoeda(revendedor.comissaoTotal)}
+                                        </div>
+                                    </div>
+                                    <div style="background: var(--cor-info-claro); padding: 10px; 
+                                        border-radius: var(--borda-radius); text-align: center;">
+                                        <div style="font-size: 11px; color: var(--cor-texto-claro);">Já Pago</div>
+                                        <div style="font-size: 16px; font-weight: bold; color: var(--cor-info);">
+                                            ${formatarMoeda(revendedor.comissaoPaga)}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div style="background: ${corPendente}22; padding: 15px; 
+                                    border-radius: var(--borda-radius); margin-top: 10px; text-align: center; 
+                                    border: 2px solid ${corPendente};">
+                                    <div style="font-size: 12px; color: var(--cor-texto-claro);">A Pagar</div>
+                                    <div style="font-size: 24px; font-weight: bold; color: ${corPendente};">
+                                        ${formatarMoeda(revendedor.comissaoPendente)}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Ações -->
+                        <div style="margin-top: 15px; display: flex; gap: 5px; flex-wrap: wrap;">
+                            <button class="btn btn-primary btn-sm" onclick="verDetalhesRevendedor('${revendedor.id}')">
+                                👁️ Ver Detalhes
+                            </button>
+                            ${revendedor.comissaoPendente > 0 ? `
+                                <button class="btn btn-success btn-sm" onclick="abrirModalPagamento('${revendedor.id}')">
+                                    💰 Registrar Pagamento
+                                </button>
+                            ` : ''}
+                            <button class="btn btn-warning btn-sm" onclick="editarRevendedor('${revendedor.id}')">
+                                ✏️ Editar
+                            </button>
+                            <button class="btn btn-danger btn-sm" onclick="if(removerRevendedor('${revendedor.id}')) carregarPaginaRevendedores();">
+                                🗑️ Remover
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            return html;
+        }
+
+        /**
+         * RENDERIZA CONTROLE DE PAGAMENTOS
+         */
+        function renderizarControlePagamentos() {
+            const revendedoresComPendencia = revendedores.filter(r => r.ativo && r.comissaoPendente > 0);
+            
+            if (revendedoresComPendencia.length === 0) {
+                return `
+                    <div style="text-align: center; padding: 40px; color: var(--cor-texto-claro);">
+                        <div style="font-size: 48px; margin-bottom: 10px;">✅</div>
+                        <p>Não há comissões pendentes no momento!</p>
+                    </div>
+                `;
+            }
+            
+            const totalPendente = revendedoresComPendencia.reduce((sum, r) => sum + r.comissaoPendente, 0);
+            
+            let html = `
+                <div style="background: var(--cor-aviso-claro); padding: 20px; border-radius: var(--borda-radius); 
+                    margin-bottom: 20px; border-left: 4px solid var(--cor-aviso);">
+                    <h4 style="margin: 0 0 10px 0;">⚠️ Total em Comissões Pendentes</h4>
+                    <div style="font-size: 32px; font-weight: bold; color: var(--cor-aviso);">
+                        ${formatarMoeda(totalPendente)}
+                    </div>
+                    <small style="color: var(--cor-texto-claro);">
+                        ${revendedoresComPendencia.length} revendedor(es) com pagamento pendente
+                    </small>
+                </div>
+                
+                <h4 style="margin-bottom: 15px;">📋 Revendedores com Pagamento Pendente</h4>
+            `;
+            
+            revendedoresComPendencia
+                .sort((a, b) => b.comissaoPendente - a.comissaoPendente)
+                .forEach(revendedor => {
+                    html += `
+                        <div class="card" style="margin-bottom: 15px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap;">
+                                <div>
+                                    <h4 style="margin: 0 0 5px 0;">${revendedor.nome}</h4>
+                                    <div style="font-size: 14px; color: var(--cor-texto-claro);">
+                                        ${revendedor.telefone}
+                                        ${revendedor.pix ? ` • PIX: ${revendedor.pix}` : ''}
+                                    </div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 12px; color: var(--cor-texto-claro);">Valor a Pagar</div>
+                                    <div style="font-size: 28px; font-weight: bold; color: var(--cor-erro);">
+                                        ${formatarMoeda(revendedor.comissaoPendente)}
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="margin-top: 15px;">
+                                <button class="btn btn-success" onclick="abrirModalPagamento('${revendedor.id}')">
+                                    💰 Registrar Pagamento
+                                </button>
+                                <button class="btn btn-primary btn-sm" onclick="verDetalhesRevendedor('${revendedor.id}')">
+                                    👁️ Ver Histórico
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+            
+            return html;
+        }
+        
+        /**
+         * RENDERIZA RELATÓRIOS DE REVENDEDORES
+         */
+        function renderizarRelatoriosRevendedores() {
+            const revendedoresAtivos = revendedores.filter(r => r.ativo);
+            
+            if (revendedoresAtivos.length === 0) {
+                return '<p style="text-align: center; color: var(--cor-texto-claro);">Nenhum revendedor para gerar relatórios.</p>';
+            }
+            
+            // Estatísticas gerais
+            const totalRevendedores = revendedoresAtivos.length;
+            const faturamentoTotal = revendedoresAtivos.reduce((sum, r) => sum + r.faturamentoTotal, 0);
+            const comissaoTotal = revendedoresAtivos.reduce((sum, r) => sum + r.comissaoTotal, 0);
+            const comissaoPendente = revendedoresAtivos.reduce((sum, r) => sum + r.comissaoPendente, 0);
+            const totalVendas = revendedoresAtivos.reduce((sum, r) => sum + r.totalVendas, 0);
+            
+            // Top 5 revendedores
+            const top5 = [...revendedoresAtivos]
+                .sort((a, b) => b.faturamentoTotal - a.faturamentoTotal)
+                .slice(0, 5);
+            
+            return `
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+                    gap: 20px; margin-bottom: 30px;">
+                    
+                    <div style="background: var(--cor-fundo); padding: 20px; border-radius: var(--borda-radius); text-align: center;">
+                        <div style="font-size: 14px; color: var(--cor-texto-claro);">Total de Revendedores</div>
+                        <div style="font-size: 32px; font-weight: bold; color: var(--cor-primaria);">
+                            ${totalRevendedores}
+                        </div>
+                    </div>
+                    
+                    <div style="background: var(--cor-fundo); padding: 20px; border-radius: var(--borda-radius); text-align: center;">
+                        <div style="font-size: 14px; color: var(--cor-texto-claro);">Faturamento Total</div>
+                        <div style="font-size: 28px; font-weight: bold; color: var(--cor-sucesso);">
+                            ${formatarMoeda(faturamentoTotal)}
+                        </div>
+                    </div>
+                    
+                    <div style="background: var(--cor-fundo); padding: 20px; border-radius: var(--borda-radius); text-align: center;">
+                        <div style="font-size: 14px; color: var(--cor-texto-claro);">Total de Vendas</div>
+                        <div style="font-size: 32px; font-weight: bold; color: var(--cor-info);">
+                            ${totalVendas}
+                        </div>
+                    </div>
+                    
+                    <div style="background: var(--cor-fundo); padding: 20px; border-radius: var(--borda-radius); text-align: center;">
+                        <div style="font-size: 14px; color: var(--cor-texto-claro);">Comissão Total</div>
+                        <div style="font-size: 28px; font-weight: bold; color: var(--cor-primaria);">
+                            ${formatarMoeda(comissaoTotal)}
+                        </div>
+                    </div>
+                    
+                    <div style="background: var(--cor-fundo); padding: 20px; border-radius: var(--borda-radius); text-align: center;">
+                        <div style="font-size: 14px; color: var(--cor-texto-claro);">A Pagar</div>
+                        <div style="font-size: 28px; font-weight: bold; color: var(--cor-erro);">
+                            ${formatarMoeda(comissaoPendente)}
+                        </div>
+                    </div>
+                </div>
+                
+                <h4 style="margin-bottom: 15px;">🏆 Top 5 Revendedores</h4>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Posição</th>
+                            <th>Revendedor</th>
+                            <th>Comissão</th>
+                            <th>Faturamento</th>
+                            <th>Vendas</th>
+                            <th>Ticket Médio</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${top5.map((revendedor, index) => {
+                            const medalhas = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
+                            const ticketMedio = revendedor.totalVendas > 0 ? 
+                                revendedor.faturamentoTotal / revendedor.totalVendas : 0;
+                            
+                            return `
+                                <tr>
+                                    <td style="font-size: 24px; text-align: center;">${medalhas[index]}</td>
+                                    <td><strong>${revendedor.nome}</strong></td>
+                                    <td style="font-weight: bold; color: var(--cor-primaria);">
+                                        ${revendedor.percentualComissao}%
+                                    </td>
+                                    <td style="font-weight: bold; color: var(--cor-sucesso);">
+                                        ${formatarMoeda(revendedor.faturamentoTotal)}
+                                    </td>
+                                    <td>${revendedor.totalVendas}</td>
+                                    <td>${formatarMoeda(ticketMedio)}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
         
         // ====================================
         // INICIALIZAÇÃO FINAL DO SISTEMA
