@@ -6354,6 +6354,45 @@
                         <h3>➕ Registrar Nova Venda</h3>
                         
                         <form id="form-nova-venda">
+
+                            <h4 style="margin-top: 25px; margin-bottom: 15px; color: var(--cor-primaria);">
+                                🤝 Revendedor (Opcional)
+                            </h4>
+                            
+                            <div class="form-group">
+                                <label for="venda-revendedor-select">Selecionar Revendedor:</label>
+                                <select id="venda-revendedor-select" class="form-control">
+                                    <option value="">Nenhum (venda direta)</option>
+                                    ${revendedores.filter(r => r.ativo).sort((a, b) => a.nome.localeCompare(b.nome)).map(r => `
+                                        <option value="${r.id}">${r.nome} (${r.percentualComissao}%)</option>
+                                    `).join('')}
+                                </select>
+                                <small style="color: var(--cor-texto-claro);">
+                                    💡 Se esta venda for através de um revendedor, selecione aqui
+                                </small>
+                            </div>
+                            
+                            <!-- Informações do Revendedor Selecionado -->
+                            <div id="info-revendedor-selecionado" style="display: none; background: var(--cor-info-claro); 
+                                padding: 15px; border-radius: var(--borda-radius); margin-bottom: 15px; 
+                                border-left: 4px solid var(--cor-info);">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <h4 style="margin: 0 0 5px 0;" id="revendedor-nome-info"></h4>
+                                        <div style="font-size: 14px; color: var(--cor-texto-claro);" id="revendedor-contato-info"></div>
+                                    </div>
+                                    <div style="text-align: center; background: var(--cor-info); color: white; 
+                                        padding: 10px 20px; border-radius: var(--borda-radius);">
+                                        <div style="font-size: 24px; font-weight: bold;" id="revendedor-comissao-valor">0%</div>
+                                        <div style="font-size: 12px;">COMISSÃO</div>
+                                    </div>
+                                </div>
+                                <div id="revendedor-comissao-simulacao" style="margin-top: 10px; padding-top: 10px; 
+                                    border-top: 1px solid var(--cor-info); font-size: 14px;">
+                                    <strong>Comissão estimada nesta venda:</strong> 
+                                    <span style="color: var(--cor-info); font-weight: bold; font-size: 16px;" id="comissao-estimada">R$ 0,00</span>
+                                </div>
+                            </div>
     
                             <h4 style="margin-top: 30px; margin-bottom: 15px; color: var(--cor-primaria);">
                                 🎂 Produtos
@@ -6549,48 +6588,7 @@
                                 <label for="venda-cliente-endereco">Endereço de Entrega:</label>
                                 <input type="text" id="venda-cliente-endereco" class="form-control">
                             </div>
-                            
-                            <!-- 🆕 SEÇÃO DE REVENDEDOR -->
-                            <h4 style="margin-top: 25px; margin-bottom: 15px; color: var(--cor-primaria);">
-                                🤝 Revendedor (Opcional)
-                            </h4>
-                            
-                            <div class="form-group">
-                                <label for="venda-revendedor">Esta venda é de algum revendedor?</label>
-                                <select id="venda-revendedor" class="form-control">
-                                    <option value="">Não, é venda direta</option>
-                                    ${revendedores.filter(r => r.ativo).map(r => `
-                                        <option value="${r.id}">
-                                            ${r.nome} - ${r.percentualComissao}% comissão
-                                        </option>
-                                    `).join('')}
-                                </select>
-                                <small style="color: var(--cor-texto-claro);">
-                                    💡 Se esta venda for de um revendedor, selecione-o aqui para calcular a comissão automaticamente
-                                </small>
-                            </div>
-                            
-                            <!-- 🆕 Informações do Revendedor Selecionado -->
-                            <div id="info-revendedor-selecionado" style="display: none; background: var(--cor-sucesso-claro); 
-                                padding: 15px; border-radius: var(--borda-radius); margin-bottom: 15px; 
-                                border-left: 4px solid var(--cor-sucesso);">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <h4 style="margin: 0 0 5px 0;" id="revendedor-nome-selecionado"></h4>
-                                        <div style="font-size: 14px;" id="revendedor-stats"></div>
-                                    </div>
-                                    <div style="text-align: center; background: var(--cor-sucesso); color: white; 
-                                        padding: 10px 15px; border-radius: var(--borda-radius); min-width: 100px;">
-                                        <div style="font-size: 24px; font-weight: bold;" id="revendedor-comissao-percent">0%</div>
-                                        <div style="font-size: 12px;">COMISSÃO</div>
-                                    </div>
-                                </div>
-                                <div id="revendedor-comissao-preview" style="margin-top: 10px; padding-top: 10px; 
-                                    border-top: 1px solid var(--cor-sucesso); font-size: 14px; font-weight: 600;">
-                                    💰 Comissão estimada desta venda: <span id="valor-comissao-preview">R$ 0,00</span>
-                                </div>
-                            </div>
-                            
+                                                
                             <h4 style="margin-top: 25px; margin-bottom: 15px; color: var(--cor-primaria);">
                                 📅 Entrega e Pagamento
                             </h4>
@@ -7169,9 +7167,18 @@
                                   venda.statusEntrega === 'entregue' ? '✅ Entregue' : '🟡 Pendente'}
                             </span>
                             <span class="badge badge-${statusPagClass}">
-                                ${venda.pagamento.statusPagamento === 'pago' ? '💰 Pago' : '⏳ Pagamento Pendente'}
-                            </span>
-                            ${venda.clienteId ? (() => {
+                                        ${venda.pagamento.statusPagamento === 'pago' ? '💰 Pago' : '⏳ Pagamento Pendente'}
+                                    </span>
+                                    ${venda.revendedorId ? (() => {
+                                        const revendedor = revendedores.find(r => r.id === venda.revendedorId);
+                                        if (revendedor) {
+                                            return `<span class="badge" style="background: var(--cor-info); color: white;">
+                                                🤝 ${revendedor.nome} • Comissão: ${formatarMoeda(venda.comissaoValor || 0)}
+                                            </span>`;
+                                        }
+                                        return `<span class="badge badge-info">🤝 ${venda.revendedorNome || 'Revendedor'}</span>`;
+                                    })() : ''}
+                                    ${venda.clienteId ? (() => {
                                 const cliente = clientes.find(c => c.id === venda.clienteId);
                                 if (cliente) {
                                     const nivelInfo = getNivelInfo(cliente.nivel);
@@ -7875,44 +7882,9 @@
                         ${venda.cliente.cpf ? `<tr><td><strong>CPF:</strong></td><td>${venda.cliente.cpf}</td></tr>` : ''}
                         ${venda.cliente.endereco ? `<tr><td><strong>Endereço:</strong></td><td>${venda.cliente.endereco}</td></tr>` : ''}
                     </table>
-
-                    <!-- 🆕 ADICIONE ESTE BLOCO AQUI -->
-                    ${venda.revendedorId ? (() => {
-                        const revendedor = revendedores.find(r => r.id === venda.revendedorId);
-                        if (revendedor) {
-                            return `
-                                <h4 style="margin-top: 20px; margin-bottom: 10px;">🤝 Revendedor</h4>
-                                <div style="background: var(--cor-info-claro); padding: 15px; border-radius: var(--borda-radius); 
-                                    margin-bottom: 20px; border-left: 4px solid var(--cor-info);">
-                                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-                                        <div>
-                                            <h4 style="margin: 0 0 5px 0;">${revendedor.nome}</h4>
-                                            <div style="font-size: 14px; color: var(--cor-texto-claro);">
-                                                ${revendedor.telefone || ''} ${revendedor.email ? '• ' + revendedor.email : ''}
-                                            </div>
-                                        </div>
-                                        <div style="text-align: center; background: var(--cor-info); color: white; 
-                                            padding: 10px 15px; border-radius: var(--borda-radius);">
-                                            <div style="font-size: 20px; font-weight: bold;">
-                                                ${venda.revendedorComissaoPercent || revendedor.percentualComissao}%
-                                            </div>
-                                            <div style="font-size: 11px;">COMISSÃO</div>
-                                        </div>
-                                    </div>
-                                    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--cor-info);">
-                                        <strong>💰 Comissão desta venda:</strong>
-                                        <span style="font-size: 20px; font-weight: bold; color: var(--cor-info); margin-left: 10px;">
-                                            ${formatarMoeda(venda.revendedorComissaoValor || 0)}
-                                        </span>
-                                    </div>
-                                </div>
-                            `;
-                        }
-                        return '';
-                    })() : ''}
                     
                     <!-- PRODUTOS -->
-                    <h4 style="margin-top: 20px; margin-bottom: 10px; color: var(--cor-primaria);">🎂 Produtos</h4>
+                    <h4 style="margin-top: 20px; margin-bottom: 10px; color: var(--cor-primaria);"></h4>
                     <table style="width: 100%; margin-bottom: 20px;">
                         <thead>
                             <tr>
