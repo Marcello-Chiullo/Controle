@@ -6095,20 +6095,6 @@
                 
                 // Adicionar ID do cliente na venda
                 novaVenda.clienteId = clienteVendaId;
-
-                // 9.2. GERENCIAR REVENDEDOR (SE HOUVER)
-                if (revendedorAtualVenda) {
-                    novaVenda.revendedorId = revendedorAtualVenda.id;
-                    novaVenda.revendedorNome = revendedorAtualVenda.nome;
-                    novaVenda.revendedorComissaoPercent = revendedorAtualVenda.percentualComissao;
-                    novaVenda.revendedorComissaoValor = valorTotal * (revendedorAtualVenda.percentualComissao / 100);
-                    
-                    // Atualizar estatísticas do revendedor
-                    atualizarEstatisticasRevendedor(revendedorAtualVenda.id, valorTotal);
-                    
-                    console.log(`✅ Venda vinculada ao revendedor: ${revendedorAtualVenda.nome}`);
-                    console.log(`💰 Comissão gerada: ${formatarMoeda(novaVenda.revendedorComissaoValor)}`);
-                }
                 
                 // 10. ADICIONAR VENDA
                 vendas.push(novaVenda);
@@ -6354,45 +6340,6 @@
                         <h3>➕ Registrar Nova Venda</h3>
                         
                         <form id="form-nova-venda">
-
-                            <h4 style="margin-top: 25px; margin-bottom: 15px; color: var(--cor-primaria);">
-                                🤝 Revendedor (Opcional)
-                            </h4>
-                            
-                            <div class="form-group">
-                                <label for="venda-revendedor-select">Selecionar Revendedor:</label>
-                                <select id="venda-revendedor-select" class="form-control">
-                                    <option value="">Nenhum (venda direta)</option>
-                                    ${revendedores.filter(r => r.ativo).sort((a, b) => a.nome.localeCompare(b.nome)).map(r => `
-                                        <option value="${r.id}">${r.nome} (${r.percentualComissao}%)</option>
-                                    `).join('')}
-                                </select>
-                                <small style="color: var(--cor-texto-claro);">
-                                    💡 Se esta venda for através de um revendedor, selecione aqui
-                                </small>
-                            </div>
-                            
-                            <!-- Informações do Revendedor Selecionado -->
-                            <div id="info-revendedor-selecionado" style="display: none; background: var(--cor-info-claro); 
-                                padding: 15px; border-radius: var(--borda-radius); margin-bottom: 15px; 
-                                border-left: 4px solid var(--cor-info);">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <h4 style="margin: 0 0 5px 0;" id="revendedor-nome-info"></h4>
-                                        <div style="font-size: 14px; color: var(--cor-texto-claro);" id="revendedor-contato-info"></div>
-                                    </div>
-                                    <div style="text-align: center; background: var(--cor-info); color: white; 
-                                        padding: 10px 20px; border-radius: var(--borda-radius);">
-                                        <div style="font-size: 24px; font-weight: bold;" id="revendedor-comissao-valor">0%</div>
-                                        <div style="font-size: 12px;">COMISSÃO</div>
-                                    </div>
-                                </div>
-                                <div id="revendedor-comissao-simulacao" style="margin-top: 10px; padding-top: 10px; 
-                                    border-top: 1px solid var(--cor-info); font-size: 14px;">
-                                    <strong>Comissão estimada nesta venda:</strong> 
-                                    <span style="color: var(--cor-info); font-weight: bold; font-size: 16px;" id="comissao-estimada">R$ 0,00</span>
-                                </div>
-                            </div>
     
                             <h4 style="margin-top: 30px; margin-bottom: 15px; color: var(--cor-primaria);">
                                 🎂 Produtos
@@ -7076,9 +7023,6 @@
             document.getElementById('resumo-lucro-total-pedido').textContent = formatarMoeda(lucroTotal);
             document.getElementById('resumo-margem-pedido').textContent = margemMedia.toFixed(1) + '%';
             document.getElementById('resumo-margem-pedido').style.color = corMargem;
-
-            // 🆕 Atualizar preview de comissão do revendedor
-            atualizarPreviewComissaoRevendedor();
             
             resumoDiv.style.display = 'block';
         }
@@ -7162,43 +7106,24 @@
                         </div>
                         
                         <div style="display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap;">
-                            <span class="badge badge-${statusEntregaClass}">
-                                ${venda.cancelada ? '🚫 Cancelada' : 
-                                  venda.statusEntrega === 'entregue' ? '✅ Entregue' : '🟡 Pendente'}
-                            </span>
-                            <span class="badge badge-${statusPagClass}">
+                                    <span class="badge badge-${statusEntregaClass}">
+                                        ${venda.cancelada ? '🚫 Cancelada' : 
+                                          venda.statusEntrega === 'entregue' ? '✅ Entregue' : '🟡 Pendente'}
+                                    </span>
+                                    <span class="badge badge-${statusPagClass}">
                                         ${venda.pagamento.statusPagamento === 'pago' ? '💰 Pago' : '⏳ Pagamento Pendente'}
                                     </span>
-                                    ${venda.revendedorId ? (() => {
-                                        const revendedor = revendedores.find(r => r.id === venda.revendedorId);
-                                        if (revendedor) {
-                                            return `<span class="badge" style="background: var(--cor-info); color: white;">
-                                                🤝 ${revendedor.nome} • Comissão: ${formatarMoeda(venda.comissaoValor || 0)}
+                                    ${venda.clienteId ? (() => {
+                                        const cliente = clientes.find(c => c.id === venda.clienteId);
+                                        if (cliente) {
+                                            const nivelInfo = getNivelInfo(cliente.nivel);
+                                            return `<span class="badge" style="background: ${nivelInfo.cor}; color: white;">
+                                                ${nivelInfo.icone} ${nivelInfo.nome} • ${nivelInfo.desconto}% OFF
                                             </span>`;
                                         }
-                                        return `<span class="badge badge-info">🤝 ${venda.revendedorNome || 'Revendedor'}</span>`;
+                                        return '';
                                     })() : ''}
-                                    ${venda.clienteId ? (() => {
-                                const cliente = clientes.find(c => c.id === venda.clienteId);
-                                if (cliente) {
-                                    const nivelInfo = getNivelInfo(cliente.nivel);
-                                    return `<span class="badge" style="background: ${nivelInfo.cor}; color: white;">
-                                        ${nivelInfo.icone} ${nivelInfo.nome} • ${nivelInfo.desconto}% OFF
-                                    </span>`;
-                                }
-                                return '';
-                            })() : ''}
-                            ${venda.revendedorId ? (() => {
-                                const revendedor = revendedores.find(r => r.id === venda.revendedorId);
-                                if (revendedor) {
-                                    return `<span class="badge" style="background: var(--cor-info); color: white;">
-                                        🤝 ${revendedor.nome} • Comissão: ${formatarMoeda(venda.revendedorComissaoValor || 0)}
-                                    </span>`;
-                                }
-                                return '';
-                            })() : ''}
-                        </div>
-                        
+                                </div>
                         <div style="margin-top: 15px; display: flex; gap: 5px; flex-wrap: wrap;">
                             <button class="btn btn-primary btn-sm" onclick="verDetalhesVenda('${venda.id}')">
                                 👁️ Ver Detalhes
@@ -7495,14 +7420,6 @@
                     // Limpar formulário
                     form.reset();
                     produtosVendaTemp = [];
-                    clienteAtualVenda = null;
-                    revendedorAtualVenda = null;
-                    
-                    // Limpar displays
-                    document.getElementById('info-cliente-encontrado').style.display = 'none';
-                    document.getElementById('alerta-cliente-novo').style.display = 'none';
-                    document.getElementById('info-revendedor-selecionado').style.display = 'none';
-                    
                     renderizarProdutosVendaTemp();
                     atualizarResumoFinanceiroVenda();
                     
@@ -7650,68 +7567,6 @@
                 // Atualizar visualização
                 renderizarProdutosVendaTemp();
                 atualizarResumoFinanceiroVenda();
-            }
-
-            // 🆕 GERENCIAR SELEÇÃO DE REVENDEDOR
-            const selectRevendedor = document.getElementById('venda-revendedor');
-            let revendedorAtualVenda = null; // Armazena revendedor selecionado
-            
-            if (selectRevendedor) {
-                selectRevendedor.addEventListener('change', function() {
-                    const revendedorId = this.value;
-                    const infoDiv = document.getElementById('info-revendedor-selecionado');
-                    
-                    if (revendedorId) {
-                        // Revendedor selecionado
-                        const revendedor = revendedores.find(r => r.id === revendedorId);
-                        
-                        if (revendedor) {
-                            revendedorAtualVenda = revendedor;
-                            
-                            // Mostrar informações
-                            document.getElementById('revendedor-nome-selecionado').textContent = revendedor.nome;
-                            document.getElementById('revendedor-comissao-percent').textContent = revendedor.percentualComissao + '%';
-                            
-                            const ticketMedio = (revendedor.totalVendas > 0) ? (revendedor.faturamentoTotal / revendedor.totalVendas) : 0;
-                            
-                            document.getElementById('revendedor-stats').innerHTML = `
-                                📊 ${revendedor.totalVendas} vendas • Ticket médio: ${formatarMoeda(ticketMedio)}
-                            `;
-                            
-                            infoDiv.style.display = 'block';
-                            
-                            // Atualizar preview de comissão
-                            atualizarPreviewComissaoRevendedor();
-                            
-                        }
-                    } else {
-                        // Nenhum revendedor
-                        revendedorAtualVenda = null;
-                        infoDiv.style.display = 'none';
-                    }
-                });
-            }
-            
-            /**
-             * ATUALIZA PREVIEW DA COMISSÃO DO REVENDEDOR
-             */
-            function atualizarPreviewComissaoRevendedor() {
-                if (!revendedorAtualVenda) return;
-                
-                // Calcular valor total da venda atual
-                const valorTotal = produtosVendaTemp.reduce((sum, item) => {
-                    const preco = item.precoCustomizado || item.preco || 0;
-                    return sum + (preco * item.quantidade);
-                }, 0);
-                
-                // Calcular comissão
-                const comissao = valorTotal * (revendedorAtualVenda.percentualComissao / 100);
-                
-                // Atualizar preview
-                const previewElement = document.getElementById('valor-comissao-preview');
-                if (previewElement) {
-                    previewElement.textContent = formatarMoeda(comissao);
-                }
             }
         }
         
