@@ -7665,8 +7665,7 @@
                             document.getElementById('revendedor-nome-selecionado').textContent = revendedor.nome;
                             document.getElementById('revendedor-comissao-percent').textContent = revendedor.percentualComissao + '%';
                             
-                            const ticketMedio = revendedor.totalVendas > 0 ? 
-                                revendedor.faturamentoTotal / revendedor.totalVendas : 0;
+                            const ticketMedio = (revendedor.totalVendas > 0) ? (revendedor.faturamentoTotal / revendedor.totalVendas) : 0;
                             
                             document.getElementById('revendedor-stats').innerHTML = `
                                 📊 ${revendedor.totalVendas} vendas • Ticket médio: ${formatarMoeda(ticketMedio)}
@@ -10768,8 +10767,7 @@
             let html = '';
             
             revendedoresAtivos.forEach(revendedor => {
-                const ticketMedio = revendedor.totalVendas > 0 ? 
-                    revendedor.faturamentoTotal / revendedor.totalVendas : 0;
+                const ticketMedio = (revendedor.totalVendas > 0) ? (revendedor.faturamentoTotal / revendedor.totalVendas) : 0;
                 
                 const diasDesdeUltimaVenda = revendedor.ultimaVenda ? 
                     Math.floor((new Date() - new Date(revendedor.ultimaVenda)) / (1000 * 60 * 60 * 24)) : null;
@@ -11192,8 +11190,7 @@
                         let html = '';
                         
                         revendedoresFiltrados.forEach(revendedor => {
-                            const ticketMedio = revendedor.totalVendas > 0 ? 
-                                revendedor.faturamentoTotal / revendedor.totalVendas : 0;
+                            const ticketMedio = (revendedor.totalVendas > 0) ? (revendedor.faturamentoTotal / revendedor.totalVendas) : 0;
                             
                             const diasDesdeUltimaVenda = revendedor.ultimaVenda ? 
                                 Math.floor((new Date() - new Date(revendedor.ultimaVenda)) / (1000 * 60 * 60 * 24)) : null;
@@ -11473,8 +11470,7 @@
                 !v.cancelada && v.revendedorId === revendedorId
             ).sort((a, b) => new Date(b.dataVenda) - new Date(a.dataVenda));
             
-            const ticketMedio = revendedor.totalVendas > 0 ? 
-                revendedor.faturamentoTotal / revendedor.totalVendas : 0;
+            const ticketMedio = (revendedor.totalVendas > 0) ? (revendedor.faturamentoTotal / revendedor.totalVendas) : 0;
             
             const modal = document.createElement('div');
             modal.className = 'modal-overlay';
