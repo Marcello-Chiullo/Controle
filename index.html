@@ -11884,16 +11884,6 @@
                     carregarPaginaRevendedores();
                 }
             });
-            
-            // Atualizar simulação de comissão em tempo real
-            const inputComissao = document.getElementById('revendedor-comissao');
-            if (inputComissao) {
-                inputComissao.addEventListener('input', function() {
-                    const percentual = parseFloat(this.value) || 0;
-                    const valorSimulacao = 100 * (percentual / 100);
-                    document.getElementById('valor-comissao-simulacao').textContent = formatarMoeda(valorSimulacao);
-                });
-            }
         }
         
         /**
