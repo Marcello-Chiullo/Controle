@@ -10907,7 +10907,7 @@
          */
         function salvarRevendedor(dados) {
             try {
-                // Validações
+                // VALIDAÇÕES BÁSICAS
                 if (!dados.nome || dados.nome.trim() === '') {
                     throw new Error('Nome do revendedor é obrigatório');
                 }
@@ -10916,9 +10916,27 @@
                     throw new Error('Telefone é obrigatório');
                 }
                 
-                const percentualComissao = parseFloat(dados.percentualComissao);
-                if (isNaN(percentualComissao) || percentualComissao < 0 || percentualComissao > 100) {
-                    throw new Error('Percentual de comissão deve estar entre 0 e 100');
+                // 🆕 VALIDAR TIPO DE REVENDEDOR
+                if (!dados.tipoRevendedor) {
+                    throw new Error('Selecione o tipo de revendedor');
+                }
+                
+                // 🆕 VALIDAÇÕES ESPECÍFICAS POR TIPO
+                if (dados.tipoRevendedor === 'comissao') {
+                    const percentualComissao = parseFloat(dados.percentualComissao);
+                    if (isNaN(percentualComissao) || percentualComissao < 0 || percentualComissao > 100) {
+                        throw new Error('Percentual de comissão deve estar entre 0 e 100');
+                    }
+                } else if (dados.tipoRevendedor === 'compra') {
+                    const descontoCompra = parseFloat(dados.descontoCompra);
+                    if (isNaN(descontoCompra) || descontoCompra < 0 || descontoCompra > 100) {
+                        throw new Error('Desconto de compra deve estar entre 0 e 100');
+                    }
+                    
+                    const margemMinima = parseFloat(dados.margemMinima);
+                    if (isNaN(margemMinima) || margemMinima < 0) {
+                        throw new Error('Margem mínima deve ser maior ou igual a zero');
+                    }
                 }
                 
                 const agora = new Date().toISOString();
@@ -10935,9 +10953,15 @@
                         email: dados.email || '',
                         cpf: dados.cpf || '',
                         endereco: dados.endereco || '',
-                        percentualComissao: percentualComissao,
                         pix: dados.pix || '',
                         observacoes: dados.observacoes || '',
+                        
+                        // 🆕 TIPO E DADOS ESPECÍFICOS
+                        tipoRevendedor: dados.tipoRevendedor,
+                        percentualComissao: dados.tipoRevendedor === 'comissao' ? parseFloat(dados.percentualComissao) : 0,
+                        descontoCompra: dados.tipoRevendedor === 'compra' ? parseFloat(dados.descontoCompra) : 0,
+                        margemMinima: dados.tipoRevendedor === 'compra' ? parseFloat(dados.margemMinima) : 0,
+                        
                         atualizadoEm: agora
                     };
                     
@@ -10952,9 +10976,14 @@
                         email: dados.email || '',
                         cpf: dados.cpf || '',
                         endereco: dados.endereco || '',
-                        percentualComissao: percentualComissao,
                         pix: dados.pix || '',
                         observacoes: dados.observacoes || '',
+                        
+                        // 🆕 TIPO E DADOS ESPECÍFICOS
+                        tipoRevendedor: dados.tipoRevendedor,
+                        percentualComissao: dados.tipoRevendedor === 'comissao' ? parseFloat(dados.percentualComissao) : 0,
+                        descontoCompra: dados.tipoRevendedor === 'compra' ? parseFloat(dados.descontoCompra) : 0,
+                        margemMinima: dados.tipoRevendedor === 'compra' ? parseFloat(dados.margemMinima) : 0,
                         
                         // Estatísticas
                         totalVendas: 0,
@@ -10974,7 +11003,9 @@
                     };
                     
                     revendedores.push(novoRevendedor);
-                    mostrarToast('Revendedor cadastrado com sucesso!', 'success');
+                    
+                    const tipoTexto = dados.tipoRevendedor === 'comissao' ? 'Comissionado' : 'Comprador';
+                    mostrarToast(`Revendedor ${tipoTexto} cadastrado com sucesso!`, 'success');
                 }
                 
                 // Salvar
@@ -11191,6 +11222,30 @@
                                     placeholder="Ex: João Silva" required>
                             </div>
                             
+                            <!-- 🆕 TIPO DE REVENDEDOR -->
+                            <div class="form-group" style="background: var(--cor-secundaria-clara); padding: 15px; border-radius: var(--borda-radius); margin-bottom: 20px;">
+                                <label for="revendedor-tipo">Tipo de Revendedor: *</label>
+                                <select id="revendedor-tipo" class="form-control" required style="font-size: 16px; padding: 12px;">
+                                    <option value="">Selecione o tipo...</option>
+                                    <option value="comissao">🤝 Vendedor Comissionado</option>
+                                    <option value="compra">🛒 Comprador para Revenda</option>
+                                </select>
+                                <div style="margin-top: 10px; padding: 10px; background: white; border-radius: 5px; font-size: 13px;">
+                                    <div style="margin-bottom: 8px;">
+                                        <strong>🤝 Vendedor Comissionado:</strong><br>
+                                        <span style="color: var(--cor-texto-claro);">
+                                            Vende produtos em seu nome e recebe uma porcentagem sobre cada venda realizada.
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <strong>🛒 Comprador para Revenda:</strong><br>
+                                        <span style="color: var(--cor-texto-claro);">
+                                            Compra produtos com desconto e revende pelo preço que desejar.
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            
                             <div class="form-row">
                                 <div class="form-col">
                                     <div class="form-group">
@@ -11234,25 +11289,95 @@
                                     placeholder="Rua, número, bairro, cidade">
                             </div>
                             
-                            <h4 style="margin-top: 25px; margin-bottom: 15px; color: var(--cor-primaria);">
-                                💰 Comissão
-                            </h4>
-                            
-                            <div class="form-group">
-                                <label for="revendedor-comissao">Percentual de Comissão (%): *</label>
-                                <input type="number" id="revendedor-comissao" class="form-control" 
-                                    min="0" max="100" step="0.5" value="10" required>
-                                <small style="color: var(--cor-texto-claro);">
-                                    💡 Ex: 10% significa que o revendedor ganha R$10 a cada R$100 em vendas
-                                </small>
+                            <!-- 🆕 SEÇÃO CONDICIONAL: VENDEDOR COMISSIONADO -->
+                            <div id="secao-comissao" style="display: none;">
+                                <h4 style="margin-top: 25px; margin-bottom: 15px; color: var(--cor-primaria);">
+                                    💰 Configuração de Comissão
+                                </h4>
+                                
+                                <div class="notification notification-info" style="margin-bottom: 15px;">
+                                    <strong>🤝 Vendedor Comissionado</strong><br>
+                                    Este revendedor venderá seus produtos e receberá uma comissão percentual sobre cada venda.
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="revendedor-comissao">Percentual de Comissão (%): *</label>
+                                    <input type="number" id="revendedor-comissao" class="form-control" 
+                                        min="0" max="100" step="0.5" placeholder="Ex: 10">
+                                    <small style="color: var(--cor-texto-claro);">
+                                        💡 Exemplo: 10% = Revendedor ganha R$ 10,00 em cada venda de R$ 100,00
+                                    </small>
+                                </div>
+                                
+                                <div id="simulacao-comissao" style="background: var(--cor-info-claro); 
+                                    padding: 15px; border-radius: var(--borda-radius); margin-top: 10px;">
+                                    <strong>📊 Simulação:</strong>
+                                    <div style="margin-top: 10px;">
+                                        Em uma venda de <strong>R$ 100,00</strong>, 
+                                        o revendedor receberá <strong id="valor-comissao-simulacao">R$ 0,00</strong>
+                                    </div>
+                                </div>
                             </div>
                             
-                            <div id="simulacao-comissao" style="background: var(--cor-info-claro); 
-                                padding: 15px; border-radius: var(--borda-radius); margin-top: 10px;">
-                                <strong>💡 Simulação:</strong>
-                                <div style="margin-top: 10px;">
-                                    Em uma venda de <strong>R$ 100,00</strong>, 
-                                    o revendedor receberá <strong id="valor-comissao-simulacao">R$ 10,00</strong>
+                            <!-- 🆕 SEÇÃO CONDICIONAL: COMPRADOR PARA REVENDA -->
+                            <div id="secao-compra" style="display: none;">
+                                <h4 style="margin-top: 25px; margin-bottom: 15px; color: var(--cor-primaria);">
+                                    🛒 Configuração de Preços para Revenda
+                                </h4>
+                                
+                                <div class="notification notification-success" style="margin-bottom: 15px;">
+                                    <strong>🛒 Comprador para Revenda</strong><br>
+                                    Este revendedor comprará produtos com desconto e revenderá pelo preço que desejar.
+                                    Configure abaixo o desconto que você dará e a margem mínima que deseja manter.
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-col">
+                                        <div class="form-group">
+                                            <label for="revendedor-desconto-compra">Desconto na Compra (%): *</label>
+                                            <input type="number" id="revendedor-desconto-compra" class="form-control" 
+                                                min="0" max="100" step="0.5" placeholder="Ex: 20">
+                                            <small style="color: var(--cor-texto-claro);">
+                                                💡 Desconto que VOCÊ dá ao revendedor sobre seu preço normal
+                                            </small>
+                                        </div>
+                                    </div>
+                                    <div class="form-col">
+                                        <div class="form-group">
+                                            <label for="revendedor-margem-minima">Sua Margem Mínima (%): *</label>
+                                            <input type="number" id="revendedor-margem-minima" class="form-control" 
+                                                min="0" max="100" step="0.5" placeholder="Ex: 10">
+                                            <small style="color: var(--cor-texto-claro);">
+                                                💡 Margem de lucro mínima que VOCÊ quer manter na venda
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 🆕 CALCULADORA INTELIGENTE -->
+                                <div id="calculadora-revenda" style="background: var(--cor-secundaria-clara); 
+                                    padding: 20px; border-radius: var(--borda-radius); margin-top: 20px;">
+                                    
+                                    <h4 style="margin-bottom: 15px; color: var(--cor-primaria);">
+                                        🧮 Calculadora de Preço Inteligente
+                                    </h4>
+                                    
+                                    <p style="font-size: 14px; color: var(--cor-texto-claro); margin-bottom: 15px;">
+                                        Selecione um produto para ver até quanto você pode vender para este revendedor 
+                                        mantendo a margem de lucro desejada:
+                                    </p>
+                                    
+                                    <div class="form-group">
+                                        <label for="calc-produto-select">Produto:</label>
+                                        <select id="calc-produto-select" class="form-control">
+                                            <option value="">Selecione um produto...</option>
+                                            <!-- Será preenchido via JavaScript -->
+                                        </select>
+                                    </div>
+                                    
+                                    <div id="calc-resultado" style="display: none; margin-top: 20px;">
+                                        <!-- Resultado será inserido via JavaScript -->
+                                    </div>
                                 </div>
                             </div>
                             
@@ -11334,19 +11459,41 @@
                 const corPendente = revendedor.comissaoPendente > 500 ? 'var(--cor-erro)' :
                                    revendedor.comissaoPendente > 200 ? 'var(--cor-aviso)' : 'var(--cor-sucesso)';
                 
+                // 🆕 Determinar tipo e ícone
+                const tipoRevendedor = revendedor.tipoRevendedor || 'comissao'; // Default para compatibilidade
+                const icone = tipoRevendedor === 'comissao' ? '🤝' : '🛒';
+                const tipoTexto = tipoRevendedor === 'comissao' ? 'Vendedor Comissionado' : 'Comprador para Revenda';
+                const corBadge = tipoRevendedor === 'comissao' ? 'var(--cor-info)' : 'var(--cor-sucesso)';
+                
                 html += `
                     <div class="card" style="margin-bottom: 15px; border-left: 4px solid var(--cor-primaria);">
                         <div style="display: flex; justify-content: space-between; align-items: start; gap: 20px; flex-wrap: wrap;">
                             <!-- Informações Principais -->
                             <div style="flex: 1; min-width: 300px;">
                                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                                    <div style="font-size: 32px;">🤝</div>
-                                    <div>
-                                        <h4 style="margin: 0;">${revendedor.nome}</h4>
+                                    <div style="font-size: 32px;">${icone}</div>
+                                    <div style="flex: 1;">
+                                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+                                            <h4 style="margin: 0;">${revendedor.nome}</h4>
+                                            <span style="background: ${corBadge}; color: white; padding: 3px 8px; 
+                                                border-radius: 12px; font-size: 11px; font-weight: 600;">
+                                                ${tipoTexto}
+                                            </span>
+                                        </div>
                                         <div style="font-size: 13px; color: var(--cor-texto-claro);">
                                             ${revendedor.telefone ? `📞 ${revendedor.telefone}` : ''}
                                             ${revendedor.email ? ` • 📧 ${revendedor.email}` : ''}
                                         </div>
+                                        ${tipoRevendedor === 'comissao' ? `
+                                            <div style="font-size: 13px; margin-top: 5px;">
+                                                💰 Comissão: <strong>${revendedor.percentualComissao}%</strong>
+                                            </div>
+                                        ` : `
+                                            <div style="font-size: 13px; margin-top: 5px;">
+                                                🏷️ Desconto: <strong>${revendedor.descontoCompra}%</strong> • 
+                                                Margem Mínima: <strong>${revendedor.margemMinima}%</strong>
+                                            </div>
+                                        `}
                                     </div>
                                 </div>
                                 
@@ -11639,13 +11786,73 @@
         /**
          * CONFIGURA FORMULÁRIO DE REVENDEDOR
          */
-        function configurarFormularioRevendedor() {
+        function configurarFormularioRevendedor() {    
             const form = document.getElementById('form-revendedor');
             if (!form) return;
             
-            // Submit do formulário
+            // 🆕 CONTROLAR EXIBIÇÃO DE CAMPOS BASEADO NO TIPO
+            const selectTipo = document.getElementById('revendedor-tipo');
+            const secaoComissao = document.getElementById('secao-comissao');
+            const secaoCompra = document.getElementById('secao-compra');
+            const inputComissao = document.getElementById('revendedor-comissao');
+            const inputDesconto = document.getElementById('revendedor-desconto-compra');
+            const inputMargem = document.getElementById('revendedor-margem-minima');
+            
+            if (selectTipo) {
+                selectTipo.addEventListener('change', function() {
+                    const tipo = this.value;
+                    
+                    // Esconder todas as seções
+                    secaoComissao.style.display = 'none';
+                    secaoCompra.style.display = 'none';
+                    
+                    // Remover required de todos os campos
+                    inputComissao.removeAttribute('required');
+                    inputDesconto.removeAttribute('required');
+                    inputMargem.removeAttribute('required');
+                    
+                    // Mostrar seção apropriada
+                    if (tipo === 'comissao') {
+                        secaoComissao.style.display = 'block';
+                        inputComissao.setAttribute('required', 'required');
+                        inputComissao.value = inputComissao.value || '10'; // Valor padrão
+                        atualizarSimulacaoComissao();
+                        
+                    } else if (tipo === 'compra') {
+                        secaoCompra.style.display = 'block';
+                        inputDesconto.setAttribute('required', 'required');
+                        inputMargem.setAttribute('required', 'required');
+                        inputDesconto.value = inputDesconto.value || '20'; // Valor padrão
+                        inputMargem.value = inputMargem.value || '10'; // Valor padrão
+                        carregarProdutosCalculadora();
+                    }
+                });
+            }
+            
+            // 🆕 ATUALIZAR SIMULAÇÃO DE COMISSÃO EM TEMPO REAL
+            if (inputComissao) {
+                inputComissao.addEventListener('input', atualizarSimulacaoComissao);
+            }
+            
+            // 🆕 ATUALIZAR CALCULADORA EM TEMPO REAL
+            if (inputDesconto) {
+                inputDesconto.addEventListener('input', recalcularPrecoRevenda);
+            }
+            if (inputMargem) {
+                inputMargem.addEventListener('input', recalcularPrecoRevenda);
+            }
+            
+            // 🆕 CALCULADORA: Seleção de produto
+            const calcProdutoSelect = document.getElementById('calc-produto-select');
+            if (calcProdutoSelect) {
+                calcProdutoSelect.addEventListener('change', recalcularPrecoRevenda);
+            }
+            
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
+                
+                // 🆕 Coletar tipo
+                const tipoRevendedor = document.getElementById('revendedor-tipo').value;
                 
                 const dados = {
                     id: document.getElementById('revendedor-id').value || null,
@@ -11654,9 +11861,14 @@
                     email: document.getElementById('revendedor-email').value,
                     cpf: document.getElementById('revendedor-cpf').value,
                     endereco: document.getElementById('revendedor-endereco').value,
-                    percentualComissao: document.getElementById('revendedor-comissao').value,
                     pix: document.getElementById('revendedor-pix').value,
-                    observacoes: document.getElementById('revendedor-observacoes').value
+                    observacoes: document.getElementById('revendedor-observacoes').value,
+                    
+                    // 🆕 Tipo e campos específicos
+                    tipoRevendedor: tipoRevendedor,
+                    percentualComissao: tipoRevendedor === 'comissao' ? document.getElementById('revendedor-comissao').value : 0,
+                    descontoCompra: tipoRevendedor === 'compra' ? document.getElementById('revendedor-desconto-compra').value : 0,
+                    margemMinima: tipoRevendedor === 'compra' ? document.getElementById('revendedor-margem-minima').value : 0
                 };
                 
                 if (salvarRevendedor(dados)) {
@@ -11862,6 +12074,177 @@
             if (inputPesquisa) inputPesquisa.addEventListener('input', aplicarFiltros);
             if (selectOrdem) selectOrdem.addEventListener('change', aplicarFiltros);
         }
+
+        /**
+         * 🆕 ATUALIZA SIMULAÇÃO DE COMISSÃO
+         */
+        function atualizarSimulacaoComissao() {
+            const percentual = parseFloat(document.getElementById('revendedor-comissao').value) || 0;
+            const valorVenda = 100; // Valor fixo de exemplo
+            const comissao = valorVenda * (percentual / 100);
+            
+            document.getElementById('valor-comissao-simulacao').textContent = formatarMoeda(comissao);
+        }
+        
+        /**
+         * 🆕 CARREGA PRODUTOS NA CALCULADORA
+         */
+        function carregarProdutosCalculadora() {
+            const select = document.getElementById('calc-produto-select');
+            if (!select) return;
+            
+            // Limpar opções anteriores (exceto a primeira)
+            select.innerHTML = '<option value="">Selecione um produto...</option>';
+            
+            // Adicionar produtos ativos
+            const produtosAtivos = produtosFinais.filter(p => p.ativo);
+            
+            produtosAtivos.forEach(produto => {
+                const option = document.createElement('option');
+                option.value = produto.id;
+                
+                // Texto do produto com tipo de precificação
+                const tipoPrecif = produto.tipoPrecificacao === 'peso' ? '⚖️ Peso' : '🔢 Unidade';
+                option.textContent = `${produto.nome} (${tipoPrecif})`;
+                
+                select.appendChild(option);
+            });
+        }
+        
+        /**
+         * 🆕 RECALCULA PREÇO PARA REVENDA
+         */
+        function recalcularPrecoRevenda() {
+            const produtoId = document.getElementById('calc-produto-select').value;
+            const desconto = parseFloat(document.getElementById('revendedor-desconto-compra').value) || 0;
+            const margemMinima = parseFloat(document.getElementById('revendedor-margem-minima').value) || 0;
+            const resultadoDiv = document.getElementById('calc-resultado');
+            
+            // Se não tiver produto selecionado, esconder resultado
+            if (!produtoId) {
+                resultadoDiv.style.display = 'none';
+                return;
+            }
+            
+            // Buscar produto
+            const produto = produtosFinais.find(p => p.id === produtoId);
+            if (!produto) {
+                resultadoDiv.style.display = 'none';
+                return;
+            }
+            
+            // Calcular custos do produto
+            const custos = calcularCustoProdutoFinal(produto);
+            
+            // Determinar preço base e custo base
+            let precoVendaNormal, custoUnitario, unidade;
+            
+            if (produto.tipoPrecificacao === 'peso') {
+                precoVendaNormal = produto.precoVendaKg || 0;
+                custoUnitario = custos.custoPorKg || 0;
+                unidade = 'kg';
+            } else {
+                precoVendaNormal = produto.precoVendaUnidade || 0;
+                custoUnitario = custos.custoPorUnidade || 0;
+                unidade = 'un';
+            }
+            
+            // CÁLCULO: Preço com desconto para o revendedor
+            const precoComDesconto = precoVendaNormal * (1 - desconto / 100);
+            
+            // CÁLCULO: Meu lucro vendendo com desconto
+            const meuLucro = precoComDesconto - custoUnitario;
+            const minhaMargemReal = custoUnitario > 0 ? (meuLucro / precoComDesconto) * 100 : 0;
+            
+            // CÁLCULO: Preço mínimo para manter margem desejada
+            // Fórmula: PreçoMinimo = Custo / (1 - MargemDesejada/100)
+            const precoMinimoNecessario = custoUnitario / (1 - margemMinima / 100);
+            const descontoMaximoPossivel = ((precoVendaNormal - precoMinimoNecessario) / precoVendaNormal) * 100;
+            
+            // Verificar se desconto está adequado
+            const descontoOK = minhaMargemReal >= margemMinima;
+            
+            // Cor baseada na margem
+            const corMargem = descontoOK ? 'var(--cor-sucesso)' : 'var(--cor-erro)';
+            const iconeMargem = descontoOK ? '✅' : '⚠️';
+            
+            // Montar resultado
+            resultadoDiv.innerHTML = `
+                <div style="border: 2px solid ${corMargem}; border-radius: var(--borda-radius); padding: 15px; background: white;">
+                    
+                    <!-- Cabeçalho -->
+                    <h4 style="margin: 0 0 15px 0; color: var(--cor-primaria);">
+                        ${produto.nome}
+                    </h4>
+                    
+                    <!-- Tabela de Cálculos -->
+                    <table style="width: 100%; font-size: 14px; margin-bottom: 15px;">
+                        <tr>
+                            <td style="color: var(--cor-texto-claro);">Seu Preço Normal:</td>
+                            <td style="text-align: right; font-weight: 600;">${formatarMoeda(precoVendaNormal)}/${unidade}</td>
+                        </tr>
+                        <tr>
+                            <td style="color: var(--cor-texto-claro);">Seu Custo:</td>
+                            <td style="text-align: right;">${formatarMoeda(custoUnitario)}/${unidade}</td>
+                        </tr>
+                        <tr style="border-top: 1px solid var(--cor-borda);">
+                            <td style="padding-top: 8px;"><strong>Preço com ${desconto}% desconto:</strong></td>
+                            <td style="text-align: right; font-weight: bold; font-size: 18px; color: var(--cor-info); padding-top: 8px;">
+                                ${formatarMoeda(precoComDesconto)}/${unidade}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Seu Lucro nesta venda:</td>
+                            <td style="text-align: right; font-weight: 600; color: ${corMargem};">
+                                ${formatarMoeda(meuLucro)}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Sua Margem Real:</strong></td>
+                            <td style="text-align: right; font-weight: bold; font-size: 18px; color: ${corMargem};">
+                                ${iconeMargem} ${minhaMargemReal.toFixed(1)}%
+                            </td>
+                        </tr>
+                    </table>
+                    
+                    <!-- Análise -->
+                    ${descontoOK ? `
+                        <div style="background: var(--cor-sucesso-claro); padding: 12px; border-radius: 5px; border-left: 4px solid var(--cor-sucesso);">
+                            <strong>✅ Desconto OK!</strong><br>
+                            <span style="font-size: 13px;">
+                                Com ${desconto}% de desconto, você ainda terá ${minhaMargemReal.toFixed(1)}% de margem 
+                                (acima dos ${margemMinima}% desejados).
+                            </span>
+                        </div>
+                    ` : `
+                        <div style="background: var(--cor-erro-claro); padding: 12px; border-radius: 5px; border-left: 4px solid var(--cor-erro);">
+                            <strong>⚠️ Atenção: Margem Baixa!</strong><br>
+                            <span style="font-size: 13px;">
+                                Com ${desconto}% de desconto, sua margem será apenas ${minhaMargemReal.toFixed(1)}% 
+                                (abaixo dos ${margemMinima}% desejados).
+                            </span>
+                        </div>
+                    `}
+                    
+                    <!-- Recomendação -->
+                    <div style="margin-top: 15px; padding: 12px; background: var(--cor-info-claro); border-radius: 5px;">
+                        <strong>💡 Recomendação:</strong><br>
+                        <span style="font-size: 13px;">
+                            ${descontoMaximoPossivel >= 0 ? `
+                                Para manter ${margemMinima}% de margem, o desconto máximo que você pode dar é 
+                                <strong>${descontoMaximoPossivel.toFixed(1)}%</strong>, 
+                                vendendo por <strong>${formatarMoeda(precoMinimoNecessario)}/${unidade}</strong>.
+                            ` : `
+                                Com a margem de ${margemMinima}% desejada, o custo deste produto é muito alto. 
+                                Considere reduzir a margem mínima ou revisar o custo do produto.
+                            `}
+                        </span>
+                    </div>
+                </div>
+            `;
+            
+            resultadoDiv.style.display = 'block';
+        }
         
         /**
          * EDITAR REVENDEDOR
@@ -11876,20 +12259,38 @@
             // Ir para aba de edição
             document.querySelector('#revendedores-page .tab-button[data-tab="novo-revendedor"]').click();
             
-            // Preencher formulário
+            // Preencher campos básicos
             document.getElementById('revendedor-id').value = revendedor.id;
             document.getElementById('revendedor-nome').value = revendedor.nome;
             document.getElementById('revendedor-telefone').value = revendedor.telefone || '';
             document.getElementById('revendedor-email').value = revendedor.email || '';
             document.getElementById('revendedor-cpf').value = revendedor.cpf || '';
             document.getElementById('revendedor-endereco').value = revendedor.endereco || '';
-            document.getElementById('revendedor-comissao').value = revendedor.percentualComissao;
             document.getElementById('revendedor-pix').value = revendedor.pix || '';
             document.getElementById('revendedor-observacoes').value = revendedor.observacoes || '';
             
-            // Atualizar simulação
-            const valorSimulacao = 100 * (revendedor.percentualComissao / 100);
-            document.getElementById('valor-comissao-simulacao').textContent = formatarMoeda(valorSimulacao);
+            // 🆕 PREENCHER TIPO E CAMPOS ESPECÍFICOS
+            const tipoRevendedor = revendedor.tipoRevendedor || 'comissao'; // Default para compatibilidade
+            document.getElementById('revendedor-tipo').value = tipoRevendedor;
+            
+            // Disparar evento change para mostrar campos corretos
+            const event = new Event('change');
+            document.getElementById('revendedor-tipo').dispatchEvent(event);
+            
+            // Aguardar um momento para os campos serem exibidos
+            setTimeout(() => {
+                if (tipoRevendedor === 'comissao') {
+                    // Preencher campos de comissão
+                    document.getElementById('revendedor-comissao').value = revendedor.percentualComissao || 10;
+                    atualizarSimulacaoComissao();
+                    
+                } else if (tipoRevendedor === 'compra') {
+                    // Preencher campos de compra
+                    document.getElementById('revendedor-desconto-compra').value = revendedor.descontoCompra || 0;
+                    document.getElementById('revendedor-margem-minima').value = revendedor.margemMinima || 0;
+                    carregarProdutosCalculadora();
+                }
+            }, 100);
             
             // Atualizar título
             document.getElementById('titulo-form-revendedor').textContent = '✏️ Editar Revendedor';
@@ -11905,6 +12306,11 @@
             document.getElementById('form-revendedor').reset();
             document.getElementById('revendedor-id').value = '';
             document.getElementById('titulo-form-revendedor').textContent = '➕ Cadastrar Novo Revendedor';
+            
+            // 🆕 Esconder seções condicionais
+            document.getElementById('secao-comissao').style.display = 'none';
+            document.getElementById('secao-compra').style.display = 'none';
+            document.getElementById('calc-resultado').style.display = 'none';
         }
         
         /**
