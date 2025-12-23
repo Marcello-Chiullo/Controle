@@ -6380,10 +6380,13 @@
                 
                 console.log('🔄 Gerenciando cliente da venda...');
                 
-                if (clienteAtualVenda) {
+                // 🆕 Acessar do escopo window
+                const clienteAtual = window.clienteAtualVenda;
+                
+                if (clienteAtual) {
                     // Cliente existente - atualizar estatísticas
-                    clienteVendaId = clienteAtualVenda.id;
-                    console.log(`   Cliente existente encontrado: ${clienteAtualVenda.nome} (ID: ${clienteVendaId})`);
+                    clienteVendaId = clienteAtual.id;
+                    console.log(`   Cliente existente encontrado: ${clienteAtual.nome} (ID: ${clienteVendaId})`);
                     
                     // ⚠️ CHAMADA ÚNICA de atualização de estatísticas
                     atualizarEstatisticasCliente(clienteVendaId, valorTotal);
@@ -6444,6 +6447,9 @@
                 console.log(`✅ Cliente vinculado à venda (ID: ${clienteVendaId})`);
 
                 // 🆕 9.2. GERENCIAR REVENDEDOR (SE HOUVER)
+                // 🆕 Acessar do escopo window
+                const revendedorAtual = window.revendedorAtualVenda;   
+                
                 // 🆕 Verificar se revendedorAtualVenda existe E tem ID válido
                 if (revendedorAtualVenda && revendedorAtualVenda.id) {
                     novaVenda.revendedorId = revendedorAtualVenda.id;
@@ -6653,11 +6659,11 @@
         function carregarPaginaVendas() {
             const page = document.getElementById('vendas-page');
             if (!page) return;
-
-            // Limpar arrays temporários ao carregar página
+        
+            // 🆕 DECLARAR VARIÁVEIS NO ESCOPO CORRETO (usar window para acesso global dentro da página)
             produtosVendaTemp = [];
-            let clienteAtualVenda = null; // Cliente selecionado na venda
-            let revendedorAtualVenda = null; // 🆕 Revendedor selecionado na venda
+            window.clienteAtualVenda = null; // Cliente selecionado na venda
+            window.revendedorAtualVenda = null; // Revendedor selecionado na venda
             
             page.innerHTML = `
                 <h2>💰 Gestão de Vendas</h2>
@@ -7948,8 +7954,8 @@
                     // Limpar formulário
                     form.reset();
                     produtosVendaTemp = [];
-                    clienteAtualVenda = null;
-                    revendedorAtualVenda = null;
+                    window.clienteAtualVenda = null; // 🆕
+                    window.revendedorAtualVenda = null; // 🆕
                     // 🆕 Esconder infos
                     document.getElementById('info-cliente-encontrado').style.display = 'none';
                     document.getElementById('alerta-cliente-novo').style.display = 'none';
@@ -8003,7 +8009,7 @@
                 if (!telefone || telefone.trim() === '') {
                     infoDiv.style.display = 'none';
                     alertaDiv.style.display = 'none';
-                    clienteAtualVenda = null;
+                    window.clienteAtualVenda = null;
                     return;
                 }
                 
@@ -8012,7 +8018,7 @@
                 
                 if (cliente) {
                     // CLIENTE ENCONTRADO
-                    clienteAtualVenda = cliente;
+                    window.clienteAtualVenda = cliente;
                     
                     // Preencher dados
                     document.getElementById('venda-cliente-nome').value = cliente.nome;
@@ -8083,7 +8089,7 @@
                     
                 } else {
                     // CLIENTE NOVO
-                    clienteAtualVenda = null;
+                    window.clienteAtualVenda = null;
                     
                     // Limpar campos (deixar apenas telefone)
                     document.getElementById('venda-cliente-nome').value = '';
@@ -8116,7 +8122,7 @@
                         // Revendedor selecionado
                         const revendedor = revendedores.find(r => r.id === revendedorId);
                         if (revendedor) {
-                            revendedorAtualVenda = revendedor;
+                            window.revendedorAtualVenda = revendedor;
                             
                             // Mostrar informações
                             document.getElementById('nome-revendedor-selecionado').textContent = revendedor.nome;
@@ -8132,7 +8138,7 @@
                         }
                     } else {
                         // Nenhum revendedor
-                        revendedorAtualVenda = null;
+                        window.revendedorAtualVenda = null;
                         infoDiv.style.display = 'none';
                     }
                 });
@@ -8142,7 +8148,9 @@
              * ATUALIZA CÁLCULO DE COMISSÃO DO REVENDEDOR
              */
             function atualizarCalculoComissaoVenda() {
-                if (!revendedorAtualVenda) return;
+                // 🆕 Acessar do escopo window
+                const revendedorAtual = window.revendedorAtualVenda;
+                if (!revendedorAtual) return;
                 
                 // Calcular valor total atual
                 const valorTotal = produtosVendaTemp.reduce((sum, item) => {
@@ -8164,7 +8172,7 @@
                 }, 0);
                 
                 // Calcular comissão
-                const comissao = valorTotal * (revendedorAtualVenda.percentualComissao / 100);
+                const comissao = valorTotal * (revendedorAtual.percentualComissao / 100);
                 
                 // Atualizar display
                 const elemComissao = document.getElementById('valor-comissao-venda');
@@ -8205,7 +8213,10 @@
              * 🆕 APLICA TIPO DE VENDA (CONSUMO PRÓPRIO vs REVENDA)
              */
             function aplicarTipoVendaCliente(eRevenda) {
-                if (!clienteAtualVenda || !clienteAtualVenda.eRevendedor) {
+                // 🆕 Acessar do escopo window
+                const clienteAtual = window.clienteAtualVenda;
+                
+                if (!clienteAtual || !clienteAtual.eRevendedor) {
                     console.warn('Cliente não é revendedor');
                     return;
                 }
@@ -8216,7 +8227,7 @@
                 
                 if (eRevenda) {
                     // VENDA PARA REVENDA
-                    const descontoRevenda = clienteAtualVenda.descontoRevenda || 0;
+                    const descontoRevenda = clienteAtual.descontoRevenda || 0;
                     
                     // Aplicar desconto de revendedor
                     aplicarDescontoClienteVenda(descontoRevenda);
@@ -8233,7 +8244,7 @@
                         campoRevendedorComissionado.value = ''; // Limpar seleção
                     }
                     // Limpar revendedor atual
-                    revendedorAtualVenda = null;
+                    window.revendedorAtualVenda = null;
                     const infoRevendedorDiv = document.getElementById('info-revendedor-selecionado');
                     if (infoRevendedorDiv) {
                         infoRevendedorDiv.style.display = 'none';
@@ -8246,7 +8257,7 @@
                     
                 } else {
                     // VENDA PARA CONSUMO PRÓPRIO
-                    const nivelInfo = getNivelInfo(clienteAtualVenda.nivel);
+                    const nivelInfo = getNivelInfo(clienteAtual.nivel);
                     const descontoCliente = nivelInfo.desconto || 0;
                     
                     // Aplicar desconto de cliente normal
@@ -8358,13 +8369,15 @@
             let lucroLiquidoFinal = lucroLiquido;
             let revendedorInfo = null;
             
-            // 🆕 Verificar se revendedorAtualVenda existe E não é null/undefined
-            if (revendedorAtualVenda && revendedorAtualVenda.id) {
-                comissaoRevendedor = valorClientePaga * (revendedorAtualVenda.percentualComissao / 100);
+            // 🆕 Acessar variável do escopo window
+            const revendedorAtual = window.revendedorAtualVenda;
+            
+            if (revendedorAtual && revendedorAtual.id) {
+                comissaoRevendedor = valorClientePaga * (revendedorAtual.percentualComissao / 100);
                 lucroLiquidoFinal = lucroLiquido - comissaoRevendedor;
                 revendedorInfo = {
-                    nome: revendedorAtualVenda.nome,
-                    percentual: revendedorAtualVenda.percentualComissao
+                    nome: revendedorAtual.nome,
+                    percentual: revendedorAtual.percentualComissao
                 };
             }
             
@@ -8386,7 +8399,7 @@
                 margemLiquida,
                 comissaoRevendedor,
                 lucroLiquidoFinal,
-                revendedor: revendedorInfo // 🆕 Usar a variável criada anteriormente
+                revendedor: revendedorInfo // 🆕 Usar variável já validada
             };
         }
 
