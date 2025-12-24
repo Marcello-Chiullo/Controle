@@ -8067,21 +8067,44 @@
                     const perguntaDiv = document.getElementById('pergunta-venda-revenda');
                     if (cliente.eRevendedor) {
                         // Atualizar valores da pergunta
-                        document.getElementById('desconto-cliente-normal').textContent = nivelInfo.desconto + '%';
-                        document.getElementById('desconto-revendedor-valor').textContent = (cliente.descontoRevenda || 0) + '%';
+                        const elemDescontoNormal = document.getElementById('desconto-cliente-normal');
+                        const elemDescontoRevendedor = document.getElementById('desconto-revendedor-valor');
                         
-                        // Resetar para "NÃO" (consumo próprio)
-                        document.querySelector('input[name="venda-e-revenda"][value="nao"]').checked = true;
-                        document.getElementById('info-venda-revenda').style.display = 'none';
+                        if (elemDescontoNormal) {
+                            elemDescontoNormal.textContent = nivelInfo.desconto + '%';
+                        }
+                        if (elemDescontoRevendedor) {
+                            elemDescontoRevendedor.textContent = (cliente.descontoRevenda || 0) + '%';
+                        }
+                        
+                        // Resetar para "NÃO" (consumo próprio) - padrão
+                        const radioNao = document.querySelector('input[name="venda-e-revenda"][value="nao"]');
+                        if (radioNao) {
+                            radioNao.checked = true;
+                        }
+                        
+                        const infoRevendaDiv = document.getElementById('info-venda-revenda');
+                        if (infoRevendaDiv) {
+                            infoRevendaDiv.style.display = 'none';
+                        }
+                        
                         window.vendaAtualERevenda = false;
                         
                         // Mostrar pergunta
-                        perguntaDiv.style.display = 'block';
+                        if (perguntaDiv) {
+                            perguntaDiv.style.display = 'block';
+                        }
+                        
+                        console.log('🛒 Cliente é revendedor! Mostrando pergunta de tipo de venda');
+                        console.log('   Desconto Cliente:', nivelInfo.desconto + '%');
+                        console.log('   Desconto Revenda:', (cliente.descontoRevenda || 0) + '%');
                         
                         mostrarToast(`Cliente encontrado! Este cliente também é revendedor 🤝`, 'info');
                     } else {
                         // Cliente normal - ocultar pergunta
-                        perguntaDiv.style.display = 'none';
+                        if (perguntaDiv) {
+                            perguntaDiv.style.display = 'none';
+                        }
                         window.vendaAtualERevenda = false;
                         
                         mostrarToast(`Cliente encontrado! Aplicando ${nivelInfo.desconto}% de desconto ${nivelInfo.icone}`, 'success');
@@ -8143,6 +8166,15 @@
                     }
                 });
             }
+
+            // 🆕 LISTENERS PARA RADIO BUTTONS DE VENDA PARA REVENDA
+            const radioVendaRevenda = document.querySelectorAll('input[name="venda-e-revenda"]');
+            radioVendaRevenda.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    const eRevenda = this.value === 'sim';
+                    aplicarTipoVendaCliente(eRevenda);
+                });
+            });
             
             /**
              * ATUALIZA CÁLCULO DE COMISSÃO DO REVENDEDOR
@@ -8222,19 +8254,31 @@
                 }
                 
                 const infoDiv = document.getElementById('info-venda-revenda');
-                const campoRevendedorComissionado = document.getElementById('venda-revendedor'); // 🆕
-                const divRevendedorComissionado = campoRevendedorComissionado ? campoRevendedorComissionado.closest('.form-group') : null; // 🆕
+                const campoRevendedorComissionado = document.getElementById('venda-revendedor');
+                const divRevendedorComissionado = campoRevendedorComissionado ? campoRevendedorComissionado.closest('.form-group') : null;
+                
+                console.log('🔄 Aplicando tipo de venda:', eRevenda ? 'REVENDA' : 'CONSUMO PRÓPRIO');
+                console.log('   Cliente:', clienteAtual.nome);
+                console.log('   Desconto Revenda:', clienteAtual.descontoRevenda + '%');
                 
                 if (eRevenda) {
-                    // VENDA PARA REVENDA
-                    const descontoRevenda = clienteAtual.descontoRevenda || 0;
+                    // ✅ VENDA PARA REVENDA
+                    const descontoRevenda = parseFloat(clienteAtual.descontoRevenda) || 0;
+                    
+                    console.log('   ✅ Aplicando desconto de REVENDA:', descontoRevenda + '%');
                     
                     // Aplicar desconto de revendedor
                     aplicarDescontoClienteVenda(descontoRevenda);
                     
                     // Mostrar informações
-                    document.getElementById('info-desconto-aplicado').textContent = descontoRevenda + '%';
-                    infoDiv.style.display = 'block';
+                    const elemDesconto = document.getElementById('info-desconto-aplicado');
+                    if (elemDesconto) {
+                        elemDesconto.textContent = descontoRevenda + '%';
+                    }
+                    
+                    if (infoDiv) {
+                        infoDiv.style.display = 'block';
+                    }
                     
                     // 🆕 OCULTAR campo de revendedor comissionado (não faz sentido em vendas de revenda)
                     if (divRevendedorComissionado) {
@@ -8243,6 +8287,7 @@
                     if (campoRevendedorComissionado) {
                         campoRevendedorComissionado.value = ''; // Limpar seleção
                     }
+                    
                     // Limpar revendedor atual
                     window.revendedorAtualVenda = null;
                     const infoRevendedorDiv = document.getElementById('info-revendedor-selecionado');
@@ -8250,34 +8295,38 @@
                         infoRevendedorDiv.style.display = 'none';
                     }
                     
-                    // Marcar flag global
+                    // 🆕 Marcar flag global
                     window.vendaAtualERevenda = true;
                     
                     mostrarToast(`Aplicando ${descontoRevenda}% de desconto para REVENDA 🤝`, 'success');
                     
                 } else {
-                    // VENDA PARA CONSUMO PRÓPRIO
+                    // ✅ VENDA PARA CONSUMO PRÓPRIO
                     const nivelInfo = getNivelInfo(clienteAtual.nivel);
                     const descontoCliente = nivelInfo.desconto || 0;
+                    
+                    console.log('   ✅ Aplicando desconto de CLIENTE:', descontoCliente + '%');
                     
                     // Aplicar desconto de cliente normal
                     aplicarDescontoClienteVenda(descontoCliente);
                     
                     // Ocultar informações de revenda
-                    infoDiv.style.display = 'none';
+                    if (infoDiv) {
+                        infoDiv.style.display = 'none';
+                    }
                     
                     // 🆕 MOSTRAR campo de revendedor comissionado novamente
                     if (divRevendedorComissionado) {
                         divRevendedorComissionado.style.display = 'block';
                     }
                     
-                    // Marcar flag global
+                    // 🆕 Marcar flag global
                     window.vendaAtualERevenda = false;
                     
                     mostrarToast(`Aplicando ${descontoCliente}% de desconto de cliente ${nivelInfo.nome} ${nivelInfo.icone}`, 'info');
                 }
                 
-                // Atualizar resumo financeiro
+                // 🆕 ATUALIZAR RESUMO FINANCEIRO
                 atualizarResumoFinanceiroVenda();
             }    
         }
