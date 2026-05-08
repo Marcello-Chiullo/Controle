@@ -1051,23 +1051,21 @@
                 outros: 0,
                 total: 0
             },
-            // Parâmetros de precificação
+            // Parâmetros de precificação (só para cálculo de markup)
             imposto: 3,              // % sobre preço de venda
             taxaPagamento: 3,        // % sobre preço de venda (cartão/pix)
-            reservaEmergencia: 5,    // % sobre preço de venda → cofrinho
-            reinvestimento: 5,       // % sobre preço de venda → cofrinho
+            // Percentuais de alocação dos cofrinhos (sobre o líquido da venda)
+            pctEmergencia: 5,        // % do líquido → Caixa Emergência
+            pctReinvestimento: 5,    // % do líquido → Caixa Reinvestimento
+            // Metas
             proLaboreAlvo: 3000,     // R$/mês desejado
             faturamentoAlvo: 8000,   // R$/mês desejado
             // Markup calculado
             multiplicadorMarkup: 2.40,
             custoFixoPorUnidade: 0,
-            // Cofrinhos — transferências já realizadas (acumulado)
-            cofrinhos: {
-                reservaTransferida: 0,
-                reinvestimentoTransferido: 0,
-                impostoTransferido: 0,
-                proLaboreTransferido: 0
-            }
+            // Manter compat campos antigos
+            reservaEmergencia: 5,
+            reinvestimento: 5
         };
         
         // Dados do sistema
@@ -1507,12 +1505,12 @@
                 const fat = parseFloat(c.faturamentoAlvo) || 8000;
                 const fracaoFixos = (parseFloat(c.proLaboreAlvo) + totalFixoOperacional) / fat;
                 
-                // 3. Fração variável (% sobre preço de venda)
+                // 3. Fração variável (% sobre preço de venda — apenas imposto e taxa)
+                // Cofrinhos de emergência e reinvestimento NÃO entram no markup
+                // pois são alocados do líquido após a venda, não do preço bruto
                 const fracaoVariavel = (
                     parseFloat(c.imposto) +
-                    parseFloat(c.taxaPagamento) +
-                    parseFloat(c.reservaEmergencia) +
-                    parseFloat(c.reinvestimento)
+                    parseFloat(c.taxaPagamento)
                 ) / 100;
                 
                 // 4. Fórmula PV = CD / (1 - DV)
@@ -2136,6 +2134,9 @@
                 
                 // 🆕 4. EXECUTAR MIGRAÇÃO AUTOMÁTICA DE DADOS
                 console.log('🔄 Verificando necessidade de migração de dados...');
+                
+                // Migrar vendas sem lançamentos financeiros
+                migrarVendasSemLancamentos();
                 
                 console.log('✅ Dados carregados:', {
                     materiais: materiais.length,
@@ -5449,18 +5450,14 @@
                 salvarLocalStorage();
                 sincronizarComNuvem();
                 
-                // Sugerir débito do cofrinho de reinvestimento
-                const _saldoReinvest = calcularSaldoCofrinho('reinvestimento', parseFloat(configuracoesCustos.reinvestimento)||5);
-                if (_saldoReinvest.disponivel > 0) {
-                    setTimeout(() => {
-                        if (confirm(`💳 Deseja debitar R$ ${precoTotal.toFixed(2).replace('.',',')} do cofrinho de Reinvestimento?
-
-Saldo disponível: R$ ${_saldoReinvest.disponivel.toFixed(2).replace('.',',')}`)) {
-                            const _nomeMat = materialExistente ? materialExistente.nome : dados.nome;
-                            registrarSaidaFinanceira('reinvestimento', `Compra: ${_nomeMat}`, precoTotal);
-                            mostrarToast('Débito registrado no Reinvestimento!', 'success');
-                        }
-                    }, 300);
+                // Débito automático no Caixa Operacional
+                const _nomeMat = materialExistente ? materialExistente.nome : dados.nome;
+                const _saldoOper = getSaldoCofrinho('operacional');
+                registrarSaidaCofrinho('operacional', `Compra: ${_nomeMat}`, precoTotal, 'saida_compra', materialExistente?.id || 'novo');
+                if (_saldoOper < precoTotal) {
+                    mostrarToast(`⚠️ Caixa Operacional ficou negativo`, 'warning', 5000);
+                } else {
+                    mostrarToast(`💳 R$ ${precoTotal.toFixed(2).replace('.',',')} debitado do Caixa Operacional`, 'info');
                 }
                 
                 return true;
@@ -6916,6 +6913,9 @@ Saldo disponível: R$ ${_saldoReinvest.disponivel.toFixed(2).replace('.',',')}`)
                 
                 // 11. RECALCULAR ESTOQUE (irá subtrair automaticamente)
                 estoque = calcularEstoqueCompleto();
+                
+                // 11.1 CRIAR ENTRADAS NOS COFRINHOS
+                criarEntradasFinanceiras(novaVenda);
                 
                 // 12. SALVAR
                 salvarLocalStorage();
@@ -9994,181 +9994,300 @@ Saldo disponível: R$ ${_saldoReinvest.disponivel.toFixed(2).replace('.',',')}`)
             
             const c = configuracoesCustos;
             
-            const cofrinhos = [
-                { id:'reserva',       emoji:'🛡️', nome:'Reserva de Emergência', pct: parseFloat(c.reservaEmergencia)||5,  cor:'#17a2b8' },
-                { id:'reinvestimento',emoji:'🚀', nome:'Reinvestimento',          pct: parseFloat(c.reinvestimento)||5,     cor:'var(--cor-sucesso)' },
-                { id:'imposto',       emoji:'🏛️', nome:'Imposto a Recolher',     pct: parseFloat(c.imposto)||3,            cor:'var(--cor-aviso)' },
-                { id:'proLabore',     emoji:'💵', nome:'Pró-labore',              pct: null, cor:'var(--cor-primaria)' }
-            ];
+            const saldos = {
+                operacional:    getSaldoCofrinho('operacional'),
+                emergencia:     getSaldoCofrinho('emergencia'),
+                reinvestimento: getSaldoCofrinho('reinvestimento'),
+                prolabore:      getSaldoCofrinho('prolabore')
+            };
             
-            // Calcular saldo pró-labore = faturamento total - todos os outros cofrinhos - custos fixos
-            const fatTotal = vendas.filter(v=>!v.cancelada).reduce((s,v)=>s+(v.valorTotal||0),0);
-            const saidasOthers = (cofrinhos[0].pct + cofrinhos[1].pct + cofrinhos[2].pct + (parseFloat(c.taxaPagamento)||3)) / 100;
-            const brutoProLabore = Math.max(fatTotal * (1 - saidasOthers) - (c.fixos?.total || 0) * (vendas.filter(v=>!v.cancelada).length / Math.max(vendas.length, 1)), 0);
+            const totalGeral = Object.values(saldos).reduce((s,v)=>s+v,0);
             
-            const saldos = cofrinhos.map(cf => {
-                if (cf.id === 'proLabore') {
-                    const saidas = lancamentosFinanceiros.filter(l=>l.cofrinho==='proLabore').reduce((s,l)=>s+l.valor,0);
-                    return { ...cf, bruto: brutoProLabore, saidas, disponivel: Math.max(brutoProLabore-saidas,0) };
-                }
-                return { ...cf, ...calcularSaldoCofrinho(cf.id, cf.pct) };
-            });
+            // Histórico ordenado por data desc
+            const historico = [...lancamentosFinanceiros]
+                .sort((a,b)=>new Date(b.data)-new Date(a.data))
+                .slice(0, 100);
             
-            const totalDisponivel = saldos.reduce((s,c)=>s+c.disponivel,0);
-            
-            // Histórico de saídas
-            const historico = [...lancamentosFinanceiros].sort((a,b)=>new Date(b.data)-new Date(a.data));
-            
-            const mapaCofr = { reserva:'🛡️ Reserva', reinvestimento:'🚀 Reinvest.', imposto:'🏛️ Imposto', proLabore:'💵 Pró-labore' };
+            const tipoLabel = {
+                entrada_venda:        '📈 Venda',
+                entrada_manual:       '➕ Manual',
+                entrada_transferencia:'↩️ Transferência',
+                saida_manual:         '📤 Saída manual',
+                saida_compra:         '🛒 Compra material',
+                saida_transferencia:  '↪️ Transferência'
+            };
             
             page.innerHTML = `
                 <h2>💳 Controle Financeiro</h2>
                 
-                <!-- Saldos dos cofrinhos -->
-                <div class="card" style="margin-bottom:20px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
-                        <h3 style="margin:0;">🏦 Saldos Acumulados</h3>
-                        <span style="font-size:13px;color:var(--cor-texto-claro);">
-                            Faturamento total: ${formatarMoeda(fatTotal)}
-                        </span>
-                    </div>
-                    
-                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:15px;margin-bottom:20px;">
-                        ${saldos.map(cf => `
-                            <div style="background:white;border-radius:var(--borda-radius);padding:18px;
-                                box-shadow:var(--sombra-leve);border-top:4px solid ${cf.cor};">
-                                <div style="font-size:24px;margin-bottom:5px;">${cf.emoji}</div>
-                                <div style="font-weight:bold;margin-bottom:3px;">${cf.nome}</div>
-                                <div style="font-size:11px;color:var(--cor-texto-claro);margin-bottom:12px;">
-                                    ${cf.pct ? cf.pct+'% das vendas' : 'Resíduo após cofrinhos'}
+                <!-- Saldos -->
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:15px;margin-bottom:20px;">
+                    ${Object.entries(COFRINHOS_DEF).map(([id, def]) => {
+                        const saldo = saldos[id];
+                        const movs = lancamentosFinanceiros.filter(l=>l.cofrinho===id);
+                        const entradas = movs.filter(l=>['entrada_venda','entrada_manual','entrada_transferencia'].includes(l.tipo)).reduce((s,l)=>s+l.valor,0);
+                        const saidas   = movs.filter(l=>['saida_manual','saida_compra','saida_transferencia'].includes(l.tipo)).reduce((s,l)=>s+l.valor,0);
+                        return `
+                            <div class="card" style="border-top:4px solid ${def.cor};padding:18px;">
+                                <div style="font-size:24px;">${def.emoji}</div>
+                                <div style="font-weight:bold;margin:5px 0;">${def.nome}</div>
+                                <div style="font-size:12px;color:var(--cor-texto-claro);margin-bottom:12px;">
+                                    +${formatarMoeda(entradas)} entradas &nbsp; −${formatarMoeda(saidas)} saídas
                                 </div>
-                                <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
-                                    <span style="color:var(--cor-texto-claro);">Bruto pelas vendas:</span>
-                                    <span>${formatarMoeda(cf.bruto)}</span>
+                                <div style="font-size:28px;font-weight:bold;color:${saldo<0?'var(--cor-erro)':def.cor};">
+                                    ${formatarMoeda(saldo)}
                                 </div>
-                                <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px;">
-                                    <span style="color:var(--cor-erro);">Saídas registradas:</span>
-                                    <span style="color:var(--cor-erro);">-${formatarMoeda(cf.saidas)}</span>
+                                ${id==='prolabore' && c.proLaboreAlvo ? `
+                                    <div style="font-size:12px;color:${saldo>=(c.proLaboreAlvo||3000)?'var(--cor-sucesso)':'var(--cor-erro)'};margin-top:5px;">
+                                        Meta: ${formatarMoeda(c.proLaboreAlvo)} ${saldo>=(c.proLaboreAlvo||3000)?'✅':'⚠️'}
+                                    </div>` : ''}
+                                <div style="display:flex;gap:5px;margin-top:12px;">
+                                    <button class="btn btn-success btn-sm" style="flex:1;"
+                                        onclick="abrirModalAjuste('${id}','entrada')">➕</button>
+                                    <button class="btn btn-danger btn-sm" style="flex:1;"
+                                        onclick="abrirModalAjuste('${id}','saida')">➖</button>
+                                    <button class="btn btn-secondary btn-sm" style="flex:1;"
+                                        onclick="abrirModalTransferencia('${id}')">↔️</button>
                                 </div>
-                                <div style="border-top:2px solid var(--cor-borda);padding-top:8px;text-align:center;">
-                                    <div style="font-size:11px;color:var(--cor-texto-claro);">Disponível</div>
-                                    <div style="font-size:24px;font-weight:bold;color:${cf.cor};">${formatarMoeda(cf.disponivel)}</div>
-                                </div>
-                                <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:10px;"
-                                    onclick="abrirModalSaida('${cf.id}','${cf.nome}',${cf.disponivel})">
-                                    📤 Registrar Saída
-                                </button>
                             </div>
-                        `).join('')}
-                    </div>
-                    
-                    <div style="background:var(--cor-fundo);padding:12px;border-radius:var(--borda-radius);text-align:center;">
-                        <strong>💰 Total disponível em todos os cofrinhos: ${formatarMoeda(totalDisponivel)}</strong>
-                    </div>
+                        `;
+                    }).join('')}
                 </div>
                 
-                <!-- Histórico de saídas -->
+                <div style="background:var(--cor-fundo);padding:12px;border-radius:var(--borda-radius);margin-bottom:20px;text-align:center;">
+                    <strong>💰 Total em todos os caixas: ${formatarMoeda(totalGeral)}</strong>
+                </div>
+                
+                <!-- Histórico -->
                 <div class="card">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px;">
-                        <h3 style="margin:0;">📋 Histórico de Saídas</h3>
-                        <button class="btn btn-primary btn-sm" onclick="abrirModalSaida('','Saída Manual',0)">
-                            ➕ Registrar Saída
-                        </button>
+                        <h3 style="margin:0;">📋 Movimentações</h3>
+                        <div style="display:flex;gap:8px;">
+                            <select id="filtro-cofrinho-hist" class="form-control" style="width:180px;" onchange="filtrarHistoricoFinanceiro()">
+                                <option value="">Todos os caixas</option>
+                                ${Object.entries(COFRINHOS_DEF).map(([id,def])=>`<option value="${id}">${def.emoji} ${def.nome}</option>`).join('')}
+                            </select>
+                            <select id="filtro-tipo-hist" class="form-control" style="width:160px;" onchange="filtrarHistoricoFinanceiro()">
+                                <option value="">Todos os tipos</option>
+                                <option value="entrada">Entradas</option>
+                                <option value="saida">Saídas</option>
+                            </select>
+                        </div>
                     </div>
                     
-                    ${historico.length === 0 ? `
-                        <p style="text-align:center;color:var(--cor-texto-claro);padding:20px;">
-                            Nenhuma saída registrada ainda.
-                        </p>
-                    ` : `
-                        <div style="overflow-x:auto;">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Data</th>
-                                        <th>Cofrinho</th>
-                                        <th>Descrição</th>
-                                        <th>Valor</th>
-                                        <th>Ação</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${historico.map(l=>`
-                                        <tr>
-                                            <td>${formatarData(l.data)}</td>
-                                            <td>${mapaCofr[l.cofrinho] || l.cofrinho}</td>
-                                            <td>${l.descricao}</td>
-                                            <td style="font-weight:bold;color:var(--cor-erro);">-${formatarMoeda(l.valor)}</td>
-                                            <td>
-                                                <button class="btn btn-danger btn-sm" onclick="excluirSaidaFinanceira('${l.id}')">🗑️</button>
-                                            </td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                    `}
+                    <div id="tabela-historico-financeiro" style="overflow-x:auto;">
+                        ${renderizarTabelaFinanceiro(historico)}
+                    </div>
                 </div>
             `;
         }
         
-        function abrirModalSaida(cofrinhoId, cofrinhoNome, saldoDisponivel) {
-            const c = configuracoesCustos;
+        function renderizarTabelaFinanceiro(lista) {
+            const tipoLabel = {
+                entrada_venda:'📈 Venda', entrada_manual:'➕ Ajuste', entrada_transferencia:'↩️ Transfer.',
+                saida_manual:'📤 Saída', saida_compra:'🛒 Compra', saida_transferencia:'↪️ Transfer.'
+            };
+            if (lista.length === 0) return '<p style="text-align:center;color:var(--cor-texto-claro);padding:20px;">Nenhum lançamento ainda.</p>';
+            return `<table>
+                <thead><tr><th>Data</th><th>Caixa</th><th>Tipo</th><th>Descrição</th><th>Valor</th><th></th></tr></thead>
+                <tbody>
+                    ${lista.map(l => {
+                        const isEntrada = l.tipo.startsWith('entrada');
+                        const def = COFRINHOS_DEF[l.cofrinho] || {emoji:'💰',nome:l.cofrinho,cor:'#333'};
+                        return `<tr>
+                            <td>${formatarData(l.data)}</td>
+                            <td>${def.emoji} ${def.nome}</td>
+                            <td><span style="font-size:13px;">${tipoLabel[l.tipo]||l.tipo}</span></td>
+                            <td style="font-size:13px;">${l.descricao}</td>
+                            <td style="font-weight:bold;color:${isEntrada?'var(--cor-sucesso)':'var(--cor-erro)'};">
+                                ${isEntrada?'+':'-'}${formatarMoeda(l.valor)}
+                            </td>
+                            <td>
+                                ${l.tipo !== 'entrada_venda' ? `
+                                <button class="btn btn-danger btn-sm" onclick="excluirLancamentoFinanceiro('${l.id}')">🗑️</button>` : ''}
+                            </td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>`;
+        }
+        
+        function filtrarHistoricoFinanceiro() {
+            const cofrinho = document.getElementById('filtro-cofrinho-hist').value;
+            const tipo     = document.getElementById('filtro-tipo-hist').value;
+            let lista = [...lancamentosFinanceiros].sort((a,b)=>new Date(b.data)-new Date(a.data));
+            if (cofrinho) lista = lista.filter(l=>l.cofrinho===cofrinho);
+            if (tipo) lista = lista.filter(l=>l.tipo.startsWith(tipo));
+            document.getElementById('tabela-historico-financeiro').innerHTML = renderizarTabelaFinanceiro(lista.slice(0,100));
+        }
+        
+        function abrirModalAjuste(cofrinhoId, sentido) {
+            const def = COFRINHOS_DEF[cofrinhoId];
+            const saldo = getSaldoCofrinho(cofrinhoId);
             const modal = document.createElement('div');
             modal.className = 'modal-overlay';
             modal.innerHTML = `
-                <div class="modal" style="background:white;border-radius:var(--borda-radius);padding:25px;max-width:450px;width:90%;">
-                    <h3>📤 Registrar Saída</h3>
-                    ${saldoDisponivel > 0 ? `<p style="color:var(--cor-texto-claro);margin-bottom:15px;">Disponível: <strong>${formatarMoeda(saldoDisponivel)}</strong></p>` : ''}
-                    
-                    <div class="form-group">
-                        <label>Cofrinho:</label>
-                        <select id="modal-saida-cofrinho" class="form-control">
-                            <option value="reserva" ${cofrinhoId==='reserva'?'selected':''}>🛡️ Reserva de Emergência</option>
-                            <option value="reinvestimento" ${cofrinhoId==='reinvestimento'?'selected':''}>🚀 Reinvestimento</option>
-                            <option value="imposto" ${cofrinhoId==='imposto'?'selected':''}>🏛️ Imposto a Recolher</option>
-                            <option value="proLabore" ${cofrinhoId==='proLabore'?'selected':''}>💵 Pró-labore</option>
-                        </select>
-                    </div>
+                <div class="modal" style="background:white;border-radius:var(--borda-radius);padding:25px;max-width:420px;width:90%;">
+                    <h3>${sentido==='entrada'?'➕ Entrada':'➖ Saída'} — ${def.emoji} ${def.nome}</h3>
+                    <p style="color:var(--cor-texto-claro);margin-bottom:15px;">Saldo atual: <strong>${formatarMoeda(saldo)}</strong></p>
                     <div class="form-group">
                         <label>Descrição:</label>
-                        <input type="text" id="modal-saida-desc" class="form-control" 
-                            placeholder="Ex: Compra de materiais, Pagamento pro-labore..." value="${cofrinhoId==='proLabore'?'Pagamento pró-labore':''}">
+                        <input type="text" id="ajuste-desc" class="form-control" placeholder="Ex: Aporte inicial, Pagamento pró-labore...">
                     </div>
                     <div class="form-group">
                         <label>Valor (R$):</label>
-                        <input type="number" id="modal-saida-valor" class="form-control" min="0.01" step="0.01" placeholder="0,00">
+                        <input type="number" id="ajuste-valor" class="form-control" min="0.01" step="0.01">
                     </div>
                     <div style="display:flex;gap:10px;margin-top:20px;">
-                        <button class="btn btn-primary" onclick="confirmarSaidaFinanceira()" style="flex:1;">✅ Confirmar</button>
-                        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">❌ Cancelar</button>
+                        <button class="btn btn-primary" style="flex:1;"
+                            onclick="confirmarAjuste('${cofrinhoId}','${sentido}')">✅ Confirmar</button>
+                        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">❌</button>
                     </div>
-                </div>
-            `;
+                </div>`;
             document.body.appendChild(modal);
         }
         
-        function confirmarSaidaFinanceira() {
-            const cofrinho = document.getElementById('modal-saida-cofrinho').value;
-            const descricao = document.getElementById('modal-saida-desc').value.trim();
-            const valor = parseFloat(document.getElementById('modal-saida-valor').value);
-            
-            if (!descricao) { mostrarToast('Informe a descrição', 'warning'); return; }
-            if (!valor || valor <= 0) { mostrarToast('Informe um valor válido', 'warning'); return; }
-            
-            registrarSaidaFinanceira(cofrinho, descricao, valor);
+        function confirmarAjuste(cofrinhoId, sentido) {
+            const desc  = document.getElementById('ajuste-desc').value.trim();
+            const valor = parseFloat(document.getElementById('ajuste-valor').value);
+            if (!desc)  { mostrarToast('Informe a descrição','warning'); return; }
+            if (!valor || valor <= 0) { mostrarToast('Informe um valor válido','warning'); return; }
+            const tipo = sentido === 'entrada' ? 'entrada_manual' : 'saida_manual';
+            lancamentosFinanceiros.push({ id:gerarId(), tipo, descricao:desc, valor, cofrinho:cofrinhoId, data:new Date().toISOString(), referencia:'manual' });
+            salvarLocalStorage(); sincronizarComNuvem();
             document.querySelector('.modal-overlay')?.remove();
-            mostrarToast('Saída registrada!', 'success');
+            mostrarToast('Lançamento registrado!','success');
             carregarPaginaFinanceiro();
         }
         
-        function excluirSaidaFinanceira(id) {
-            if (!confirm('Excluir esta saída?')) return;
-            lancamentosFinanceiros = lancamentosFinanceiros.filter(l => l.id !== id);
+        function abrirModalTransferencia(origemId) {
+            const def = COFRINHOS_DEF[origemId];
+            const saldo = getSaldoCofrinho(origemId);
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal" style="background:white;border-radius:var(--borda-radius);padding:25px;max-width:420px;width:90%;">
+                    <h3>↔️ Transferência — ${def.emoji} ${def.nome}</h3>
+                    <p style="color:var(--cor-texto-claro);margin-bottom:15px;">Saldo disponível: <strong>${formatarMoeda(saldo)}</strong></p>
+                    <div class="form-group">
+                        <label>Destino:</label>
+                        <select id="transf-destino" class="form-control">
+                            ${Object.entries(COFRINHOS_DEF).filter(([id])=>id!==origemId).map(([id,d])=>`<option value="${id}">${d.emoji} ${d.nome}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Valor (R$):</label>
+                        <input type="number" id="transf-valor" class="form-control" min="0.01" step="0.01" max="${saldo}">
+                    </div>
+                    <div class="form-group">
+                        <label>Motivo (opcional):</label>
+                        <input type="text" id="transf-desc" class="form-control" placeholder="Ex: Reforço emergência">
+                    </div>
+                    <div style="display:flex;gap:10px;margin-top:20px;">
+                        <button class="btn btn-primary" style="flex:1;"
+                            onclick="confirmarTransferencia('${origemId}')">✅ Transferir</button>
+                        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">❌</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(modal);
+        }
+        
+        function confirmarTransferencia(origemId) {
+            const destino = document.getElementById('transf-destino').value;
+            const valor   = parseFloat(document.getElementById('transf-valor').value);
+            const desc    = document.getElementById('transf-desc').value.trim() || 'Transferência';
+            if (!valor || valor <= 0) { mostrarToast('Informe um valor válido','warning'); return; }
+            if (transferirEntreCofrinhos(origemId, destino, valor, desc)) {
+                document.querySelector('.modal-overlay')?.remove();
+                mostrarToast('Transferência realizada!','success');
+                carregarPaginaFinanceiro();
+            }
+        }
+        
+        function excluirLancamentoFinanceiro(id) {
+            if (!confirm('Excluir este lançamento?')) return;
+            lancamentosFinanceiros = lancamentosFinanceiros.filter(l=>l.id!==id);
+            salvarLocalStorage(); sincronizarComNuvem();
+            mostrarToast('Lançamento excluído','success');
+            carregarPaginaFinanceiro();
+        }
+
+
+
+        // ====================================
+        // MOTOR FINANCEIRO — COFRINHOS
+        // ====================================
+
+        const COFRINHOS_DEF = {
+            operacional:     { emoji:'🔄', nome:'Caixa Operacional',     cor:'#6f42c1' },
+            emergencia:      { emoji:'🛡️', nome:'Caixa Emergência',      cor:'#17a2b8' },
+            reinvestimento:  { emoji:'🚀', nome:'Caixa Reinvestimento',  cor:'#28a745' },
+            prolabore:       { emoji:'💵', nome:'Caixa Pró-labore',       cor:'#ff85a2' }
+        };
+
+        function getSaldoCofrinho(nomeCofr) {
+            return lancamentosFinanceiros
+                .filter(l => l.cofrinho === nomeCofr)
+                .reduce((s, l) => {
+                    const isEntrada = ['entrada_venda','entrada_manual','entrada_transferencia'].includes(l.tipo);
+                    return s + (isEntrada ? l.valor : -l.valor);
+                }, 0);
+        }
+
+        function criarEntradasFinanceiras(venda) {
+            const c = configuracoesCustos;
+            const valTotal  = venda.valorTotal || 0;
+            const imposto   = valTotal * ((parseFloat(c.imposto) || 3) / 100);
+            const taxaMaq   = valTotal * ((parseFloat(c.taxaPagamento) || 3) / 100);
+            const liquido   = valTotal - imposto - taxaMaq;
+            const pctEmerg  = parseFloat(c.pctEmergencia)    || 5;
+            const pctReinv  = parseFloat(c.pctReinvestimento) || 5;
+            const vlrOper       = venda.custoTotal || 0;
+            const vlrEmerg      = liquido * pctEmerg  / 100;
+            const vlrReinv      = liquido * pctReinv  / 100;
+            const custosFixosDia = (parseFloat(c.fixos?.total) || 0) / 30;
+            const vlrProLabore  = Math.max(liquido - vlrOper - vlrEmerg - vlrReinv - custosFixosDia, 0);
+            const agora = venda.dataVenda || new Date().toISOString();
+            [
+                { cofrinho:'operacional',    valor: vlrOper,      desc: `Custo ingredientes — ${venda.numero}` },
+                { cofrinho:'emergencia',     valor: vlrEmerg,     desc: `${pctEmerg}% do líquido — ${venda.numero}` },
+                { cofrinho:'reinvestimento', valor: vlrReinv,     desc: `${pctReinv}% do líquido — ${venda.numero}` },
+                { cofrinho:'prolabore',      valor: vlrProLabore, desc: `Pró-labore — ${venda.numero}` }
+            ].forEach(e => {
+                if (e.valor > 0.001) {
+                    lancamentosFinanceiros.push({ id:gerarId(), tipo:'entrada_venda', descricao:e.desc, valor:e.valor, cofrinho:e.cofrinho, data:agora, referencia:venda.id });
+                }
+            });
+            venda.lancamentosCriados = true;
+        }
+
+        function migrarVendasSemLancamentos() {
+            const sem = vendas.filter(v => !v.cancelada && !v.lancamentosCriados);
+            if (sem.length === 0) return;
+            sem.forEach(v => criarEntradasFinanceiras(v));
+            salvarLocalStorage();
+            console.log(`✅ Migração financeira: ${sem.length} venda(s)`);
+        }
+
+        function registrarSaidaCofrinho(cofrinho, descricao, valor, tipo = 'saida_manual', referencia = 'manual') {
+            if (valor <= 0) return null;
+            const entrada = { id:gerarId(), tipo, descricao, valor:parseFloat(valor), cofrinho, data:new Date().toISOString(), referencia };
+            lancamentosFinanceiros.push(entrada);
             salvarLocalStorage();
             sincronizarComNuvem();
-            mostrarToast('Saída excluída', 'success');
-            carregarPaginaFinanceiro();
+            return entrada;
+        }
+
+        function transferirEntreCofrinhos(origem, destino, valor, descricao) {
+            const saldo = getSaldoCofrinho(origem);
+            if (saldo < valor) { mostrarToast(`Saldo insuficiente em ${COFRINHOS_DEF[origem]?.nome}`,'error'); return false; }
+            const id = gerarId();
+            lancamentosFinanceiros.push(
+                { id:gerarId(), tipo:'saida_transferencia',   descricao:`→ ${COFRINHOS_DEF[destino]?.nome}: ${descricao}`, valor, cofrinho:origem,  data:new Date().toISOString(), referencia:id },
+                { id:gerarId(), tipo:'entrada_transferencia', descricao:`← ${COFRINHOS_DEF[origem]?.nome}: ${descricao}`,  valor, cofrinho:destino, data:new Date().toISOString(), referencia:id }
+            );
+            salvarLocalStorage(); sincronizarComNuvem();
+            return true;
         }
 
         // ====================================
@@ -10194,13 +10313,12 @@ Saldo disponível: R$ ${_saldoReinvest.disponivel.toFixed(2).replace('.',',')}`)
             const lucro = vendasMes.reduce((s, v) => s + (v.destinacaoLucro?.lucroLiquido || 0), 0);
             const ticketMedio = vendasMes.length > 0 ? fat / vendasMes.length : 0;
             
-            // Cofrinhos do mês
+            // Cofrinhos — saldos reais dos caixas
             const c = configuracoesCustos;
-            const reserva   = fat * ((parseFloat(c.reservaEmergencia) || 5) / 100);
-            const reinvest  = fat * ((parseFloat(c.reinvestimento) || 5) / 100);
-            const imposto   = fat * ((parseFloat(c.imposto) || 3) / 100);
-            const taxaPag   = fat * ((parseFloat(c.taxaPagamento) || 3) / 100);
-            const proLabore = Math.max(fat - reserva - reinvest - imposto - taxaPag - (c.fixos?.total || 0), 0);
+            const reserva   = getSaldoCofrinho('emergencia');
+            const reinvest  = getSaldoCofrinho('reinvestimento');
+            const proLabore = getSaldoCofrinho('prolabore');
+            const operacional = getSaldoCofrinho('operacional');
             
             const fatAlvo = parseFloat(c.faturamentoAlvo) || 8000;
             const pctFat  = Math.min((fat / fatAlvo) * 100, 100);
@@ -10276,9 +10394,9 @@ Saldo disponível: R$ ${_saldoReinvest.disponivel.toFixed(2).replace('.',',')}`)
                     </div>
                     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;">
                         ${[
-                            {emoji:'🛡️', nome:'Reserva', valor:reserva, cor:'#17a2b8'},
+                            {emoji:'🔄', nome:'Operacional', valor:operacional, cor:'#6f42c1'},
+                            {emoji:'🛡️', nome:'Emergência', valor:reserva, cor:'#17a2b8'},
                             {emoji:'🚀', nome:'Reinvestimento', valor:reinvest, cor:'var(--cor-sucesso)'},
-                            {emoji:'🏛️', nome:'Imposto', valor:imposto, cor:'var(--cor-aviso)'},
                             {emoji:'💵', nome:'Pró-labore', valor:proLabore, cor:'var(--cor-primaria)'}
                         ].map(cf=>`
                             <div style="background:white;border-radius:var(--borda-radius);padding:15px;
@@ -10324,11 +10442,12 @@ Saldo disponível: R$ ${_saldoReinvest.disponivel.toFixed(2).replace('.',',')}`)
             if (!c.fixos) c.fixos = {salarioDesejado:0,luz:0,agua:0,internet:0,gas:0,aluguel:0,outros:0,total:0};
             if (c.imposto === undefined) c.imposto = 3;
             if (c.taxaPagamento === undefined) c.taxaPagamento = 3;
+            if (c.pctEmergencia === undefined) c.pctEmergencia = c.reservaEmergencia || 5;
+            if (c.pctReinvestimento === undefined) c.pctReinvestimento = c.reinvestimento || 5;
             if (c.reservaEmergencia === undefined) c.reservaEmergencia = 5;
             if (c.reinvestimento === undefined) c.reinvestimento = 5;
             if (c.proLaboreAlvo === undefined) c.proLaboreAlvo = 3000;
             if (c.faturamentoAlvo === undefined) c.faturamentoAlvo = 8000;
-            if (!c.cofrinhos) c.cofrinhos = {reservaTransferida:0,reinvestimentoTransferido:0,impostoTransferido:0,proLaboreTransferido:0};
             
             calcularMarkupAutomatico();
             
@@ -10453,16 +10572,16 @@ Saldo disponível: R$ ${_saldoReinvest.disponivel.toFixed(2).replace('.',',')}`)
                             <div class="form-row">
                                 <div class="form-col">
                                     <div class="form-group">
-                                        <label>🛡️ Reserva Emergência (%): <small style="color:var(--cor-texto-claro)">→ cofrinho</small></label>
+                                        <label>🛡️ Emergência (% do líquido p/ cofrinho):</label>
                                         <input type="number" id="prec-reserva" class="form-control" min="0" max="20" step="0.5"
-                                            value="${c.reservaEmergencia}" oninput="atualizarSimulacaoMarkup()">
+                                            value="${c.pctEmergencia || c.reservaEmergencia || 5}" oninput="atualizarSimulacaoMarkup()">
                                     </div>
                                 </div>
                                 <div class="form-col">
                                     <div class="form-group">
-                                        <label>🚀 Reinvestimento (%): <small style="color:var(--cor-texto-claro)">→ cofrinho</small></label>
+                                        <label>🚀 Reinvestimento (% do líquido p/ cofrinho):</label>
                                         <input type="number" id="prec-reinvest" class="form-control" min="0" max="20" step="0.5"
-                                            value="${c.reinvestimento}" oninput="atualizarSimulacaoMarkup()">
+                                            value="${c.pctReinvestimento || c.reinvestimento || 5}" oninput="atualizarSimulacaoMarkup()">
                                     </div>
                                 </div>
                             </div>
@@ -10712,7 +10831,9 @@ Saldo disponível: R$ ${_saldoReinvest.disponivel.toFixed(2).replace('.',',')}`)
                     // novos params
                     imposto: document.getElementById('prec-imposto').value,
                     taxaPagamento: document.getElementById('prec-taxa-pag').value,
+                    pctEmergencia: document.getElementById('prec-reserva').value,
                     reservaEmergencia: document.getElementById('prec-reserva').value,
+                    pctReinvestimento: document.getElementById('prec-reinvest').value,
                     reinvestimento: document.getElementById('prec-reinvest').value,
                     proLaboreAlvo: document.getElementById('prec-prolabore').value,
                     faturamentoAlvo: document.getElementById('prec-fat-alvo').value
@@ -10735,7 +10856,7 @@ Saldo disponível: R$ ${_saldoReinvest.disponivel.toFixed(2).replace('.',',')}`)
             const salario   = parseFloat(configuracoesCustos.fixos?.salarioDesejado) || 0;
             const fixosOper = totalFixo - salario; // apenas operacionais
             
-            const dvVar  = (imp + taxa + res + reinv) / 100;
+            const dvVar  = (imp + taxa) / 100; // emergência e reinvest são do líquido, não do preço
             const dvFix  = (pro + fixosOper) / fat;
             const dvTot  = dvVar + dvFix;
             const mult   = dvTot < 0.99 ? Math.max(1 / (1 - dvTot), 2.40) : 10;
