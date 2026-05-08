@@ -877,6 +877,8 @@
             <li><a href="#vendas" class="nav-link" data-page="vendas">💰 Vendas</a></li>
             <li><a href="#clientes" class="nav-link" data-page="clientes">👥 Clientes</a></li>
             <li><a href="#calendario" class="nav-link" data-page="calendario">📅 Calendário</a></li>
+            <li><a href="#dashboard" class="nav-link" data-page="dashboard">📊 Dashboard</a></li>
+            <li><a href="#financeiro" class="nav-link" data-page="financeiro">💳 Financeiro</a></li>
             <li><a href="#configuracoes" class="nav-link" data-page="configuracoes">⚙️ Configurações</a></li>
         </ul>
     </nav>
@@ -946,6 +948,16 @@
             </div>
         </div>
 
+        <!-- PÁGINA: DASHBOARD -->
+        <div id="dashboard-page" class="page-content">
+            <div class="card"><p>Carregando...</p></div>
+        </div>
+        
+        <!-- PÁGINA: FINANCEIRO -->
+        <div id="financeiro-page" class="page-content">
+            <div class="card"><p>Carregando...</p></div>
+        </div>
+        
         <!-- PÁGINA: CONFIGURAÇÕES -->
         <div id="configuracoes-page" class="page-content">
             <h2>⚙️ Configurações do Sistema</h2>
@@ -1065,6 +1077,7 @@
         let vendas = [];
         let clientes = []; // 🆕 Sistema de CRM
                 let estoque = []; // Será sempre calculado, não armazenado
+        let lancamentosFinanceiros = []; // Saídas dos cofrinhos
         
         // Arrays temporários para formulários
         let produtosVendaTemp = []; // 🆕 NOVO - substitui receitasVendaTemp
@@ -1434,6 +1447,7 @@
                 localStorage.setItem('vendas', JSON.stringify(vendas));
                 localStorage.setItem('clientes', JSON.stringify(clientes));
                 localStorage.setItem('configuracoesCustos', JSON.stringify(configuracoesCustos));
+                localStorage.setItem('lancamentosFinanceiros', JSON.stringify(lancamentosFinanceiros));
                 localStorage.setItem('ultimaAtualizacao', new Date().toISOString());
                 return true;
             } catch (erro) {
@@ -1458,6 +1472,7 @@
                 if (configSalva) {
                     configuracoesCustos = configSalva;
                 }
+                lancamentosFinanceiros = JSON.parse(localStorage.getItem('lancamentosFinanceiros')) || [];
                 
                 return true;
             } catch (erro) {
@@ -1961,6 +1976,12 @@
                 case 'calendario':
                     carregarPaginaCalendario();
                     break;
+                case 'dashboard':
+                    carregarPaginaDashboard();
+                    break;
+                case 'financeiro':
+                    carregarPaginaFinanceiro();
+                    break;
                 case 'configuracoes':
                     carregarPaginaConfiguracoes();
                     break;
@@ -2095,6 +2116,7 @@
                         produtosFinais = dadosNuvem.produtosFinais || [];
                         vendas = dadosNuvem.vendas || [];
                         clientes = dadosNuvem.clientes || [];
+                        lancamentosFinanceiros = dadosNuvem.lancamentosFinanceiros || [];
                         
                         // Carregar configurações de custos
                         if (dadosNuvem.configuracoesCustos) {
@@ -2145,6 +2167,7 @@
                     vendas: vendas,
                     clientes: clientes,
                     configuracoesCustos: configuracoesCustos,
+                    lancamentosFinanceiros: lancamentosFinanceiros,
                     ultimaAtualizacao: new Date().toISOString()
                 };
                 
@@ -5426,6 +5449,20 @@
                 salvarLocalStorage();
                 sincronizarComNuvem();
                 
+                // Sugerir débito do cofrinho de reinvestimento
+                const _saldoReinvest = calcularSaldoCofrinho('reinvestimento', parseFloat(configuracoesCustos.reinvestimento)||5);
+                if (_saldoReinvest.disponivel > 0) {
+                    setTimeout(() => {
+                        if (confirm(`💳 Deseja debitar R$ ${precoTotal.toFixed(2).replace('.',',')} do cofrinho de Reinvestimento?
+
+Saldo disponível: R$ ${_saldoReinvest.disponivel.toFixed(2).replace('.',',')}`)) {
+                            const _nomeMat = materialExistente ? materialExistente.nome : dados.nome;
+                            registrarSaidaFinanceira('reinvestimento', `Compra: ${_nomeMat}`, precoTotal);
+                            mostrarToast('Débito registrado no Reinvestimento!', 'success');
+                        }
+                    }, 300);
+                }
+                
                 return true;
                 
             } catch (erro) {
@@ -5560,6 +5597,7 @@
                 
                 <div class="tab-buttons">
                     <button class="tab-button active" data-tab="visao-geral">📦 Visão Geral</button>
+                    <button class="tab-button" onclick="carregarPaginaGerenciarMinimos()">⚙️ Mínimos</button>
                     <button class="tab-button" data-tab="lista-compras">
                         🛒 Lista de Compras
                         ${listaCompras.length > 0 ? `<span style="background:var(--cor-erro);color:white;border-radius:10px;padding:1px 7px;font-size:12px;margin-left:5px;">${listaCompras.length}</span>` : ''}
@@ -6389,6 +6427,173 @@
 
             // Ordenar: críticos primeiro
             return lista.sort((a, b) => (b.critico ? 1 : 0) - (a.critico ? 1 : 0));
+        }
+
+
+        /**
+         * Calcula estoque mínimo sugerido baseado no consumo histórico
+         * Sugestão = consumo médio de 2 semanas (consumo_mensal / 2)
+         */
+        function calcularMinimoSugerido(nomeMaterial) {
+            const unidade = materiais.find(m => !m.removed && normalizarNome(m.nome)===normalizarNome(nomeMaterial))?.unidadeMedida || 'un';
+            
+            // Consumo total nas vendas
+            let consumoTotal = 0;
+            let primeiraVenda = null;
+            
+            vendas.filter(v => !v.cancelada).forEach(v => {
+                (v.ingredientesSnapshot || []).forEach(ing => {
+                    const mat = materiais.find(m => m.id === ing.materialId);
+                    if (mat && normalizarNome(mat.nome) === normalizarNome(nomeMaterial)) {
+                        consumoTotal += parseFloat(ing.quantidade) || 0;
+                        const d = new Date(v.dataVenda);
+                        if (!primeiraVenda || d < primeiraVenda) primeiraVenda = d;
+                    }
+                });
+            });
+            
+            if (consumoTotal === 0 || !primeiraVenda) return 0;
+            
+            // Meses de histórico
+            const meses = Math.max((new Date() - primeiraVenda) / (1000*60*60*24*30), 0.5);
+            const consumoMensal = consumoTotal / meses;
+            
+            // Sugestão = 2 semanas = metade do mês
+            return Math.ceil(consumoMensal / 2);
+        }
+
+        /**
+         * Página de gerenciamento de estoques mínimos
+         */
+        function carregarPaginaGerenciarMinimos() {
+            const page = document.getElementById('estoque-page');
+            if (!page) return;
+            
+            // Calcular sugestões para todos os materiais
+            const grupos = {};
+            materiais.filter(m => !m.removed).forEach(m => {
+                const n = normalizarNome(m.nome);
+                if (!grupos[n]) {
+                    grupos[n] = {
+                        nome: m.nome,
+                        id: m.id,
+                        unidade: m.unidadeMedida || 'un',
+                        minimo: parseFloat(m.estoqueMinimo) || 0,
+                        sugestao: calcularMinimoSugerido(m.nome)
+                    };
+                }
+            });
+            
+            const lista = Object.values(grupos).sort((a,b) => a.nome.localeCompare(b.nome));
+            
+            const tabHTML = `
+                <h2>📦 Gestão de Estoque</h2>
+                <div class="tab-buttons">
+                    <button class="tab-button" data-tab-est="visao" onclick="carregarPaginaEstoque()">📦 Visão Geral</button>
+                    <button class="tab-button" data-tab-est="compras" onclick="carregarPaginaEstoque(); setTimeout(()=>document.querySelector('#estoque-page .tab-button[data-tab=\'lista-compras\']')?.click(),100)">🛒 Lista de Compras</button>
+                    <button class="tab-button active" data-tab-est="minimos">⚙️ Estoques Mínimos</button>
+                </div>
+                <div class="card">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px;">
+                        <h3 style="margin:0;">⚙️ Configurar Estoques Mínimos</h3>
+                        <button class="btn btn-info btn-sm" onclick="aplicarTodosSugeridos()">
+                            🤖 Aplicar Todos Sugeridos
+                        </button>
+                    </div>
+                    <p style="color:var(--cor-texto-claro);margin-bottom:20px;font-size:14px;">
+                        A sugestão automática é calculada com base no consumo histórico das vendas (equivalente a ~2 semanas de estoque).
+                        Você pode aceitar a sugestão ou definir manualmente.
+                    </p>
+                    
+                    ${lista.length === 0 ? '<p style="text-align:center;color:var(--cor-texto-claro);">Nenhum material cadastrado.</p>' : `
+                    <div style="overflow-x:auto;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Material</th>
+                                    <th>Unidade</th>
+                                    <th>Mínimo Atual</th>
+                                    <th>🤖 Sugerido</th>
+                                    <th>Definir Mínimo</th>
+                                    <th>Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${lista.map(item => `
+                                    <tr>
+                                        <td><strong>${item.nome}</strong></td>
+                                        <td>${item.unidade}</td>
+                                        <td style="font-weight:bold;color:var(--cor-primaria);">
+                                            ${item.minimo > 0 ? item.minimo+' '+item.unidade : '—'}
+                                        </td>
+                                        <td style="color:var(--cor-info);">
+                                            ${item.sugestao > 0 ? `${item.sugestao} ${item.unidade}` : '<span style="color:var(--cor-texto-claro);">sem histórico</span>'}
+                                        </td>
+                                        <td>
+                                            <div style="display:flex;gap:5px;align-items:center;">
+                                                <input type="number" id="min-${item.id}" class="form-control" 
+                                                    style="width:100px;" min="0" step="1"
+                                                    value="${item.minimo || ''}" placeholder="0">
+                                                <span style="font-size:12px;color:var(--cor-texto-claro);">${item.unidade}</span>
+                                            </div>
+                                        </td>
+                                        <td style="display:flex;gap:5px;">
+                                            ${item.sugestao > 0 ? `
+                                            <button class="btn btn-info btn-sm" 
+                                                onclick="document.getElementById('min-${item.id}').value=${item.sugestao}"
+                                                title="Usar sugestão automática">
+                                                🤖
+                                            </button>` : ''}
+                                            <button class="btn btn-success btn-sm"
+                                                onclick="salvarMinimoMaterial('${item.id}', document.getElementById('min-${item.id}').value)">
+                                                💾
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="margin-top:15px;display:flex;gap:10px;">
+                        <button class="btn btn-primary" onclick="salvarTodosMinimos()">💾 Salvar Todos</button>
+                        <button class="btn btn-secondary" onclick="carregarPaginaEstoque()">← Voltar</button>
+                    </div>
+                    `}
+                </div>
+            `;
+            
+            page.innerHTML = tabHTML;
+        }
+        
+        function salvarMinimoMaterial(materialId, valor) {
+            const mat = materiais.find(m => m.id === materialId);
+            if (!mat) return;
+            mat.estoqueMinimo = parseFloat(valor) || 0;
+            salvarLocalStorage();
+            sincronizarComNuvem();
+            mostrarToast(`Mínimo de "${mat.nome}" atualizado!`, 'success');
+        }
+        
+        function salvarTodosMinimos() {
+            materiais.filter(m => !m.removed).forEach(m => {
+                const input = document.getElementById('min-' + m.id);
+                if (input) m.estoqueMinimo = parseFloat(input.value) || 0;
+            });
+            salvarLocalStorage();
+            sincronizarComNuvem();
+            mostrarToast('Todos os mínimos salvos!', 'success');
+        }
+        
+        function aplicarTodosSugeridos() {
+            let aplicados = 0;
+            materiais.filter(m => !m.removed).forEach(m => {
+                const sug = calcularMinimoSugerido(m.nome);
+                if (sug > 0) {
+                    const input = document.getElementById('min-' + m.id);
+                    if (input) { input.value = sug; aplicados++; }
+                }
+            });
+            mostrarToast(`${aplicados} sugestão(ões) aplicada(s). Clique em "Salvar Todos" para confirmar.`, 'info');
         }
 
         console.log('✅ Módulo de Materiais e Estoque carregado');
@@ -9749,6 +9954,367 @@
         /**
          * CARREGA PÁGINA DE CONFIGURAÇÕES
          */
+
+
+        // ====================================
+        // PÁGINA: FINANCEIRO
+        // ====================================
+        
+        function registrarSaidaFinanceira(cofrinho, descricao, valor, materialId = null) {
+            const entrada = {
+                id: gerarId(),
+                tipo: 'saida_' + cofrinho,
+                descricao: descricao,
+                valor: parseFloat(valor),
+                cofrinho: cofrinho,
+                data: new Date().toISOString(),
+                materialId: materialId
+            };
+            lancamentosFinanceiros.push(entrada);
+            salvarLocalStorage();
+            sincronizarComNuvem();
+            return entrada;
+        }
+        
+        function calcularSaldoCofrinho(nomeCofr, percentual) {
+            // Bruto: soma das vendas × percentual
+            const bruto = vendas
+                .filter(v => !v.cancelada)
+                .reduce((s, v) => s + (v.valorTotal || 0) * (percentual / 100), 0);
+            // Saídas
+            const saidas = lancamentosFinanceiros
+                .filter(l => l.cofrinho === nomeCofr)
+                .reduce((s, l) => s + l.valor, 0);
+            return { bruto, saidas, disponivel: Math.max(bruto - saidas, 0) };
+        }
+        
+        function carregarPaginaFinanceiro() {
+            const page = document.getElementById('financeiro-page');
+            if (!page) return;
+            
+            const c = configuracoesCustos;
+            
+            const cofrinhos = [
+                { id:'reserva',       emoji:'🛡️', nome:'Reserva de Emergência', pct: parseFloat(c.reservaEmergencia)||5,  cor:'#17a2b8' },
+                { id:'reinvestimento',emoji:'🚀', nome:'Reinvestimento',          pct: parseFloat(c.reinvestimento)||5,     cor:'var(--cor-sucesso)' },
+                { id:'imposto',       emoji:'🏛️', nome:'Imposto a Recolher',     pct: parseFloat(c.imposto)||3,            cor:'var(--cor-aviso)' },
+                { id:'proLabore',     emoji:'💵', nome:'Pró-labore',              pct: null, cor:'var(--cor-primaria)' }
+            ];
+            
+            // Calcular saldo pró-labore = faturamento total - todos os outros cofrinhos - custos fixos
+            const fatTotal = vendas.filter(v=>!v.cancelada).reduce((s,v)=>s+(v.valorTotal||0),0);
+            const saidasOthers = (cofrinhos[0].pct + cofrinhos[1].pct + cofrinhos[2].pct + (parseFloat(c.taxaPagamento)||3)) / 100;
+            const brutoProLabore = Math.max(fatTotal * (1 - saidasOthers) - (c.fixos?.total || 0) * (vendas.filter(v=>!v.cancelada).length / Math.max(vendas.length, 1)), 0);
+            
+            const saldos = cofrinhos.map(cf => {
+                if (cf.id === 'proLabore') {
+                    const saidas = lancamentosFinanceiros.filter(l=>l.cofrinho==='proLabore').reduce((s,l)=>s+l.valor,0);
+                    return { ...cf, bruto: brutoProLabore, saidas, disponivel: Math.max(brutoProLabore-saidas,0) };
+                }
+                return { ...cf, ...calcularSaldoCofrinho(cf.id, cf.pct) };
+            });
+            
+            const totalDisponivel = saldos.reduce((s,c)=>s+c.disponivel,0);
+            
+            // Histórico de saídas
+            const historico = [...lancamentosFinanceiros].sort((a,b)=>new Date(b.data)-new Date(a.data));
+            
+            const mapaCofr = { reserva:'🛡️ Reserva', reinvestimento:'🚀 Reinvest.', imposto:'🏛️ Imposto', proLabore:'💵 Pró-labore' };
+            
+            page.innerHTML = `
+                <h2>💳 Controle Financeiro</h2>
+                
+                <!-- Saldos dos cofrinhos -->
+                <div class="card" style="margin-bottom:20px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+                        <h3 style="margin:0;">🏦 Saldos Acumulados</h3>
+                        <span style="font-size:13px;color:var(--cor-texto-claro);">
+                            Faturamento total: ${formatarMoeda(fatTotal)}
+                        </span>
+                    </div>
+                    
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:15px;margin-bottom:20px;">
+                        ${saldos.map(cf => `
+                            <div style="background:white;border-radius:var(--borda-radius);padding:18px;
+                                box-shadow:var(--sombra-leve);border-top:4px solid ${cf.cor};">
+                                <div style="font-size:24px;margin-bottom:5px;">${cf.emoji}</div>
+                                <div style="font-weight:bold;margin-bottom:3px;">${cf.nome}</div>
+                                <div style="font-size:11px;color:var(--cor-texto-claro);margin-bottom:12px;">
+                                    ${cf.pct ? cf.pct+'% das vendas' : 'Resíduo após cofrinhos'}
+                                </div>
+                                <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
+                                    <span style="color:var(--cor-texto-claro);">Bruto pelas vendas:</span>
+                                    <span>${formatarMoeda(cf.bruto)}</span>
+                                </div>
+                                <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px;">
+                                    <span style="color:var(--cor-erro);">Saídas registradas:</span>
+                                    <span style="color:var(--cor-erro);">-${formatarMoeda(cf.saidas)}</span>
+                                </div>
+                                <div style="border-top:2px solid var(--cor-borda);padding-top:8px;text-align:center;">
+                                    <div style="font-size:11px;color:var(--cor-texto-claro);">Disponível</div>
+                                    <div style="font-size:24px;font-weight:bold;color:${cf.cor};">${formatarMoeda(cf.disponivel)}</div>
+                                </div>
+                                <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:10px;"
+                                    onclick="abrirModalSaida('${cf.id}','${cf.nome}',${cf.disponivel})">
+                                    📤 Registrar Saída
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <div style="background:var(--cor-fundo);padding:12px;border-radius:var(--borda-radius);text-align:center;">
+                        <strong>💰 Total disponível em todos os cofrinhos: ${formatarMoeda(totalDisponivel)}</strong>
+                    </div>
+                </div>
+                
+                <!-- Histórico de saídas -->
+                <div class="card">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px;">
+                        <h3 style="margin:0;">📋 Histórico de Saídas</h3>
+                        <button class="btn btn-primary btn-sm" onclick="abrirModalSaida('','Saída Manual',0)">
+                            ➕ Registrar Saída
+                        </button>
+                    </div>
+                    
+                    ${historico.length === 0 ? `
+                        <p style="text-align:center;color:var(--cor-texto-claro);padding:20px;">
+                            Nenhuma saída registrada ainda.
+                        </p>
+                    ` : `
+                        <div style="overflow-x:auto;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Cofrinho</th>
+                                        <th>Descrição</th>
+                                        <th>Valor</th>
+                                        <th>Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${historico.map(l=>`
+                                        <tr>
+                                            <td>${formatarData(l.data)}</td>
+                                            <td>${mapaCofr[l.cofrinho] || l.cofrinho}</td>
+                                            <td>${l.descricao}</td>
+                                            <td style="font-weight:bold;color:var(--cor-erro);">-${formatarMoeda(l.valor)}</td>
+                                            <td>
+                                                <button class="btn btn-danger btn-sm" onclick="excluirSaidaFinanceira('${l.id}')">🗑️</button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `}
+                </div>
+            `;
+        }
+        
+        function abrirModalSaida(cofrinhoId, cofrinhoNome, saldoDisponivel) {
+            const c = configuracoesCustos;
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal" style="background:white;border-radius:var(--borda-radius);padding:25px;max-width:450px;width:90%;">
+                    <h3>📤 Registrar Saída</h3>
+                    ${saldoDisponivel > 0 ? `<p style="color:var(--cor-texto-claro);margin-bottom:15px;">Disponível: <strong>${formatarMoeda(saldoDisponivel)}</strong></p>` : ''}
+                    
+                    <div class="form-group">
+                        <label>Cofrinho:</label>
+                        <select id="modal-saida-cofrinho" class="form-control">
+                            <option value="reserva" ${cofrinhoId==='reserva'?'selected':''}>🛡️ Reserva de Emergência</option>
+                            <option value="reinvestimento" ${cofrinhoId==='reinvestimento'?'selected':''}>🚀 Reinvestimento</option>
+                            <option value="imposto" ${cofrinhoId==='imposto'?'selected':''}>🏛️ Imposto a Recolher</option>
+                            <option value="proLabore" ${cofrinhoId==='proLabore'?'selected':''}>💵 Pró-labore</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Descrição:</label>
+                        <input type="text" id="modal-saida-desc" class="form-control" 
+                            placeholder="Ex: Compra de materiais, Pagamento pro-labore..." value="${cofrinhoId==='proLabore'?'Pagamento pró-labore':''}">
+                    </div>
+                    <div class="form-group">
+                        <label>Valor (R$):</label>
+                        <input type="number" id="modal-saida-valor" class="form-control" min="0.01" step="0.01" placeholder="0,00">
+                    </div>
+                    <div style="display:flex;gap:10px;margin-top:20px;">
+                        <button class="btn btn-primary" onclick="confirmarSaidaFinanceira()" style="flex:1;">✅ Confirmar</button>
+                        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">❌ Cancelar</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        
+        function confirmarSaidaFinanceira() {
+            const cofrinho = document.getElementById('modal-saida-cofrinho').value;
+            const descricao = document.getElementById('modal-saida-desc').value.trim();
+            const valor = parseFloat(document.getElementById('modal-saida-valor').value);
+            
+            if (!descricao) { mostrarToast('Informe a descrição', 'warning'); return; }
+            if (!valor || valor <= 0) { mostrarToast('Informe um valor válido', 'warning'); return; }
+            
+            registrarSaidaFinanceira(cofrinho, descricao, valor);
+            document.querySelector('.modal-overlay')?.remove();
+            mostrarToast('Saída registrada!', 'success');
+            carregarPaginaFinanceiro();
+        }
+        
+        function excluirSaidaFinanceira(id) {
+            if (!confirm('Excluir esta saída?')) return;
+            lancamentosFinanceiros = lancamentosFinanceiros.filter(l => l.id !== id);
+            salvarLocalStorage();
+            sincronizarComNuvem();
+            mostrarToast('Saída excluída', 'success');
+            carregarPaginaFinanceiro();
+        }
+
+        // ====================================
+        // PÁGINA: DASHBOARD
+        // ====================================
+        function carregarPaginaDashboard() {
+            const page = document.getElementById('dashboard-page');
+            if (!page) return;
+            
+            const agora = new Date();
+            const mesAtual = agora.getMonth();
+            const anoAtual = agora.getFullYear();
+            const nomeMes = agora.toLocaleString('pt-BR', {month: 'long', year: 'numeric'});
+            
+            // Vendas do mês atual
+            const vendasMes = vendas.filter(v => {
+                if (v.cancelada) return false;
+                const d = new Date(v.dataVenda);
+                return d.getFullYear() === anoAtual && d.getMonth() === mesAtual;
+            });
+            
+            const fat = vendasMes.reduce((s, v) => s + (v.valorTotal || 0), 0);
+            const lucro = vendasMes.reduce((s, v) => s + (v.destinacaoLucro?.lucroLiquido || 0), 0);
+            const ticketMedio = vendasMes.length > 0 ? fat / vendasMes.length : 0;
+            
+            // Cofrinhos do mês
+            const c = configuracoesCustos;
+            const reserva   = fat * ((parseFloat(c.reservaEmergencia) || 5) / 100);
+            const reinvest  = fat * ((parseFloat(c.reinvestimento) || 5) / 100);
+            const imposto   = fat * ((parseFloat(c.imposto) || 3) / 100);
+            const taxaPag   = fat * ((parseFloat(c.taxaPagamento) || 3) / 100);
+            const proLabore = Math.max(fat - reserva - reinvest - imposto - taxaPag - (c.fixos?.total || 0), 0);
+            
+            const fatAlvo = parseFloat(c.faturamentoAlvo) || 8000;
+            const pctFat  = Math.min((fat / fatAlvo) * 100, 100);
+            
+            // Top 5 produtos do mês
+            const porProduto = {};
+            vendasMes.forEach(v => {
+                (v.produtos || []).forEach(p => {
+                    if (!porProduto[p.produtoNome]) porProduto[p.produtoNome] = {fat: 0, qtd: 0};
+                    porProduto[p.produtoNome].fat += p.subtotal || 0;
+                    porProduto[p.produtoNome].qtd += p.quantidade || 0;
+                });
+            });
+            const topProdutos = Object.entries(porProduto).sort((a,b)=>b[1].fat-a[1].fat).slice(0,5);
+            
+            // Alertas de estoque
+            const estoqueAtual = calcularEstoqueCompleto();
+            const alertasEstoque = estoqueAtual.filter(i => getCriticidadeEstoque(i).nivel !== 'ok');
+            
+            page.innerHTML = `
+                <h2>📊 Dashboard — ${nomeMes}</h2>
+                
+                ${alertasEstoque.length > 0 ? `
+                <div style="background:var(--cor-aviso-claro);padding:12px 18px;border-radius:var(--borda-radius);
+                    margin-bottom:20px;border-left:4px solid var(--cor-aviso);cursor:pointer;"
+                    onclick="navegarPagina('estoque')">
+                    ⚠️ <strong>${alertasEstoque.length} item(s)</strong> de estoque precisam de atenção → 
+                    <span style="color:var(--cor-primaria);text-decoration:underline;">Ver Estoque</span>
+                </div>` : ''}
+                
+                <!-- KPIs -->
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin-bottom:25px;">
+                    ${[
+                        {emoji:'💰', label:'Faturamento', valor: formatarMoeda(fat), cor:'var(--cor-primaria)'},
+                        {emoji:'📦', label:'Vendas', valor: vendasMes.length, cor:'var(--cor-info)'},
+                        {emoji:'🎯', label:'Ticket Médio', valor: formatarMoeda(ticketMedio), cor:'var(--cor-aviso)'},
+                        {emoji:'💵', label:'Lucro Estimado', valor: formatarMoeda(lucro), cor:'var(--cor-sucesso)'}
+                    ].map(k=>`
+                        <div class="card" style="text-align:center;padding:20px;border-top:4px solid ${k.cor};">
+                            <div style="font-size:28px;">${k.emoji}</div>
+                            <div style="font-size:13px;color:var(--cor-texto-claro);margin:5px 0;">${k.label}</div>
+                            <div style="font-size:26px;font-weight:bold;color:${k.cor};">${k.valor}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <!-- Meta do mês -->
+                <div class="card" style="margin-bottom:20px;">
+                    <h3>🎯 Meta do Mês</h3>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                        <span>Faturamento atual</span>
+                        <strong style="color:var(--cor-primaria);">${formatarMoeda(fat)} / ${formatarMoeda(fatAlvo)}</strong>
+                    </div>
+                    <div style="width:100%;height:22px;background:var(--cor-borda);border-radius:11px;overflow:hidden;">
+                        <div style="width:${pctFat}%;height:100%;background:${pctFat>=100?'var(--cor-sucesso)':'var(--cor-primaria)'};
+                            border-radius:11px;transition:width 0.5s;display:flex;align-items:center;justify-content:center;
+                            color:white;font-size:12px;font-weight:bold;">
+                            ${pctFat.toFixed(1)}%
+                        </div>
+                    </div>
+                    <div style="text-align:right;font-size:13px;color:var(--cor-texto-claro);margin-top:5px;">
+                        ${pctFat>=100 ? '🎉 Meta batida!' : 'Falta '+formatarMoeda(fatAlvo-fat)}
+                    </div>
+                </div>
+                
+                <!-- Cofrinhos resumo -->
+                <div class="card" style="margin-bottom:20px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+                        <h3 style="margin:0;">🏦 Cofrinhos do Mês</h3>
+                        <button class="btn btn-secondary btn-sm" onclick="navegarPagina('financeiro')">
+                            Ver detalhes →
+                        </button>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;">
+                        ${[
+                            {emoji:'🛡️', nome:'Reserva', valor:reserva, cor:'#17a2b8'},
+                            {emoji:'🚀', nome:'Reinvestimento', valor:reinvest, cor:'var(--cor-sucesso)'},
+                            {emoji:'🏛️', nome:'Imposto', valor:imposto, cor:'var(--cor-aviso)'},
+                            {emoji:'💵', nome:'Pró-labore', valor:proLabore, cor:'var(--cor-primaria)'}
+                        ].map(cf=>`
+                            <div style="background:white;border-radius:var(--borda-radius);padding:15px;
+                                box-shadow:var(--sombra-leve);border-top:3px solid ${cf.cor};text-align:center;">
+                                <div style="font-size:22px;">${cf.emoji}</div>
+                                <div style="font-size:12px;color:var(--cor-texto-claro);">${cf.nome}</div>
+                                <div style="font-size:20px;font-weight:bold;color:${cf.cor};">${formatarMoeda(cf.valor)}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                
+                <!-- Top produtos -->
+                ${topProdutos.length > 0 ? `
+                <div class="card">
+                    <h3>🏆 Top Produtos do Mês</h3>
+                    <table>
+                        <thead><tr><th>Produto</th><th>Qtd</th><th>Faturamento</th></tr></thead>
+                        <tbody>
+                            ${topProdutos.map(([nome,d])=>`
+                                <tr>
+                                    <td><strong>${nome}</strong></td>
+                                    <td>${d.qtd.toFixed(2)}</td>
+                                    <td style="font-weight:bold;color:var(--cor-primaria);">${formatarMoeda(d.fat)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>` : `
+                <div class="card" style="text-align:center;padding:30px;color:var(--cor-texto-claro);">
+                    <p>📭 Nenhuma venda registrada em ${nomeMes}.</p>
+                    <button class="btn btn-primary" onclick="navegarPagina('vendas')">➕ Registrar Venda</button>
+                </div>`}
+            `;
+        }
+
         function carregarPaginaConfiguracoes() {
             const page = document.getElementById('configuracoes-page');
             if (!page) return;
