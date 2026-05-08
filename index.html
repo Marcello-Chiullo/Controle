@@ -5367,6 +5367,9 @@
                     materialExistente.precoUltimaCompra = precoTotal;
                     materialExistente.dataUltimaCompra = dados.dataCompra || agora;
                     materialExistente.atualizadoEm = agora;
+                    if (dados.estoqueMinimo !== undefined) {
+                        materialExistente.estoqueMinimo = parseFloat(dados.estoqueMinimo) || 0;
+                    }
                     
                     // Recalcular preço médio
                     materialExistente.precoMedio = calcularPrecoMedioPonderado(materialExistente.nome);
@@ -5385,6 +5388,7 @@
                         unidadeCompra: dados.unidadeCompra || 'un',
                         unidadeMedida: dados.unidadeMedida || 'un',
                         quantidadePorUnidade: quantidadePorUnidade,
+                        estoqueMinimo: parseFloat(dados.estoqueMinimo) || 0,
                         
                         precoUltimaCompra: precoTotal,
                         dataUltimaCompra: dados.dataCompra || agora,
@@ -5528,88 +5532,202 @@
             // Recalcular estoque
             estoque = calcularEstoqueCompleto();
             
+            // Calcular alertas
+            const itensCriticos = estoque.filter(i => getCriticidadeEstoque(i).nivel === 'critico');
+            const itensBaixos   = estoque.filter(i => getCriticidadeEstoque(i).nivel === 'baixo');
+            const listaCompras  = gerarListaCompras();
+            
+            const valorTotalEstoque = estoque.reduce((total, item) => {
+                return total + (item.disponivel * calcularPrecoMedioPonderado(item.nome));
+            }, 0);
+            
             page.innerHTML = `
                 <h2>📦 Gestão de Estoque</h2>
                 
-                <div class="card">
-                    <h3>Itens em Estoque</h3>
-                    <p style="color: var(--cor-texto-claro); margin-bottom: 15px;">
-                        ℹ️ O estoque é calculado automaticamente: <strong>Lançamentos - Vendas - Remoções</strong>
-                    </p>
-                    
-                    <input type="text" id="pesquisar-estoque" class="form-control" 
-                        placeholder="🔍 Pesquisar material..." style="margin-bottom: 20px;">
-                    
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Material</th>
-                                <th>Estoque (Unidades)</th>
-                                <th>Lançado</th>
-                                <th>Vendido</th>
-                                <th>Removido</th>
-                                <th>Disponível</th>
-                                <th>Preço Médio</th>
-                                <th>Valor Total</th>
-                            </tr>
-                        </thead>
-                        <tbody id="lista-estoque">
-                            ${estoque.length === 0 ? 
-                                '<tr><td colspan="7" style="text-align: center;">Nenhum item no estoque</td></tr>' :
-                                estoque.map(item => {
-                                    const precoMedio = calcularPrecoMedioPonderado(item.nome);
-                                    const valorTotal = item.disponivel * precoMedio;
-                                    
-                                    return `
-                                        <tr>
-                                            <td><strong>${item.nome}</strong></td>
-                                            <td><strong>${item.quantidadeCompras}</strong> ${item.unidadePadrao === 'ml' || item.unidadePadrao === 'l' ? 'cx/pct' : item.unidadePadrao === 'g' || item.unidadePadrao === 'kg' ? 'cx/pct' : 'un'}</td>
-                                            <td>${item.totalLancado.toFixed(2)} ${item.unidadePadrao}</td>
-                                            <td>${item.totalVendido.toFixed(2)} ${item.unidadePadrao}</td>
-                                            <td>${item.totalRemovido.toFixed(2)} ${item.unidadePadrao}</td>
-                                            <td>
-                                                <strong style="color: ${item.disponivel > 0 ? 'var(--cor-sucesso)' : 'var(--cor-erro)'}">
-                                                    ${item.disponivel.toFixed(2)} ${item.unidadePadrao}
-                                                </strong>
-                                            </td>
-                                            <td>${formatarMoeda(precoMedio)}/${item.unidadePadrao}</td>
-                                            <td><strong>${formatarMoeda(valorTotal)}</strong></td>
-                                        </tr>
-                                    `;
-                                }).join('')
-                            }
-                        </tbody>
-                    </table>
-                    
-                    ${estoque.length > 0 ? `
-                        <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid var(--cor-borda);">
-                            <h4>💰 Resumo Financeiro</h4>
-                            <p><strong>Valor Total em Estoque:</strong> ${formatarMoeda(
-                                estoque.reduce((total, item) => {
-                                    const precoMedio = calcularPrecoMedioPonderado(item.nome);
-                                    return total + (item.disponivel * precoMedio);
-                                }, 0)
-                            )}</p>
+                ${(itensCriticos.length > 0 || itensBaixos.length > 0) ? `
+                    <div style="background:${itensCriticos.length > 0 ? 'var(--cor-erro-claro)' : 'var(--cor-aviso-claro)'};
+                        padding:15px 20px; border-radius:var(--borda-radius); margin-bottom:20px;
+                        border-left:4px solid ${itensCriticos.length > 0 ? 'var(--cor-erro)' : 'var(--cor-aviso)'};">
+                        <strong>${itensCriticos.length > 0 ? '🔴 Alerta de Estoque!' : '🟡 Atenção ao Estoque'}</strong>
+                        &nbsp;&nbsp;
+                        ${itensCriticos.length > 0 ? `<span style="color:var(--cor-erro)">${itensCriticos.length} item(s) zerado(s)</span>` : ''}
+                        ${itensBaixos.length > 0 ? `<span style="color:var(--cor-aviso); margin-left:10px;">${itensBaixos.length} item(s) abaixo do mínimo</span>` : ''}
+                        &nbsp;&nbsp;
+                        <a href="#" onclick="document.querySelector('#estoque-page .tab-button[data-tab=\\'lista-compras\\']').click(); return false;"
+                            style="color:var(--cor-primaria); font-weight:bold;">→ Ver lista de compras</a>
+                    </div>
+                ` : ''}
+                
+                <div class="tab-buttons">
+                    <button class="tab-button active" data-tab="visao-geral">📦 Visão Geral</button>
+                    <button class="tab-button" data-tab="lista-compras">
+                        🛒 Lista de Compras
+                        ${listaCompras.length > 0 ? `<span style="background:var(--cor-erro);color:white;border-radius:10px;padding:1px 7px;font-size:12px;margin-left:5px;">${listaCompras.length}</span>` : ''}
+                    </button>
+                </div>
+                
+                <!-- TAB: VISÃO GERAL -->
+                <div class="tab-content active" id="tab-visao-geral">
+                    <div class="card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+                            <div style="display:flex; gap:15px; font-size:14px;">
+                                <span>🟢 ${estoque.filter(i => getCriticidadeEstoque(i).nivel === 'ok').length} OK</span>
+                                <span>🟡 ${itensBaixos.length} Baixo</span>
+                                <span>🔴 ${itensCriticos.length} Crítico</span>
+                            </div>
+                            <strong>Total em estoque: ${formatarMoeda(valorTotalEstoque)}</strong>
                         </div>
-                    ` : ''}
+                        
+                        <input type="text" id="pesquisar-estoque" class="form-control" 
+                            placeholder="🔍 Pesquisar material..." style="margin-bottom:15px;">
+                        
+                        <div style="overflow-x:auto;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Status</th>
+                                        <th>Material</th>
+                                        <th>Disponível</th>
+                                        <th>Mínimo</th>
+                                        <th>Lançado</th>
+                                        <th>Vendido</th>
+                                        <th>Preço Médio</th>
+                                        <th>Valor Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lista-estoque">
+                                    ${estoque.length === 0 ?
+                                        '<tr><td colspan="8" style="text-align:center;">Nenhum item no estoque</td></tr>' :
+                                        estoque.map(item => {
+                                            const crit = getCriticidadeEstoque(item);
+                                            const precoMedio = calcularPrecoMedioPonderado(item.nome);
+                                            const valorTotal = item.disponivel * precoMedio;
+                                            return `
+                                                <tr style="${crit.nivel !== 'ok' ? `background:${crit.nivel === 'critico' ? 'var(--cor-erro-claro)' : 'var(--cor-aviso-claro)'}` : ''}">
+                                                    <td style="text-align:center; font-size:18px;" title="${crit.label}">${crit.emoji}</td>
+                                                    <td><strong>${item.nome}</strong></td>
+                                                    <td>
+                                                        <strong style="color:${crit.cor}">
+                                                            ${item.disponivel.toFixed(2)} ${item.unidadePadrao}
+                                                        </strong>
+                                                    </td>
+                                                    <td style="color:var(--cor-texto-claro);">
+                                                        ${crit.minimo > 0 ? `${crit.minimo} ${item.unidadePadrao}` : '—'}
+                                                    </td>
+                                                    <td>${item.totalLancado.toFixed(2)} ${item.unidadePadrao}</td>
+                                                    <td>${item.totalVendido.toFixed(2)} ${item.unidadePadrao}</td>
+                                                    <td>${formatarMoeda(precoMedio)}/${item.unidadePadrao}</td>
+                                                    <td><strong>${formatarMoeda(valorTotal)}</strong></td>
+                                                </tr>
+                                            `;
+                                        }).join('')
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- TAB: LISTA DE COMPRAS -->
+                <div class="tab-content" id="tab-lista-compras">
+                    <div class="card">
+                        <h3>🛒 Lista de Compras Sugerida</h3>
+                        
+                        ${listaCompras.length === 0 ? `
+                            <div style="text-align:center; padding:40px; color:var(--cor-texto-claro);">
+                                <div style="font-size:48px; margin-bottom:10px;">🟢</div>
+                                <p><strong>Estoque OK!</strong> Nenhum item abaixo do mínimo.</p>
+                                <p style="font-size:13px;">Configure o estoque mínimo em cada material para receber alertas aqui.</p>
+                            </div>
+                        ` : `
+                            <p style="color:var(--cor-texto-claro); margin-bottom:20px;">
+                                ${listaCompras.length} item(s) precisam ser repostos. 
+                                Sugestão: comprar até 2× o mínimo configurado.
+                            </p>
+                            
+                            <div style="overflow-x:auto;">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Status</th>
+                                            <th>Material</th>
+                                            <th>Disponível</th>
+                                            <th>Mínimo</th>
+                                            <th>Sugestão de Compra</th>
+                                            <th>Custo Estimado</th>
+                                            <th>Ação</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${listaCompras.map(item => `
+                                            <tr style="background:${item.critico ? 'var(--cor-erro-claro)' : 'var(--cor-aviso-claro)'}">
+                                                <td style="text-align:center; font-size:18px;">${item.critico ? '🔴' : '🟡'}</td>
+                                                <td><strong>${item.nome}</strong></td>
+                                                <td style="color:${item.critico ? 'var(--cor-erro)' : 'var(--cor-aviso)'}; font-weight:bold;">
+                                                    ${item.disponivel.toFixed(2)} ${item.unidade}
+                                                </td>
+                                                <td>${item.minimo > 0 ? `${item.minimo} ${item.unidade}` : '—'}</td>
+                                                <td style="font-weight:bold;">
+                                                    ${item.quantidadeComprar.toFixed(2)} ${item.unidade}
+                                                </td>
+                                                <td style="color:var(--cor-primaria); font-weight:bold;">
+                                                    ${item.precoMedio > 0 ? formatarMoeda(item.custoEstimado) : '—'}
+                                                </td>
+                                                <td>
+                                                    <button class="btn btn-success btn-sm" 
+                                                        onclick="adicionarCompraMaterial('${item.nome}')">
+                                                        ➕ Comprar
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr style="border-top: 2px solid var(--cor-borda);">
+                                            <td colspan="5" style="text-align:right;"><strong>Custo Total Estimado:</strong></td>
+                                            <td style="font-weight:bold; font-size:16px; color:var(--cor-primaria);">
+                                                ${formatarMoeda(listaCompras.reduce((s, i) => s + i.custoEstimado, 0))}
+                                            </td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                            
+                            <div style="margin-top:20px; padding:12px; background:var(--cor-info-claro); 
+                                border-radius:var(--borda-radius); font-size:13px; border-left:3px solid var(--cor-info);">
+                                💡 <strong>Dica:</strong> Clique em "➕ Comprar" para ir direto ao cadastro de compra desse material.
+                                O valor estimado usa o preço médio das últimas compras.
+                            </div>
+                        `}
+                    </div>
                 </div>
             `;
             
-            // Event listener para pesquisa
+            // Configurar tabs
+            const tabButtons = document.querySelectorAll('#estoque-page .tab-button');
+            tabButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    tabButtons.forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('#estoque-page .tab-content').forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    const tab = document.getElementById('tab-' + this.dataset.tab);
+                    if (tab) tab.classList.add('active');
+                });
+            });
+            
+            // Pesquisa
             const inputPesquisa = document.getElementById('pesquisar-estoque');
             if (inputPesquisa) {
                 inputPesquisa.addEventListener('input', function() {
                     const termo = this.value.toLowerCase();
-                    const linhas = document.querySelectorAll('#lista-estoque tr');
-                    
-                    linhas.forEach(linha => {
-                        const texto = linha.textContent.toLowerCase();
-                        linha.style.display = texto.includes(termo) ? '' : 'none';
+                    document.querySelectorAll('#lista-estoque tr').forEach(linha => {
+                        linha.style.display = linha.textContent.toLowerCase().includes(termo) ? '' : 'none';
                     });
                 });
             }
         }
-        
+
         // ====================================
         // INTERFACE - PÁGINA DE MATERIAIS
         // ====================================
@@ -5761,6 +5879,17 @@
                                             placeholder="Número da NF">
                                     </div>
                                 </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="estoque-minimo-material">Estoque Mínimo (alerta quando abaixo):</label>
+                                <input type="number" id="estoque-minimo-material" class="form-control" 
+                                    min="0" step="0.01" value="0"
+                                    placeholder="Ex: 500 (em g, ml, etc)">
+                                <small style="color: var(--cor-texto-claro);">
+                                    ⚠️ Quando o estoque disponível cair abaixo deste valor, aparecerá um alerta de reposição.
+                                    Use a mesma unidade do campo acima (g, ml, un).
+                                </small>
                             </div>
                             
                             <div style="margin-top: 25px; display: flex; gap: 10px;">
@@ -5941,7 +6070,8 @@
                     unidadeMedida: document.getElementById('unidade-medida-material').value,
                     quantidadePorUnidade: document.getElementById('quantidade-por-unidade-material').value,
                     dataCompra: document.getElementById('data-compra-material').value,
-                    notaFiscal: document.getElementById('nota-fiscal-material').value.trim()
+                    notaFiscal: document.getElementById('nota-fiscal-material').value.trim(),
+                    estoqueMinimo: document.getElementById('estoque-minimo-material').value
                 };
                 
                 if (adicionarMaterial(dados)) {
@@ -5973,6 +6103,7 @@
                             document.getElementById('unidade-compra-material').value = material.unidadeCompra || 'un';
                             document.getElementById('unidade-medida-material').value = material.unidadeMedida || 'g';
                             document.getElementById('quantidade-por-unidade-material').value = material.quantidadePorUnidade || 1000;
+                            document.getElementById('estoque-minimo-material').value = material.estoqueMinimo || 0;
                             
                             mostrarToast('Material encontrado! Preencha apenas preço e quantidade.', 'info');
                         }
@@ -6203,6 +6334,63 @@
             }
         }
         
+
+        // ====================================
+        // MÓDULO: ESTOQUE INTELIGENTE
+        // ====================================
+
+        /**
+         * Retorna criticidade de um item do estoque
+         * 🔴 crítico = zerado | 🟡 baixo = abaixo do mínimo | 🟢 ok
+         */
+        function getCriticidadeEstoque(item) {
+            const material = materiais.find(m => 
+                !m.removed && normalizarNome(m.nome) === normalizarNome(item.nome)
+            );
+            const minimo = material ? (parseFloat(material.estoqueMinimo) || 0) : 0;
+
+            if (item.disponivel <= 0) return { nivel: 'critico', cor: 'var(--cor-erro)', emoji: '🔴', label: 'Crítico', minimo };
+            if (minimo > 0 && item.disponivel < minimo) return { nivel: 'baixo', cor: 'var(--cor-aviso)', emoji: '🟡', label: 'Baixo', minimo };
+            return { nivel: 'ok', cor: 'var(--cor-sucesso)', emoji: '🟢', label: 'OK', minimo };
+        }
+
+        /**
+         * Gera lista de compras sugeridas (itens abaixo do mínimo ou zerados)
+         */
+        function gerarListaCompras() {
+            const estoqueAtual = calcularEstoqueCompleto();
+            const lista = [];
+
+            estoqueAtual.forEach(item => {
+                const material = materiais.find(m =>
+                    !m.removed && normalizarNome(m.nome) === normalizarNome(item.nome)
+                );
+                if (!material) return;
+
+                const minimo = parseFloat(material.estoqueMinimo) || 0;
+                if (item.disponivel < minimo || item.disponivel <= 0) {
+                    const meta = minimo > 0 ? minimo * 2 : 1000; // comprar 2x o mínimo
+                    const quantidadeComprar = Math.max(meta - item.disponivel, 0);
+                    const precoMedio = calcularPrecoMedioPonderado(item.nome);
+                    const custoEstimado = quantidadeComprar * precoMedio;
+
+                    lista.push({
+                        nome: item.nome,
+                        unidade: item.unidadePadrao,
+                        disponivel: item.disponivel,
+                        minimo: minimo,
+                        quantidadeComprar: quantidadeComprar,
+                        precoMedio: precoMedio,
+                        custoEstimado: custoEstimado,
+                        critico: item.disponivel <= 0
+                    });
+                }
+            });
+
+            // Ordenar: críticos primeiro
+            return lista.sort((a, b) => (b.critico ? 1 : 0) - (a.critico ? 1 : 0));
+        }
+
         console.log('✅ Módulo de Materiais e Estoque carregado');
         
         // ====================================
