@@ -7122,7 +7122,7 @@
                             
                             <div style="margin-top: 25px; display: flex; gap: 10px;">
                                 <button type="submit" class="btn btn-primary">💾 Registrar Venda</button>
-                                <button type="button" class="btn btn-secondary" onclick="RascunhoManager.limpar('rascunho_venda'); document.getElementById('form-nova-venda').reset()">
+                                <button type="button" class="btn btn-secondary" onclick="RascunhoManager.limpar('rascunho_venda'); localStorage.removeItem('rascunho_venda_produtos'); produtosVendaTemp=[]; renderizarProdutosVendaTemp(); atualizarResumoFinanceiroVenda(); document.getElementById('form-nova-venda').reset()">
                                     🔄 Limpar
                                 </button>
                             </div>
@@ -7319,6 +7319,9 @@
                 precoCustomizado: precoCustomizado
             });
             
+            // Salvar no rascunho
+            localStorage.setItem('rascunho_venda_produtos', JSON.stringify(produtosVendaTemp));
+            
             // Atualizar interface
             renderizarProdutosVendaTemp();
             atualizarResumoFinanceiroVenda();
@@ -7409,12 +7412,17 @@
          */
         function removerProdutoVendaTemp(index) {
             produtosVendaTemp.splice(index, 1);
+            
+            // Atualizar rascunho
+            if (produtosVendaTemp.length === 0) {
+                localStorage.removeItem('rascunho_venda_produtos');
+                document.getElementById('resumo-financeiro-venda').style.display = 'none';
+            } else {
+                localStorage.setItem('rascunho_venda_produtos', JSON.stringify(produtosVendaTemp));
+            }
+            
             renderizarProdutosVendaTemp();
             atualizarResumoFinanceiroVenda();
-            
-            if (produtosVendaTemp.length === 0) {
-                document.getElementById('resumo-financeiro-venda').style.display = 'none';
-            }
         }
         
         /**
@@ -7792,6 +7800,22 @@
             
             RascunhoManager.iniciar('form-nova-venda', 'rascunho_venda');
             
+            // Restaurar produtos do rascunho (se existirem)
+            const _produtosSalvos = localStorage.getItem('rascunho_venda_produtos');
+            if (_produtosSalvos) {
+                try {
+                    const _arr = JSON.parse(_produtosSalvos);
+                    if (_arr && _arr.length > 0) {
+                        produtosVendaTemp.push(..._arr);
+                        // Renderizar após um tick (DOM já está pronto)
+                        setTimeout(() => {
+                            renderizarProdutosVendaTemp();
+                            atualizarResumoFinanceiroVenda();
+                        }, 50);
+                    }
+                } catch(e) { localStorage.removeItem('rascunho_venda_produtos'); }
+            }
+            
             // Limpar receitas temporárias
             receitasVendaTemp = [];
             
@@ -7883,6 +7907,7 @@
                     
                     // Limpar formulário
                     RascunhoManager.limpar('rascunho_venda');
+                    localStorage.removeItem('rascunho_venda_produtos');
                     form.reset();
                     produtosVendaTemp = [];
                     window.clienteAtualVenda = null; // 🆕
