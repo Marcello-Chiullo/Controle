@@ -1612,32 +1612,11 @@
                 
                 console.log(`📊 Atualizando estatísticas do cliente: ${cliente.nome}`);
                 
-                {
-                    // ✅ VENDA PARA REVENDA
-                    console.log('   📦 Tipo: REVENDA');
-                    console.log(`   Total Revenda ANTES: ${formatarMoeda(cliente.totalGastoRevenda)}`);
-                    
-                    cliente.totalGastoRevenda += valorVenda;
-                    cliente.totalPedidosRevenda += 1;
-                    
-                    console.log(`   Total Revenda DEPOIS: ${formatarMoeda(cliente.totalGastoRevenda)}`);
-                    console.log('   ⚠️ Nível do cliente NÃO será atualizado (venda para revenda)');
-                    
-                } else {
-                    // ✅ VENDA COMO CLIENTE NORMAL
-                    console.log('   🛒 Tipo: CLIENTE');
-                    console.log(`   Total Cliente ANTES: ${formatarMoeda(cliente.totalGastoCliente)}`);
-                    
-                    cliente.totalGastoCliente += valorVenda;
-                    cliente.totalPedidosCliente += 1;
-                    
-                    // Atualizar campos totais (para níveis)
-                    cliente.totalGasto += valorVenda;
-                    cliente.totalPedidos += 1;
-                    
-                    console.log(`   Total Cliente DEPOIS: ${formatarMoeda(cliente.totalGastoCliente)}`);
-                    
-                    // 🆕 Recalcular nível APENAS para vendas de cliente
+                // ✅ ATUALIZAR ESTATÍSTICAS DO CLIENTE
+                cliente.totalGasto += valorVenda;
+                cliente.totalPedidos += 1;
+                
+                    // Recalcular nível
                     const nivelAnterior = cliente.nivel;
                     const nivelNovo = calcularNivelCliente(cliente.totalGasto);
                     cliente.nivel = nivelNovo;
@@ -1653,10 +1632,8 @@
                     }
                 }
                 
-                // Atualizar ticket médio GERAL (ambos os tipos)
-                const totalGeralGasto = cliente.totalGastoCliente + cliente.totalGastoRevenda;
-                const totalGeralPedidos = cliente.totalPedidosCliente + cliente.totalPedidosRevenda;
-                cliente.ticketMedio = totalGeralPedidos > 0 ? totalGeralGasto / totalGeralPedidos : 0;
+                // Atualizar ticket médio
+                cliente.ticketMedio = cliente.totalPedidos > 0 ? cliente.totalGasto / cliente.totalPedidos : 0;
                 
                 // Atualizar data
                 cliente.ultimoPedido = new Date().toISOString();
