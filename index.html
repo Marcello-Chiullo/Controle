@@ -1931,6 +1931,10 @@
          * Navega entre páginas
          */
         function navegarPagina(nomePagina) {
+            // Remover botão de ajuda anterior
+            const btnAjudaAnt = document.querySelector('.btn-ajuda');
+            if (btnAjudaAnt) btnAjudaAnt.remove();
+            
             // Esconde todas as páginas
             document.querySelectorAll('.page-content').forEach(page => {
                 page.classList.remove('active');
@@ -3133,6 +3137,7 @@
                 </div>
             `;
             
+            injetarBotaoAjuda('sub-receitas-page', 'sub-receitas');
             // Configurar tabs
             configurarTabsSubReceitas();
             
@@ -4351,6 +4356,7 @@
                 </div>
             `;
             
+            injetarBotaoAjuda('produtos-page', 'produtos');
             // Configurar tabs
             configurarTabsProdutos();
             
@@ -5740,6 +5746,7 @@
                 </div>
             `;
             
+            injetarBotaoAjuda('estoque-page', 'estoque');
             // Configurar tabs
             const tabButtons = document.querySelectorAll('#estoque-page .tab-button');
             tabButtons.forEach(btn => {
@@ -5949,6 +5956,7 @@
                 </div>
             `;
             
+            injetarBotaoAjuda('materiais-page', 'materiais');
             // Configurar tabs
             configurarTabsMateriais();
             
@@ -7533,6 +7541,7 @@
                 </div>
             `;
             
+            injetarBotaoAjuda('vendas-page', 'vendas');
             // Configurar tabs
             configurarTabsVendas();
             
@@ -9461,6 +9470,8 @@
             const page = document.getElementById('calendario-page');
             if (!page) return;
             
+            injetarBotaoAjuda('calendario-page', 'calendario');
+            
             page.innerHTML = `
                 <h2>📅 Calendário de Entregas</h2>
                 
@@ -9993,6 +10004,8 @@
             const page = document.getElementById('financeiro-page');
             if (!page) return;
             
+            injetarBotaoAjuda('financeiro-page', 'financeiro');
+            
             const c = configuracoesCustos;
             
             const saldos = {
@@ -10219,6 +10232,255 @@
 
 
 
+
+        // ====================================
+        // MÓDULO: AJUDA CONTEXTUAL
+        // ====================================
+
+        const AJUDA_CONTEUDO = {
+            estoque: {
+                titulo: '📦 Como funciona o Estoque',
+                intro: 'O estoque é calculado <strong>automaticamente</strong> — você nunca lança estoque direto. Ele é resultado de: <em>Compras lançadas − Ingredientes usados nas vendas</em>.',
+                passos: [
+                    { icone: '1️⃣', titulo: 'Compre e lance no sistema', desc: 'Vá em <strong>Materiais → Adicionar Material</strong>. Informe o preço total e a quantidade comprada. O sistema debita do <strong>Caixa Operacional</strong> automaticamente.' },
+                    { icone: '2️⃣', titulo: 'Registre uma venda', desc: 'Ao registrar uma venda com um produto, o sistema subtrai os ingredientes necessários do estoque automaticamente.' },
+                    { icone: '3️⃣', titulo: 'Monitore o semáforo', desc: '🟢 OK | 🟡 Abaixo do mínimo | 🔴 Zerado. Configure o mínimo de cada material na aba <strong>⚙️ Mínimos</strong>.' },
+                    { icone: '4️⃣', titulo: 'Lista de compras', desc: 'A aba <strong>🛒 Lista de Compras</strong> mostra tudo que precisa repor, com sugestão de quantidade e custo estimado.' }
+                ],
+                dica: '💡 Use a aba <strong>⚙️ Mínimos</strong> e clique em <strong>🤖 Calcular Automático</strong> — o sistema analisa suas vendas históricas e sugere o mínimo ideal para cada ingrediente.',
+                exemplo: { titulo: '📌 Exemplo prático', texto: 'Você comprou 5kg de farinha por R$25,00. O sistema adiciona 5000g ao estoque e debita R$25 do Caixa Operacional. Ao vender um bolo que usa 500g de farinha, o sistema subtrai 500g automaticamente. Simples!' }
+            },
+            materiais: {
+                titulo: '🏷️ Como funciona Materiais',
+                intro: 'Materiais são todos os ingredientes e insumos que você compra. Cada compra fica registrada no histórico e forma o <strong>preço médio ponderado</strong> — usado para calcular o custo dos produtos.',
+                passos: [
+                    { icone: '1️⃣', titulo: 'Cadastre a compra', desc: 'Informe: nome, preço total pago, quantas unidades comprou, e quanto tem em cada embalagem (ex: 5 pacotes de 1000g cada = 5000g total).' },
+                    { icone: '2️⃣', titulo: 'Preço médio automático', desc: 'Se você compra farinha hoje por R$10/kg e na próxima vez por R$12/kg, o sistema calcula a média ponderada e usa esse valor no custo dos seus produtos.' },
+                    { icone: '3️⃣', titulo: 'Estoque mínimo', desc: 'No campo "Estoque Mínimo" informe a quantidade mínima que deve sempre ter. O sistema avisa quando estiver abaixo.' },
+                    { icone: '4️⃣', titulo: 'Nova compra do mesmo item', desc: 'Se o produto já existe, basta adicionar novamente com o mesmo nome — o sistema soma ao estoque e recalcula o preço médio.' }
+                ],
+                dica: '💡 Sempre informe a <strong>quantidade por embalagem</strong> corretamente. Ex: uma lata de leite condensado tem 395g. Isso garante que o custo dos produtos seja calculado por grama/ml, não por unidade.',
+                exemplo: { titulo: '📌 Exemplo prático', texto: 'Chocolate em pó: comprou 3 latas de 400g por R$18 total. Informe: Preço = R$18, Qtd = 3 unidades, Qtd por unidade = 400g. O sistema calcula: R$18 ÷ 1200g = R$0,015/g.' }
+            },
+            'sub-receitas': {
+                titulo: '🧩 Como funcionam Sub-Receitas',
+                intro: 'Sub-receitas são <strong>preparações intermediárias</strong> que você usa dentro de vários produtos. Exemplo: brigadeiro base, ganache, massa de bolo. Cadastre uma vez, use em vários produtos.',
+                passos: [
+                    { icone: '1️⃣', titulo: 'Crie a sub-receita', desc: 'Dê um nome (ex: "Brigadeiro Base"), escolha o tipo, informe o rendimento (ex: 2kg) e adicione os ingredientes com as quantidades.' },
+                    { icone: '2️⃣', titulo: 'Custo calculado automaticamente', desc: 'O sistema soma o custo de todos os ingredientes e divide pelo rendimento. Se o brigadeiro usa R$8 de ingredientes e rende 1kg, o custo é R$8/kg.' },
+                    { icone: '3️⃣', titulo: 'Use nos produtos', desc: 'Ao criar um produto, adicione a sub-receita como componente. Ex: "Bolo de Chocolate usa 0,5kg de Ganache".' },
+                    { icone: '4️⃣', titulo: 'Atualização automática', desc: 'Se o preço do chocolate subir e você atualizar o material, o custo da sub-receita e de todos os produtos que usam ela atualiza automaticamente.' }
+                ],
+                dica: '💡 Pense nas sub-receitas como <strong>ingredientes compostos</strong>. Tudo que você prepara antes de montar o produto final pode ser uma sub-receita.',
+                exemplo: { titulo: '📌 Exemplo prático', texto: 'Ganache: 200g chocolate (R$4) + 100ml creme de leite (R$1,50) = R$5,50 total, rende 300g → custo R$18,33/kg. Num bolo que usa 150g de ganache: custo = R$18,33 × 0,15 = R$2,75.' }
+            },
+            produtos: {
+                titulo: '🎂 Como funciona Produtos',
+                intro: 'Produtos são o que você <strong>vende para os clientes</strong>. Cada produto tem uma composição (ingredientes e sub-receitas) e um preço de venda. O sistema calcula o custo e a margem automaticamente.',
+                passos: [
+                    { icone: '1️⃣', titulo: 'Escolha o tipo de precificação', desc: '<strong>Por Peso:</strong> você define o preço por kg (ex: R$80/kg) e o peso base (ex: 1kg). <strong>Por Unidade:</strong> você define o preço por unidade (ex: R$3,50 cada brigadeiro).' },
+                    { icone: '2️⃣', titulo: 'Monte a composição', desc: 'Adicione as sub-receitas e ingredientes diretos com as quantidades necessárias para fazer 1 unidade/1kg do produto.' },
+                    { icone: '3️⃣', titulo: 'Veja o preço sugerido', desc: 'O sistema aplica o markup configurado e sugere um preço. Você pode usar o sugerido ou definir o seu próprio.' },
+                    { icone: '4️⃣', titulo: 'Semáforo de margem', desc: '🟢 Margem ≥ 20% | 🟡 Margem 10-20% | 🔴 Margem < 10%. Ajuste seu preço se estiver no vermelho.' }
+                ],
+                dica: '💡 Configure primeiro os <strong>Custos Fixos e Precificação</strong> em Configurações. Isso garante que o preço sugerido já cubra luz, água, seu salário e os imprevistos.',
+                exemplo: { titulo: '📌 Exemplo prático', texto: 'Bolo de Ninho 1kg: composição custa R$32. Markup 2,5× sugere R$80. Você define R$76/kg. Margem = (R$76 - R$32) ÷ R$76 = 57,9% 🟢. Perfeito!' }
+            },
+            vendas: {
+                titulo: '💰 Como registrar uma Venda',
+                intro: 'Ao registrar uma venda, o sistema <strong>automaticamente</strong>: subtrai do estoque, atualiza o CRM do cliente, cria os lançamentos nos 5 caixas financeiros e calcula seu lucro.',
+                passos: [
+                    { icone: '1️⃣', titulo: 'Adicione os produtos', desc: 'Selecione o produto, informe a quantidade. Você pode adicionar vários produtos no mesmo pedido. O sistema mostra custo, lucro e margem em tempo real.' },
+                    { icone: '2️⃣', titulo: 'Informe o cliente', desc: 'Digite o telefone. Se o cliente já existe, os dados preenchem automaticamente e o desconto do nível CRM é aplicado. Cliente novo? É cadastrado automaticamente.' },
+                    { icone: '3️⃣', titulo: 'Confirme o pedido', desc: 'Um modal mostra a análise financeira completa — valor total, custos, lucro por produto. Revise tudo antes de confirmar.' },
+                    { icone: '4️⃣', titulo: 'Acompanhe o status', desc: 'No Histórico: marque como entregue ✅ quando entregar, confirme o pagamento 💳 quando receber.' }
+                ],
+                dica: '💡 Use o campo <strong>"Preço Personalizado"</strong> se precisar dar um desconto especial ou cobrar diferente do preço padrão. O sistema continua calculando a margem real.',
+                exemplo: { titulo: '📌 Exemplo prático', texto: 'Cliente Maria pede 2kg de bolo + 50 brigadeiros. Digita o telefone, sistema reconhece a Maria (nível Prata, 5% desconto). Total: R$152 + R$175 = R$327 - 5% = R$310,65. Sistema divide automaticamente nos 5 caixas.' }
+            },
+            clientes: {
+                titulo: '👥 Como funciona o CRM de Clientes',
+                intro: 'O CRM acompanha o histórico de cada cliente e concede <strong>descontos automáticos</strong> conforme ele compra mais. Quanto mais ele compra, maior o benefício.',
+                passos: [
+                    { icone: '1️⃣', titulo: '4 Níveis de fidelidade', desc: '🥉 Bronze: R$0 (0%) → 🥈 Prata: R$2.500 (5%) → 🥇 Ouro: R$5.000 (10%) → 💎 Diamante: R$10.000 (15%).' },
+                    { icone: '2️⃣', titulo: 'Progressão automática', desc: 'Cada venda soma no total gasto do cliente. Quando ele atinge o valor do próximo nível, o sistema notifica e aplica o novo desconto automaticamente.' },
+                    { icone: '3️⃣', titulo: 'Cadastro automático', desc: 'Clientes novos são criados automaticamente ao registrar uma venda. Você pode complementar os dados depois (aniversário, endereço, tags).' },
+                    { icone: '4️⃣', titulo: 'Histórico completo', desc: 'Clique em "👁️ Ver Histórico" para ver todas as compras do cliente, quanto já gastou e o progresso para o próximo nível.' }
+                ],
+                dica: '💡 Cadastre a <strong>data de aniversário</strong> dos clientes. No futuro, o sistema enviará mensagens automáticas de parabéns com uma oferta especial.',
+                exemplo: { titulo: '📌 Exemplo prático', texto: 'Maria já gastou R$2.300. Faltam R$200 para Prata. Você registra uma venda de R$250. Sistema sobe ela para Prata 🥈, notifica e aplica 5% de desconto em todas as compras futuras.' }
+            },
+            calendario: {
+                titulo: '📅 Como funciona o Calendário',
+                intro: 'O calendário mostra <strong>visualmente</strong> todas as suas entregas agendadas. Cada dia com entrega tem um indicador de status, facilitando o planejamento da semana.',
+                passos: [
+                    { icone: '1️⃣', titulo: 'Entregas aparecem automaticamente', desc: 'Toda venda com data de entrega definida aparece no calendário. Você não precisa fazer nada extra.' },
+                    { icone: '2️⃣', titulo: 'Cores dos dias', desc: '🟡 Pendente: entrega agendada mas não confirmada. ✅ Verde: todas as entregas do dia foram concluídas.' },
+                    { icone: '3️⃣', titulo: 'Clique no dia', desc: 'Clique em qualquer dia para ver os detalhes das entregas: cliente, produto, horário, valor e status de pagamento.' },
+                    { icone: '4️⃣', titulo: 'Ações rápidas', desc: 'Direto no calendário você pode marcar como entregue ✅ e confirmar pagamento 💳 sem sair da tela.' }
+                ],
+                dica: '💡 Ao registrar uma venda, sempre informe a <strong>data E o horário</strong> de entrega. Isso ajuda a planejar o dia de produção com antecedência.',
+                exemplo: { titulo: '📌 Exemplo prático', texto: 'Sexta-feira tem 3 entregas: 10h bolo aniversário para João, 14h 100 brigadeiros para Maria, 17h bolo casamento para Ana. Clique no dia e veja tudo organizado por horário.' }
+            },
+            dashboard: {
+                titulo: '📊 Como funciona o Dashboard',
+                intro: 'O Dashboard é sua <strong>visão executiva do mês</strong>. Tudo em uma tela: faturamento, progresso da meta, saldos dos caixas e produtos mais vendidos.',
+                passos: [
+                    { icone: '1️⃣', titulo: 'KPIs do mês', desc: 'Faturamento total, número de vendas, ticket médio e lucro estimado — sempre referentes ao <strong>mês atual</strong>.' },
+                    { icone: '2️⃣', titulo: 'Barra de meta', desc: 'Mostra o progresso do faturamento em relação à sua meta mensal (configurável em Configurações → Precificação).' },
+                    { icone: '3️⃣', titulo: 'Resumo dos Caixas', desc: 'Mini-cards com o saldo atual de cada caixa financeiro. Clique em "Ver detalhes" para ir ao Financeiro completo.' },
+                    { icone: '4️⃣', titulo: 'Top Produtos', desc: 'Os produtos mais vendidos do mês, por faturamento. Útil para saber no que focar a produção.' }
+                ],
+                dica: '💡 O alerta de estoque no topo do Dashboard aparece quando algum ingrediente está no vermelho 🔴 ou amarelo 🟡. Clique nele para ir direto à lista de compras.',
+                exemplo: { titulo: '📌 Exemplo prático', texto: 'É dia 15 do mês, você faturou R$3.800 de R$8.000 meta (47,5%). Caixa Pró-labore tem R$1.200 — faltam R$1.800 para a meta de salário. Você sabe exatamente o que precisa vender no restante do mês.' }
+            },
+            financeiro: {
+                titulo: '💳 Como funciona o Controle Financeiro',
+                intro: 'O Financeiro separa seu dinheiro em <strong>5 caixas com funções específicas</strong>. Cada venda abastece os caixas automaticamente. Você sempre sabe exatamente quanto tem para cada finalidade.',
+                passos: [
+                    { icone: '🔄', titulo: 'Caixa Operacional', desc: 'Recebe o custo real dos ingredientes de cada venda. Quando você compra materiais, o valor é debitado aqui automaticamente.' },
+                    { icone: '🏠', titulo: 'Caixa Custos Fixos', desc: 'Recebe um % do líquido de cada venda para pagar luz, água, internet, gás. Use o botão ➖ para registrar quando pagar cada conta.' },
+                    { icone: '🛡️', titulo: 'Caixa Emergência', desc: 'Recebe um % do líquido. Reserva para imprevistos (equipamento quebrado, mês fraco). Só mexa aqui em caso de necessidade real.' },
+                    { icone: '🚀', titulo: 'Caixa Reinvestimento', desc: 'Recebe um % do líquido. Para crescimento: equipamentos novos, embalagens melhores, cursos, marketing.' },
+                    { icone: '💵', titulo: 'Caixa Pró-labore', desc: 'Recebe o resíduo após os outros caixas. É o seu salário. Quando se pagar, registre com o botão ➖.' }
+                ],
+                dica: '💡 Use o botão <strong>↔️ Transferir</strong> para mover dinheiro entre caixas. Use <strong>➕ Entrada manual</strong> para aportes iniciais. Use <strong>🔄 Recalcular</strong> se os saldos parecerem errados.',
+                exemplo: { titulo: '📌 Exemplo prático', texto: 'Venda de R$200 → líquido R$188 → Operacional +R$80 (ingredientes), Custos Fixos +R$12, Emergência +R$9, Reinvestimento +R$9, Pró-labore +R$78. Fim do mês: pague a conta de luz (➖ Custos Fixos R$120) e se pague (➖ Pró-labore R$3.000).' }
+            },
+            configuracoes: {
+                titulo: '⚙️ Como funciona Configurações',
+                intro: 'Aqui você define os <strong>parâmetros financeiros</strong> do negócio. Eles afetam o markup dos produtos e a distribuição dos caixas. Configure uma vez, o sistema usa em tudo.',
+                passos: [
+                    { icone: '💰', titulo: 'Custos Fixos', desc: 'Cadastre tudo que você paga todo mês: luz, água, gás, internet, aluguel, outros. <strong>Não coloque o pró-labore aqui</strong> — ele é configurado na aba Precificação.' },
+                    { icone: '📐', titulo: 'Precificação', desc: 'Define os % de cada caixa (emergência, reinvestimento, custos fixos) e sua meta de pró-labore e faturamento. O markup é calculado automaticamente com base nesses valores.' },
+                    { icone: '🏦', titulo: 'Cofrinhos', desc: 'Visão dos saldos do mês atual. Para ver o histórico completo e fazer transferências, vá em Financeiro.' },
+                    { icone: '📈', titulo: 'Meta do Mês', desc: 'Mostra barras de progresso para faturamento e cada caixa em relação às suas metas mensais.' }
+                ],
+                dica: '💡 Depois de alterar Custos Fixos ou Precificação, vá em <strong>Produtos</strong> e verifique se o preço sugerido ainda faz sentido para o seu mercado. O markup pode ter mudado.',
+                exemplo: { titulo: '📌 Exemplo prático', texto: 'Seus custos fixos são R$520/mês, pró-labore alvo R$3.000, faturamento alvo R$8.000. O sistema calcula: (R$3.000 + R$520) ÷ R$8.000 = 44% + 6% (imposto+taxa) = 50% → markup ≈ 2,0×. Com piso de 2,4×, o sistema usa 2,4×.' }
+            }
+        };
+
+        function abrirAjuda(pagina) {
+            const ajuda = AJUDA_CONTEUDO[pagina];
+            if (!ajuda) return;
+            
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.style.zIndex = '2000';
+            modal.innerHTML = `
+                <div style="background:white;border-radius:var(--borda-radius);padding:0;
+                    max-width:700px;width:92%;max-height:90vh;overflow:hidden;
+                    display:flex;flex-direction:column;box-shadow:var(--sombra-forte);">
+                    
+                    <!-- Header -->
+                    <div style="background:linear-gradient(135deg,var(--cor-primaria) 0%,var(--cor-primaria-escura) 100%);
+                        color:white;padding:20px 25px;display:flex;justify-content:space-between;align-items:center;">
+                        <div>
+                            <h3 style="margin:0;font-size:20px;">${ajuda.titulo}</h3>
+                        </div>
+                        <button onclick="this.closest('.modal-overlay').remove()"
+                            style="background:rgba(255,255,255,0.2);border:none;color:white;
+                            width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px;
+                            display:flex;align-items:center;justify-content:center;">×</button>
+                    </div>
+                    
+                    <!-- Conteúdo scrollável -->
+                    <div style="overflow-y:auto;padding:25px;flex:1;">
+                        
+                        <!-- Intro -->
+                        <p style="font-size:15px;color:var(--cor-texto);margin-bottom:20px;
+                            padding:12px 15px;background:var(--cor-secundaria-clara);
+                            border-radius:var(--borda-radius);border-left:4px solid var(--cor-primaria);">
+                            ${ajuda.intro}
+                        </p>
+                        
+                        <!-- Passos -->
+                        <h4 style="color:var(--cor-primaria);margin-bottom:15px;">📋 Passo a passo</h4>
+                        <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px;">
+                            ${ajuda.passos.map(p => `
+                                <div style="display:flex;gap:12px;padding:12px;background:var(--cor-fundo);
+                                    border-radius:var(--borda-radius);">
+                                    <div style="font-size:22px;min-width:32px;text-align:center;">${p.icone}</div>
+                                    <div>
+                                        <strong style="color:var(--cor-texto);">${p.titulo}</strong>
+                                        <p style="margin:4px 0 0 0;font-size:14px;color:var(--cor-texto-claro);">${p.desc}</p>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <!-- Exemplo -->
+                        <div style="background:#fff8e1;padding:15px;border-radius:var(--borda-radius);
+                            margin-bottom:15px;border-left:4px solid #ffc107;">
+                            <strong style="color:#856404;">${ajuda.exemplo.titulo}</strong>
+                            <p style="margin:8px 0 0 0;font-size:14px;color:var(--cor-texto);">${ajuda.exemplo.texto}</p>
+                        </div>
+                        
+                        <!-- Dica -->
+                        <div style="background:var(--cor-info-claro);padding:12px 15px;
+                            border-radius:var(--borda-radius);border-left:4px solid var(--cor-info);
+                            font-size:14px;color:var(--cor-texto);">
+                            ${ajuda.dica}
+                        </div>
+                    </div>
+                    
+                    <!-- Footer -->
+                    <div style="padding:15px 25px;border-top:1px solid var(--cor-borda);text-align:right;">
+                        <button class="btn btn-primary" onclick="this.closest('.modal-overlay').remove()">
+                            ✅ Entendi!
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            // Fechar ao clicar fora
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) modal.remove();
+            });
+            
+            document.body.appendChild(modal);
+        }
+
+        /**
+         * Injeta o botão de ajuda no h2 de uma página
+         */
+        function injetarBotaoAjuda(pageId, chaveAjuda) {
+            const page = document.getElementById(pageId);
+            if (!page) return;
+            const h2 = page.querySelector('h2');
+            if (!h2 || h2.querySelector('.btn-ajuda')) return; // já tem botão
+            
+            const btn = document.createElement('button');
+            btn.className = 'btn-ajuda';
+            btn.innerHTML = '❓';
+            btn.title = 'Como funciona esta tela?';
+            btn.style.cssText = `
+                position: fixed;
+                bottom: 24px;
+                right: 24px;
+                width: 48px;
+                height: 48px;
+                border-radius: 50%;
+                background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-primaria-escura) 100%);
+                color: white;
+                border: none;
+                font-size: 20px;
+                cursor: pointer;
+                box-shadow: 0 4px 12px rgba(255,107,143,0.5);
+                z-index: 500;
+                transition: transform 0.2s, box-shadow 0.2s;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            `;
+            btn.onmouseenter = () => { btn.style.transform = 'scale(1.15)'; btn.style.boxShadow = '0 6px 16px rgba(255,107,143,0.7)'; };
+            btn.onmouseleave = () => { btn.style.transform = ''; btn.style.boxShadow = '0 4px 12px rgba(255,107,143,0.5)'; };
+            btn.onclick = () => abrirAjuda(chaveAjuda);
+            
+            document.body.appendChild(btn);
+        }
+
         // ====================================
         // MOTOR FINANCEIRO — COFRINHOS
         // ====================================
@@ -10323,6 +10585,8 @@
         function carregarPaginaDashboard() {
             const page = document.getElementById('dashboard-page');
             if (!page) return;
+            
+            injetarBotaoAjuda('dashboard-page', 'dashboard');
             
             const agora = new Date();
             const mesAtual = agora.getMonth();
@@ -10798,6 +11062,7 @@
                 </div>
             `;
             
+            injetarBotaoAjuda('configuracoes-page', 'configuracoes');
             configurarTabsConfiguracoes();
             configurarFormularioCustos();
             configurarFormularioPrecificacao();
@@ -11141,6 +11406,7 @@
                 </div>
             `;
             
+            injetarBotaoAjuda('clientes-page', 'clientes');
             // Configurar tabs
             configurarTabsClientes();
             
