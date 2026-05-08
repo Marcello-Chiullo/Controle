@@ -1067,6 +1067,151 @@
         // ====================================
         
                 
+
+        // ====================================
+        // MÓDULO: RASCUNHO PERSISTENTE
+        // ====================================
+        
+        const RascunhoManager = {
+            
+            /**
+             * Inicia o monitoramento de um formulário
+             * @param {string} formId - ID do elemento <form>
+             * @param {string} chave - Chave no localStorage (ex: 'rascunho_cliente')
+             * @param {string[]} [camposIgnorar] - IDs de campos a não salvar (ex: campos hidden de ID)
+             */
+            iniciar(formId, chave, camposIgnorar = []) {
+                const form = document.getElementById(formId);
+                if (!form) return;
+                
+                // Verificar se existe rascunho salvo
+                this._verificarRascunho(form, chave, camposIgnorar);
+                
+                // Monitorar alterações
+                const salvar = () => this._salvar(form, chave, camposIgnorar);
+                form.querySelectorAll('input, select, textarea').forEach(campo => {
+                    if (camposIgnorar.includes(campo.id)) return;
+                    campo.addEventListener('input', salvar);
+                    campo.addEventListener('change', salvar);
+                });
+            },
+            
+            /**
+             * Salva os campos do form no localStorage
+             */
+            _salvar(form, chave, camposIgnorar) {
+                const dados = {};
+                form.querySelectorAll('input, select, textarea').forEach(campo => {
+                    if (!campo.id || camposIgnorar.includes(campo.id)) return;
+                    if (campo.type === 'radio') {
+                        if (campo.checked) dados[campo.id] = campo.value;
+                    } else if (campo.type === 'checkbox') {
+                        dados[campo.id] = campo.checked;
+                    } else {
+                        dados[campo.id] = campo.value;
+                    }
+                });
+                // Só salvar se tiver algum campo preenchido
+                const temConteudo = Object.values(dados).some(v => v !== '' && v !== false && v !== null);
+                if (temConteudo) {
+                    dados._salvoEm = new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
+                    localStorage.setItem(chave, JSON.stringify(dados));
+                }
+            },
+            
+            /**
+             * Verifica se existe rascunho e exibe banner de restauração
+             */
+            _verificarRascunho(form, chave, camposIgnorar) {
+                const rascunhoStr = localStorage.getItem(chave);
+                if (!rascunhoStr) return;
+                
+                let rascunho;
+                try { rascunho = JSON.parse(rascunhoStr); } catch(e) { return; }
+                
+                // Verificar se tem conteúdo real
+                const temConteudo = Object.entries(rascunho)
+                    .filter(([k]) => k !== '_salvoEm')
+                    .some(([, v]) => v !== '' && v !== false);
+                if (!temConteudo) return;
+                
+                // Criar banner
+                const banner = document.createElement('div');
+                banner.id = 'banner-rascunho-' + chave;
+                banner.style.cssText = `
+                    background: var(--cor-aviso-claro);
+                    border: 1px solid var(--cor-aviso);
+                    border-radius: var(--borda-radius);
+                    padding: 12px 16px;
+                    margin-bottom: 15px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 10px;
+                    flex-wrap: wrap;
+                `;
+                banner.innerHTML = `
+                    <span style="font-size: 14px;">
+                        📝 <strong>Rascunho encontrado</strong> — salvo às ${rascunho._salvoEm || '?'}
+                    </span>
+                    <div style="display: flex; gap: 8px;">
+                        <button type="button" class="btn btn-warning btn-sm" 
+                            onclick="RascunhoManager.restaurar('${chave}', '${form.id}')">
+                            ↩️ Restaurar
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm"
+                            onclick="RascunhoManager.limpar('${chave}')">
+                            🗑️ Descartar
+                        </button>
+                    </div>
+                `;
+                form.insertBefore(banner, form.firstChild);
+            },
+            
+            /**
+             * Restaura os dados do rascunho no formulário
+             */
+            restaurar(chave, formId) {
+                const rascunhoStr = localStorage.getItem(chave);
+                if (!rascunhoStr) return;
+                
+                let rascunho;
+                try { rascunho = JSON.parse(rascunhoStr); } catch(e) { return; }
+                
+                const form = document.getElementById(formId);
+                if (!form) return;
+                
+                Object.entries(rascunho).forEach(([id, valor]) => {
+                    if (id === '_salvoEm') return;
+                    const campo = document.getElementById(id);
+                    if (!campo) return;
+                    if (campo.type === 'checkbox') {
+                        campo.checked = valor;
+                    } else if (campo.type === 'radio') {
+                        if (campo.value === valor) campo.checked = true;
+                    } else {
+                        campo.value = valor;
+                        campo.dispatchEvent(new Event('change'));
+                    }
+                });
+                
+                // Remover banner
+                const banner = document.getElementById('banner-rascunho-' + chave);
+                if (banner) banner.remove();
+                
+                mostrarToast('Rascunho restaurado!', 'success');
+            },
+            
+            /**
+             * Limpa o rascunho do localStorage e remove o banner
+             */
+            limpar(chave) {
+                localStorage.removeItem(chave);
+                const banner = document.getElementById('banner-rascunho-' + chave);
+                if (banner) banner.remove();
+            }
+        };
+
         // ====================================
         // FUNÇÕES UTILITÁRIAS
         // ====================================
@@ -3016,6 +3161,8 @@
         function configurarFormularioSubReceita() {
             let ingredientesTemp = [];
             
+            RascunhoManager.iniciar('form-sub-receita', 'rascunho_sub_receita', ['sub-receita-id']);
+            
             // Atualizar unidade quando selecionar material
             const selectMaterial = document.getElementById('sub-ingrediente-material');
             if (selectMaterial) {
@@ -3154,6 +3301,7 @@
                     };
                     
                     if (salvarSubReceita(dados)) {
+                    RascunhoManager.limpar('rascunho_sub_receita');
                         // Limpar formulário
                         form.reset();
                         ingredientesTemp = [];
@@ -3372,6 +3520,7 @@
          * CANCELA EDIÇÃO DE SUB-RECEITA
          */
         function cancelarEdicaoSubReceita() {
+            RascunhoManager.limpar('rascunho_sub_receita');
             document.getElementById('form-sub-receita').reset();
             document.getElementById('sub-receita-id').value = '';
             document.getElementById('titulo-form-sub-receita').textContent = '➕ Nova Sub-Receita';
@@ -4286,6 +4435,8 @@
         function configurarFormularioProduto() {
             let componentesTemp = [];
             
+            RascunhoManager.iniciar('form-produto', 'rascunho_produto', ['produto-id']);
+            
             // Toggle entre tipo de precificação
             const radiosPrecificacao = document.querySelectorAll('input[name="tipo-precificacao"]');
             radiosPrecificacao.forEach(radio => {
@@ -4648,6 +4799,7 @@
                     }
                     
                     if (salvarProdutoFinal(dados)) {
+                        RascunhoManager.limpar('rascunho_produto');
                         // Limpar formulário
                         form.reset();
                         componentesTemp = [];
@@ -4703,6 +4855,7 @@
          * CANCELA EDIÇÃO DE PRODUTO
          */
         function cancelarEdicaoProduto() {
+            RascunhoManager.limpar('rascunho_produto');
             document.getElementById('form-produto').reset();
             document.getElementById('produto-id').value = '';
             document.getElementById('titulo-form-produto').textContent = '➕ Novo Produto';
@@ -5703,6 +5856,8 @@
             const form = document.getElementById('form-adicionar-material');
             if (!form) return;
             
+            RascunhoManager.iniciar('form-adicionar-material', 'rascunho_material');
+            
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
                 
@@ -5721,6 +5876,7 @@
                 };
                 
                 if (adicionarMaterial(dados)) {
+                    RascunhoManager.limpar('rascunho_material');
                     form.reset();
                     
                     // Voltar para lista
@@ -10228,6 +10384,8 @@
             const form = document.getElementById('form-cliente');
             if (!form) return;
             
+            RascunhoManager.iniciar('form-cliente', 'rascunho_cliente', ['cliente-id']);
+            
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
                 
@@ -10249,6 +10407,7 @@
                 };
                 
                 if (salvarCliente(dados)) {
+                    RascunhoManager.limpar('rascunho_cliente');
                     // Limpar formulário
                     form.reset();
                     document.getElementById('cliente-id').value = '';
@@ -10518,6 +10677,7 @@
          * CANCELAR EDIÇÃO DE CLIENTE
          */
         function cancelarEdicaoCliente() {
+            RascunhoManager.limpar('rascunho_cliente');
             document.getElementById('form-cliente').reset();
             document.getElementById('cliente-id').value = '';
             document.getElementById('titulo-form-cliente').textContent = '➕ Cadastrar Novo Cliente';
