@@ -1057,6 +1057,7 @@
             // Percentuais de alocação dos cofrinhos (sobre o líquido da venda)
             pctEmergencia: 5,        // % do líquido → Caixa Emergência
             pctReinvestimento: 5,    // % do líquido → Caixa Reinvestimento
+            pctCustosFixos: 6.5,     // % do líquido → Caixa Custos Fixos (luz, água, etc)
             // Metas
             proLaboreAlvo: 3000,     // R$/mês desejado
             faturamentoAlvo: 8000,   // R$/mês desejado
@@ -9996,6 +9997,7 @@
             
             const saldos = {
                 operacional:    getSaldoCofrinho('operacional'),
+                custosFixos:    getSaldoCofrinho('custosFixos'),
                 emergencia:     getSaldoCofrinho('emergencia'),
                 reinvestimento: getSaldoCofrinho('reinvestimento'),
                 prolabore:      getSaldoCofrinho('prolabore')
@@ -10062,7 +10064,10 @@
                 <div class="card">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px;">
                         <h3 style="margin:0;">📋 Movimentações</h3>
-                        <div style="display:flex;gap:8px;">
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <button class="btn btn-secondary btn-sm" onclick="recalcularTodosLancamentosVenda()" title="Recalcular lançamentos das vendas">
+                                🔄
+                            </button>
                             <select id="filtro-cofrinho-hist" class="form-control" style="width:180px;" onchange="filtrarHistoricoFinanceiro()">
                                 <option value="">Todos os caixas</option>
                                 ${Object.entries(COFRINHOS_DEF).map(([id,def])=>`<option value="${id}">${def.emoji} ${def.nome}</option>`).join('')}
@@ -10220,6 +10225,7 @@
 
         const COFRINHOS_DEF = {
             operacional:     { emoji:'🔄', nome:'Caixa Operacional',     cor:'#6f42c1' },
+            custosFixos:     { emoji:'🏠', nome:'Caixa Custos Fixos',    cor:'#fd7e14' },
             emergencia:      { emoji:'🛡️', nome:'Caixa Emergência',      cor:'#17a2b8' },
             reinvestimento:  { emoji:'🚀', nome:'Caixa Reinvestimento',  cor:'#28a745' },
             prolabore:       { emoji:'💵', nome:'Caixa Pró-labore',       cor:'#ff85a2' }
@@ -10240,19 +10246,22 @@
             const imposto   = valTotal * ((parseFloat(c.imposto) || 3) / 100);
             const taxaMaq   = valTotal * ((parseFloat(c.taxaPagamento) || 3) / 100);
             const liquido   = valTotal - imposto - taxaMaq;
-            const pctEmerg  = parseFloat(c.pctEmergencia)    || 5;
-            const pctReinv  = parseFloat(c.pctReinvestimento) || 5;
-            const vlrOper       = venda.custoTotal || 0;
-            const vlrEmerg      = liquido * pctEmerg  / 100;
-            const vlrReinv      = liquido * pctReinv  / 100;
-            const custosFixosDia = (parseFloat(c.fixos?.total) || 0) / 30;
-            const vlrProLabore  = Math.max(liquido - vlrOper - vlrEmerg - vlrReinv - custosFixosDia, 0);
+            const pctEmerg   = parseFloat(c.pctEmergencia)    || 5;
+            const pctReinv   = parseFloat(c.pctReinvestimento) || 5;
+            const pctCF      = parseFloat(c.pctCustosFixos)   || 6.5;
+            const vlrOper    = venda.custoTotal || 0;
+            const vlrEmerg   = liquido * pctEmerg / 100;
+            const vlrReinv   = liquido * pctReinv / 100;
+            const vlrCF      = liquido * pctCF    / 100;
+            // Pró-labore = resíduo após todos os outros caixas
+            const vlrProLabore = Math.max(liquido - vlrOper - vlrEmerg - vlrReinv - vlrCF, 0);
             const agora = venda.dataVenda || new Date().toISOString();
             [
-                { cofrinho:'operacional',    valor: vlrOper,      desc: `Custo ingredientes — ${venda.numero}` },
-                { cofrinho:'emergencia',     valor: vlrEmerg,     desc: `${pctEmerg}% do líquido — ${venda.numero}` },
-                { cofrinho:'reinvestimento', valor: vlrReinv,     desc: `${pctReinv}% do líquido — ${venda.numero}` },
-                { cofrinho:'prolabore',      valor: vlrProLabore, desc: `Pró-labore — ${venda.numero}` }
+                { cofrinho:'operacional',  valor: vlrOper,      desc: `Custo ingredientes — ${venda.numero}` },
+                { cofrinho:'custosFixos',  valor: vlrCF,        desc: `${pctCF}% do líquido — ${venda.numero}` },
+                { cofrinho:'emergencia',   valor: vlrEmerg,     desc: `${pctEmerg}% do líquido — ${venda.numero}` },
+                { cofrinho:'reinvestimento',valor: vlrReinv,    desc: `${pctReinv}% do líquido — ${venda.numero}` },
+                { cofrinho:'prolabore',    valor: vlrProLabore, desc: `Pró-labore — ${venda.numero}` }
             ].forEach(e => {
                 if (e.valor > 0.001) {
                     lancamentosFinanceiros.push({ id:gerarId(), tipo:'entrada_venda', descricao:e.desc, valor:e.valor, cofrinho:e.cofrinho, data:agora, referencia:venda.id });
@@ -10267,6 +10276,24 @@
             sem.forEach(v => criarEntradasFinanceiras(v));
             salvarLocalStorage();
             console.log(`✅ Migração financeira: ${sem.length} venda(s)`);
+        }
+        
+        /**
+         * Recalcula todos os lançamentos financeiros das vendas
+         * Útil quando a fórmula muda
+         */
+        function recalcularTodosLancamentosVenda() {
+            if (!confirm('Recalcular lançamentos financeiros de todas as vendas?\nIsso vai corrigir os valores dos caixas baseado nas vendas existentes.')) return;
+            // Remover todos os lançamentos de tipo entrada_venda
+            lancamentosFinanceiros = lancamentosFinanceiros.filter(l => l.tipo !== 'entrada_venda');
+            // Desmarcar flag em todas as vendas
+            vendas.forEach(v => { v.lancamentosCriados = false; });
+            // Recriar
+            migrarVendasSemLancamentos();
+            salvarLocalStorage();
+            sincronizarComNuvem();
+            mostrarToast('Lançamentos recalculados!', 'success');
+            carregarPaginaFinanceiro();
         }
 
         function registrarSaidaCofrinho(cofrinho, descricao, valor, tipo = 'saida_manual', referencia = 'manual') {
@@ -10394,10 +10421,11 @@
                     </div>
                     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;">
                         ${[
-                            {emoji:'🔄', nome:'Operacional', valor:operacional, cor:'#6f42c1'},
-                            {emoji:'🛡️', nome:'Emergência', valor:reserva, cor:'#17a2b8'},
-                            {emoji:'🚀', nome:'Reinvestimento', valor:reinvest, cor:'var(--cor-sucesso)'},
-                            {emoji:'💵', nome:'Pró-labore', valor:proLabore, cor:'var(--cor-primaria)'}
+                            {emoji:'🔄', nome:'Operacional',    valor:saldos.operacional,    cor:'#6f42c1'},
+                            {emoji:'🏠', nome:'Custos Fixos',   valor:saldos.custosFixos,    cor:'#fd7e14'},
+                            {emoji:'🛡️', nome:'Emergência',     valor:saldos.emergencia,     cor:'#17a2b8'},
+                            {emoji:'🚀', nome:'Reinvestimento', valor:saldos.reinvestimento, cor:'var(--cor-sucesso)'},
+                            {emoji:'💵', nome:'Pró-labore',     valor:saldos.prolabore,      cor:'var(--cor-primaria)'}
                         ].map(cf=>`
                             <div style="background:white;border-radius:var(--borda-radius);padding:15px;
                                 box-shadow:var(--sombra-leve);border-top:3px solid ${cf.cor};text-align:center;">
@@ -10444,6 +10472,7 @@
             if (c.taxaPagamento === undefined) c.taxaPagamento = 3;
             if (c.pctEmergencia === undefined) c.pctEmergencia = c.reservaEmergencia || 5;
             if (c.pctReinvestimento === undefined) c.pctReinvestimento = c.reinvestimento || 5;
+            if (c.pctCustosFixos === undefined) c.pctCustosFixos = 6.5;
             if (c.reservaEmergencia === undefined) c.reservaEmergencia = 5;
             if (c.reinvestimento === undefined) c.reinvestimento = 5;
             if (c.proLaboreAlvo === undefined) c.proLaboreAlvo = 3000;
@@ -10582,6 +10611,15 @@
                                         <label>🚀 Reinvestimento (% do líquido p/ cofrinho):</label>
                                         <input type="number" id="prec-reinvest" class="form-control" min="0" max="20" step="0.5"
                                             value="${c.pctReinvestimento || c.reinvestimento || 5}" oninput="atualizarSimulacaoMarkup()">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-col">
+                                        <div class="form-group">
+                                        <label>🏠 Custos Fixos (% do líquido p/ cofrinho):</label>
+                                        <input type="number" id="prec-custos-fixos" class="form-control" min="0" max="30" step="0.5"
+                                            value="${c.pctCustosFixos || 6.5}" oninput="atualizarSimulacaoMarkup()">
+                                        <small style="color:var(--cor-texto-claro);">Sugestão: custos fixos ÷ faturamento alvo = R$520÷R$8000 = 6,5%</small></div>
                                     </div>
                                 </div>
                             </div>
@@ -10835,6 +10873,7 @@
                     reservaEmergencia: document.getElementById('prec-reserva').value,
                     pctReinvestimento: document.getElementById('prec-reinvest').value,
                     reinvestimento: document.getElementById('prec-reinvest').value,
+                    pctCustosFixos: document.getElementById('prec-custos-fixos')?.value || 6.5,
                     proLaboreAlvo: document.getElementById('prec-prolabore').value,
                     faturamentoAlvo: document.getElementById('prec-fat-alvo').value
                 };
