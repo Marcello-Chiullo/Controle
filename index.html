@@ -10342,10 +10342,13 @@
             
             // Cofrinhos — saldos reais dos caixas
             const c = configuracoesCustos;
-            const reserva   = getSaldoCofrinho('emergencia');
-            const reinvest  = getSaldoCofrinho('reinvestimento');
-            const proLabore = getSaldoCofrinho('prolabore');
-            const operacional = getSaldoCofrinho('operacional');
+            const saldos = {
+                operacional:    getSaldoCofrinho('operacional'),
+                custosFixos:    getSaldoCofrinho('custosFixos'),
+                emergencia:     getSaldoCofrinho('emergencia'),
+                reinvestimento: getSaldoCofrinho('reinvestimento'),
+                prolabore:      getSaldoCofrinho('prolabore')
+            };
             
             const fatAlvo = parseFloat(c.faturamentoAlvo) || 8000;
             const pctFat  = Math.min((fat / fatAlvo) * 100, 100);
