@@ -10522,14 +10522,8 @@
                     { icone: '⚠️', titulo: 'Estoque Mínimo', desc: 'Quanto deve ter no mínimo. Quando cair abaixo → alerta amarelo 🟡. Pode deixar 0 se não quiser alerta.' },
                     { icone: '🗓️', titulo: 'Data e Nota Fiscal', desc: 'Opcionais. A data ajuda no histórico de preços. NF útil para controle fiscal.' }
                 ],
-                dica: '💡 O campo mais importante é <strong>Quantidade por Unidade</strong>. Se errar aqui, o custo dos produtos fica errado. Ex: "1 lata de leite condensado" = 395g, não 1g.',
-                exemplo: { titulo: '📌 Exemplo completo', texto: 'Chocolate em pó Dois Frades: comprou 3 latas de 400g por R$18 total.'
-→ Nome: Chocolate em Pó
-→ Marca: Dois Frades
-→ Preço: R$18,00
-→ Quantidade: 3 un
-→ Qtd por unidade: 400 (gramas)
-→ Resultado: R$18 ÷ 1200g = R$0,015/g — usado para calcular o custo dos seus bolos.' }
+                dica: '💡 O campo mais importante é <strong>Quantidade por Unidade</strong>. Se errar aqui, o custo dos produtos fica errado. Ex: 1 lata de leite condensado = 395g, não 1g.',
+                exemplo: { titulo: '📌 Exemplo completo', texto: 'Chocolate em pó Dois Frades: comprou 3 latas de 400g por R$18 total. → Nome: Chocolate em Pó → Marca: Dois Frades → Preço: R$18,00 → Quantidade: 3 un → Qtd por unidade: 400 (gramas) → Resultado: R$18 ÷ 1200g = R$0,015/g — usado para calcular o custo dos seus bolos.' }
             },
 
             sub_receitas_lista: {
@@ -10555,12 +10549,7 @@
                     { icone: '💰', titulo: 'Veja o custo', desc: 'O sistema calcula: custo total dos ingredientes ÷ rendimento = custo por g/ml. Use isso para precificar.' }
                 ],
                 dica: '💡 Sempre pense no rendimento FINAL, depois de cozido/resfriado. Brigadeiro: ingredientes pesam 800g mas rende 700g de doce pronto → coloque 700g de rendimento.',
-                exemplo: { titulo: '📌 Exemplo passo a passo', texto: 'Ganache Dark:
-1. Nome: "Ganache Dark" | Tipo: Cobertura
-2. Rendimento: 300g
-3. Ingredientes: 200g chocolate amargo (R$6,00) + 100ml creme de leite (R$1,50)
-4. Custo total: R$7,50 ÷ 300g = R$25,00/kg
-5. Num bolo usando 150g de ganache: R$25 × 0,15kg = R$3,75 de custo.' }
+                exemplo: { titulo: '📌 Exemplo passo a passo', texto: 'Ganache Dark: 1) Nome: Ganache Dark | Tipo: Cobertura. 2) Rendimento: 300g. 3) Ingredientes: 200g chocolate amargo (R$6,00) + 100ml creme de leite (R$1,50). 4) Custo total: R$7,50 ÷ 300g = R$25,00/kg. 5) Num bolo usando 150g de ganache: R$25 × 0,15kg = R$3,75 de custo.' }
             },
 
             produtos_lista: {
@@ -10586,10 +10575,7 @@
                     { icone: '📸', titulo: 'Foto (opcional)', desc: 'Adicione uma foto do produto para identificar facilmente no histórico de vendas.' }
                 ],
                 dica: '💡 Monte a composição com as quantidades EXATAS que você usa na prática. Isso garante que o custo calculado bata com o custo real.',
-                exemplo: { titulo: '📌 Exemplo completo', texto: 'Bolo Ninho 1kg:
-→ Tipo: Por Peso | R$/kg: R$76,00 | Peso base: 1kg
-→ Composição: 400g Massa Baunilha + 200g Recheio Ninho + 150g Cobertura Ninho + 50g Decoração
-→ Custo: R$32,09 → Preço: R$76 → Margem: 57,8% 🟢' }
+                exemplo: { titulo: '📌 Exemplo completo', texto: 'Bolo Ninho 1kg: Tipo: Por Peso | R$/kg: R$76,00 | Peso base: 1kg. Composição: 400g Massa Baunilha + 200g Recheio Ninho + 150g Cobertura Ninho + 50g Decoração. Custo: R$32,09 → Preço: R$76 → Margem: 57,8% 🟢' }
             },
 
             vendas_historico: {
@@ -10602,11 +10588,7 @@
                     { icone: '🗑️', titulo: 'Cancelar venda', desc: 'Vendas canceladas não saem do estoque nem dos caixas. Use somente se o pedido não foi feito.' }
                 ],
                 dica: '💡 Vendas com saldo devedor ficam marcadas em laranja. Use os filtros para ver rapidamente quais clientes ainda devem.',
-                exemplo: { titulo: '📌 Fluxo correto', texto: '1. Registra venda (status: pendente)
-2. Produz o pedido
-3. Entrega → clica "✅ Confirmar Entrega"
-4. Recebe o pagamento → clica "💳 Confirmar Pagamento"
-5. Valor vai automaticamente para os 5 caixas financeiros.' }
+                exemplo: { titulo: '📌 Fluxo correto', texto: '1. Registra venda (status: pendente). 2. Produz o pedido. 3. Entrega → clica Confirmar Entrega. 4. Recebe o pagamento → clica Confirmar Pagamento. 5. Valor vai automaticamente para os 5 caixas financeiros.' }
             },
 
             vendas_nova: {
@@ -10621,12 +10603,7 @@
                     { icone: '6️⃣', titulo: 'Frete, Decoração, Brinde', desc: '<strong>Frete e Decoração:</strong> são cobrados do cliente (somam no total). <strong>Brinde:</strong> desconta do seu lucro (não cobra do cliente). <strong>Observação:</strong> anote o que o cliente pediu de personalização.' }
                 ],
                 dica: '💡 Se o estoque de algum ingrediente estiver negativo (vendeu sem ter em casa), a venda é registrada normalmente e o item aparece como 🚨 urgente na Lista de Compras.',
-                exemplo: { titulo: '📌 Exemplo completo', texto: '1. + Bolo Ninho 1kg × 2 = R$152
-2. Cliente: (11) 99999-0000 → "Maria Silva" preencheu automático (nível Prata: -5%)
-3. Entrega: 10/05/2026 às 14h
-4. Pagamento: Cartão Crédito | Taxa maquininha: 2% | 3x | Valor cliente: R$155,04
-5. Status: Pendente (vai confirmar quando ela pagar)
-6. Frete: R$15,00 | Obs: "Escrever Feliz Aniversário Ana"' }
+                exemplo: { titulo: '📌 Exemplo completo', texto: '1) Bolo Ninho 1kg × 2 = R$152. 2) Cliente: (11) 99999-0000 → Maria Silva preencheu automático (nível Prata: -5%). 3) Entrega: 10/05/2026 às 14h. 4) Pagamento: Cartão Crédito | Taxa: 2% | 3x | Valor cliente: R$155,04. 5) Status: Pendente. 6) Frete: R$15,00 | Obs: Escrever Feliz Aniversário Ana.' }
             },
 
             estoque_visao: {
