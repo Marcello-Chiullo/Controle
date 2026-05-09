@@ -5566,6 +5566,14 @@
         // INTERFACE - PÁGINA DE ESTOQUE
         // ====================================
         
+        function carregarPaginaEstoqueAba(aba) {
+            carregarPaginaEstoque();
+            setTimeout(() => {
+                const btn = document.querySelector(`#estoque-page .tab-button[data-tab="${aba}"]`);
+                if (btn) btn.click();
+            }, 80);
+        }
+        
         function carregarPaginaEstoque() {
             const page = document.getElementById('estoque-page');
             if (!page) return;
@@ -5703,9 +5711,12 @@
                                     <tbody>
                                         ${listaCompras.map(item => `
                                             <tr style="background:${item.critico ? 'var(--cor-erro-claro)' : 'var(--cor-aviso-claro)'}">
-                                                <td style="text-align:center; font-size:18px;">${item.critico ? '🔴' : '🟡'}</td>
-                                                <td><strong>${item.nome}</strong></td>
-                                                <td style="color:${item.critico ? 'var(--cor-erro)' : 'var(--cor-aviso)'}; font-weight:bold;">
+                                                <td style="text-align:center; font-size:18px;" title="${item.urgente ? 'Pedido feito sem estoque — compra urgente!' : ''}">${item.urgente ? '🚨' : item.critico ? '🔴' : '🟡'}</td>
+                                                <td>
+                                                    <strong>${item.nome}</strong>
+                                                    ${item.urgente ? '<br><small style="color:var(--cor-erro);font-weight:bold;">Pedido feito sem estoque!</small>' : ''}
+                                                </td>
+                                                <td style="color:${item.urgente || item.critico ? 'var(--cor-erro)' : 'var(--cor-aviso)'}; font-weight:bold;">
                                                     ${item.disponivel.toFixed(2)} ${item.unidade}
                                                 </td>
                                                 <td>${item.minimo > 0 ? `${item.minimo} ${item.unidade}` : '—'}</td>
@@ -6412,8 +6423,9 @@
                 if (!material) return;
 
                 const minimo = parseFloat(material.estoqueMinimo) || 0;
-                if (item.disponivel < minimo || item.disponivel <= 0) {
-                    const meta = minimo > 0 ? minimo * 2 : 1000; // comprar 2x o mínimo
+                const negativo = item.disponivel < 0;
+                if (item.disponivel < minimo || item.disponivel <= 0 || negativo) {
+                    const meta = minimo > 0 ? minimo * 2 : 1000;
                     const quantidadeComprar = Math.max(meta - item.disponivel, 0);
                     const precoMedio = calcularPrecoMedioPonderado(item.nome);
                     const custoEstimado = quantidadeComprar * precoMedio;
@@ -6426,7 +6438,8 @@
                         quantidadeComprar: quantidadeComprar,
                         precoMedio: precoMedio,
                         custoEstimado: custoEstimado,
-                        critico: item.disponivel <= 0
+                        critico: item.disponivel <= 0,
+                        urgente: negativo  // vendido sem estoque
                     });
                 }
             });
@@ -6495,9 +6508,9 @@
             const tabHTML = `
                 <h2>📦 Gestão de Estoque</h2>
                 <div class="tab-buttons">
-                    <button class="tab-button" data-tab-est="visao" onclick="carregarPaginaEstoque()">📦 Visão Geral</button>
-                    <button class="tab-button" data-tab-est="compras" onclick="carregarPaginaEstoque(); setTimeout(()=>document.querySelector('#estoque-page .tab-button[data-tab=\'lista-compras\']')?.click(),100)">🛒 Lista de Compras</button>
-                    <button class="tab-button active" data-tab-est="minimos">⚙️ Estoques Mínimos</button>
+                    <button class="tab-button" onclick="carregarPaginaEstoque()">📦 Visão Geral</button>
+                    <button class="tab-button" onclick="carregarPaginaEstoqueAba('lista-compras')">🛒 Lista de Compras</button>
+                    <button class="tab-button active">⚙️ Estoques Mínimos</button>
                 </div>
                 <div class="card">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px;">
@@ -6655,7 +6668,9 @@
                 });
                 
                 if (errosEstoque.length > 0) {
-                    throw new Error('Estoque insuficiente:\n' + errosEstoque.join('\n'));
+                    // ⚠️ Apenas registra o aviso — não bloqueia a venda
+                    dados._avisoEstoque = errosEstoque;
+                    console.warn('⚠️ Venda com estoque insuficiente:', errosEstoque);
                 }
                 
                 // 3. CALCULAR CUSTOS E VALORES DE CADA PRODUTO
@@ -6846,7 +6861,10 @@
                     pagamento: {
                         formaPagamento: dados.formaPagamento || 'Dinheiro',
                         statusPagamento: dados.statusPagamento || 'pendente',
-                        valorPago: dados.statusPagamento === 'pago' ? valorTotal : 0,
+                        taxaMaquininha: dados.taxaMaquininha || 0,
+                        parcelas: dados.parcelas || 1,
+                        valorPago: dados.statusPagamento === 'pago' ? valorTotal : (dados.valorPago || 0),
+                        saldoDevedor: dados.statusPagamento === 'pago' ? 0 : Math.max(valorTotal - (dados.valorPago || 0), 0),
                         dataPagamento: dados.statusPagamento === 'pago' ? agora : null
                     },
                     
@@ -7002,11 +7020,22 @@
                 }
                 
                 if (novosDados.statusPagamento) {
+                    const statusAnterior = venda.pagamento.statusPagamento;
                     venda.pagamento.statusPagamento = novosDados.statusPagamento;
+                    
+                    if (novosDados.valorPago !== undefined) {
+                        venda.pagamento.valorPago = novosDados.valorPago;
+                        venda.pagamento.saldoDevedor = Math.max((venda.valorTotal||0) - novosDados.valorPago, 0);
+                    }
                     
                     if (novosDados.statusPagamento === 'pago' && !venda.pagamento.dataPagamento) {
                         venda.pagamento.dataPagamento = new Date().toISOString();
                         venda.pagamento.valorPago = venda.valorTotal;
+                        venda.pagamento.saldoDevedor = 0;
+                        // Criar lançamentos financeiros agora que foi confirmado como pago
+                        if (!venda.lancamentosCriados) criarEntradasFinanceiras(venda);
+                    } else if (novosDados.statusPagamento === 'parcial' && statusAnterior === 'pendente') {
+                        if (!venda.lancamentosCriados) criarEntradasFinanceiras(venda);
                     }
                 }
                 
@@ -7121,7 +7150,7 @@
                 <div class="tab-buttons">
                     <button class="tab-button active" data-tab="listar-vendas">📋 Histórico</button>
                     <button class="tab-button" data-tab="nova-venda">➕ Nova Venda</button>
-                    <button class="tab-button" data-tab="resumo-vendas">📊 Resumo</button>
+
                 </div>
                 
                 <!-- TAB: Listar Vendas -->
@@ -7233,7 +7262,7 @@
                                     <!-- Alerta de estoque -->
                                     <div id="alerta-estoque-venda" style="display: none; background: var(--cor-erro-claro); 
                                         padding: 10px; border-radius: var(--borda-radius); margin-top: 10px; border-left: 4px solid var(--cor-erro);">
-                                        <strong>⚠️ Estoque insuficiente!</strong>
+                                        <strong>⚠️ Estoque insuficiente — a venda será registrada mesmo assim</strong>
                                         <div id="alerta-estoque-detalhes"></div>
                                     </div>
                                     
@@ -7396,27 +7425,72 @@
                                 </div>
                             </div>
                             
+                            <!-- PAGAMENTO AVANÇADO -->
                             <div class="form-row">
                                 <div class="form-col">
                                     <div class="form-group">
                                         <label for="venda-forma-pagamento">Forma de Pagamento:</label>
-                                        <select id="venda-forma-pagamento" class="form-control">
-                                            <option value="Dinheiro">Dinheiro</option>
-                                            <option value="PIX">PIX</option>
-                                            <option value="Cartão Débito">Cartão de Débito</option>
-                                            <option value="Cartão Crédito">Cartão de Crédito</option>
-                                            <option value="Transferência">Transferência Bancária</option>
+                                        <select id="venda-forma-pagamento" class="form-control" onchange="atualizarCamposPagamento()">
+                                            <option value="Dinheiro">💵 Dinheiro</option>
+                                            <option value="PIX">📱 PIX</option>
+                                            <option value="Cartão Débito">💳 Cartão de Débito</option>
+                                            <option value="Cartão Crédito">💳 Cartão de Crédito</option>
+                                            <option value="Transferência">🏦 Transferência</option>
                                         </select>
                                     </div>
                                 </div>
                                 <div class="form-col">
                                     <div class="form-group">
                                         <label for="venda-status-pagamento">Status do Pagamento:</label>
-                                        <select id="venda-status-pagamento" class="form-control">
-                                            <option value="pendente">Pendente</option>
-                                            <option value="pago">Pago</option>
+                                        <select id="venda-status-pagamento" class="form-control" onchange="atualizarCamposPagamento()">
+                                            <option value="pendente">⏳ Pendente</option>
+                                            <option value="parcial">💰 Parcialmente pago</option>
+                                            <option value="pago">✅ Pago</option>
                                         </select>
                                     </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Campos extras: Crédito/Débito -->
+                            <div id="campos-cartao" style="display:none;">
+                                <div class="form-row">
+                                    <div class="form-col">
+                                        <div class="form-group">
+                                            <label>Taxa adicional da maquininha (%):</label>
+                                            <input type="number" id="venda-taxa-maquininha" class="form-control"
+                                                min="0" max="10" step="0.1" value="0"
+                                                placeholder="Ex: 2.5" oninput="calcularValorClienteCartao()">
+                                            <small style="color:var(--cor-texto-claro);">
+                                                Além dos 3% já calculados no preço. Este valor é repassado ao cliente.
+                                            </small>
+                                        </div>
+                                    </div>
+                                    <div class="form-col" id="col-parcelas" style="display:none;">
+                                        <div class="form-group">
+                                            <label>Parcelas (crédito):</label>
+                                            <select id="venda-parcelas" class="form-control" onchange="calcularValorClienteCartao()">
+                                                ${[1,2,3,4,5,6,7,8,9,10,11,12].map(n=>`<option value="${n}">${n}x${n===1?' (à vista)':''}</option>`).join('')}
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="info-valor-cliente" style="background:var(--cor-info-claro);padding:12px;
+                                    border-radius:var(--borda-radius);margin-bottom:15px;display:none;
+                                    border-left:4px solid var(--cor-info);font-size:14px;">
+                                </div>
+                            </div>
+                            
+                            <!-- Pagamento parcial -->
+                            <div id="campo-valor-pago" style="display:none;">
+                                <div class="form-group">
+                                    <label>Valor já pago (R$):</label>
+                                    <input type="number" id="venda-valor-pago" class="form-control"
+                                        min="0" step="0.01" placeholder="0,00"
+                                        oninput="atualizarSaldoDevedor()">
+                                </div>
+                                <div id="info-saldo-devedor" style="background:var(--cor-aviso-claro);padding:10px;
+                                    border-radius:var(--borda-radius);margin-bottom:15px;border-left:4px solid var(--cor-aviso);
+                                    font-size:14px;display:none;">
                                 </div>
                             </div>
                             
@@ -7533,12 +7607,7 @@
                 </div>
                 
                 <!-- TAB: Resumo -->
-                <div class="tab-content" id="tab-resumo-vendas">
-                    <div class="card">
-                        <h3>📊 Resumo de Vendas</h3>
-                        ${renderizarResumoVendas()}
-                    </div>
-                </div>
+
             `;
             
             injetarBotaoAjuda('vendas-page', 'vendas');
@@ -7701,11 +7770,10 @@
                 return;
             }
             
-            // Validar estoque
+            // Verificar estoque — apenas aviso, não bloqueia
             const validacao = validarEstoqueProduto(produtoId, quantidade);
             if (!validacao.valido) {
-                mostrarToast('Estoque insuficiente para este produto', 'error');
-                return;
+                mostrarToast(`⚠️ ${produto.nome}: estoque insuficiente, mas a venda será registrada`, 'warning');
             }
             
             // Verificar se já foi adicionado
@@ -8197,6 +8265,69 @@
         /**
          * Configura formulário de venda
          */
+
+        // Atualizar campos visíveis conforme forma de pagamento
+        function atualizarCamposPagamento() {
+            const forma = document.getElementById('venda-forma-pagamento')?.value || '';
+            const status = document.getElementById('venda-status-pagamento')?.value || '';
+            const camposCartao = document.getElementById('campos-cartao');
+            const colParcelas  = document.getElementById('col-parcelas');
+            const campoValorPago = document.getElementById('campo-valor-pago');
+
+            const isCredito = forma === 'Cartão Crédito';
+            const isDebito  = forma === 'Cartão Débito';
+            const isCartao  = isCredito || isDebito;
+
+            if (camposCartao) camposCartao.style.display = isCartao ? '' : 'none';
+            if (colParcelas)  colParcelas.style.display  = isCredito ? '' : 'none';
+            if (campoValorPago) campoValorPago.style.display = status === 'parcial' ? '' : 'none';
+
+            calcularValorClienteCartao();
+            atualizarSaldoDevedor();
+        }
+
+        function calcularValorClienteCartao() {
+            const infoDiv = document.getElementById('info-valor-cliente');
+            if (!infoDiv) return;
+
+            const taxa = parseFloat(document.getElementById('venda-taxa-maquininha')?.value) || 0;
+            const parcelas = parseInt(document.getElementById('venda-parcelas')?.value) || 1;
+            const forma = document.getElementById('venda-forma-pagamento')?.value || '';
+            const totalVenda = produtosVendaTemp.reduce((s,p) => s + (p.precoCustomizado * p.quantidade), 0);
+
+            if (totalVenda <= 0 || taxa <= 0) { infoDiv.style.display = 'none'; return; }
+
+            const valorCliente = totalVenda * (1 + taxa / 100);
+            const vlrParcela   = valorCliente / parcelas;
+            const isCredito    = forma === 'Cartão Crédito';
+
+            infoDiv.style.display = '';
+            infoDiv.innerHTML = `
+                <strong>💳 Valor para o cliente:</strong> ${formatarMoeda(valorCliente)}
+                ${isCredito && parcelas > 1 ? ` (${parcelas}x de ${formatarMoeda(vlrParcela)})` : ''}
+                <br>
+                <span style="color:var(--cor-texto-claro);">
+                    Você recebe: ${formatarMoeda(totalVenda)} | Taxa adicional: +${formatarMoeda(valorCliente - totalVenda)}
+                </span>
+            `;
+        }
+
+        function atualizarSaldoDevedor() {
+            const infoDiv = document.getElementById('info-saldo-devedor');
+            if (!infoDiv) return;
+            const valorPago = parseFloat(document.getElementById('venda-valor-pago')?.value) || 0;
+            const totalVenda = produtosVendaTemp.reduce((s,p) => s + (p.precoCustomizado * p.quantidade), 0);
+            if (totalVenda <= 0) { infoDiv.style.display = 'none'; return; }
+            const saldo = totalVenda - valorPago;
+            if (saldo > 0) {
+                infoDiv.style.display = '';
+                infoDiv.innerHTML = `⚠️ <strong>Saldo devedor: ${formatarMoeda(saldo)}</strong> — cliente ainda deve este valor.`;
+            } else {
+                infoDiv.style.display = '';
+                infoDiv.innerHTML = `✅ Valor pago cobre o total.`;
+            }
+        }
+
         function configurarFormularioVenda() {
             const form = document.getElementById('form-nova-venda');
             if (!form) return;
@@ -8298,6 +8429,9 @@
                         desconto: document.getElementById('venda-desconto').value || 0,
                         formaPagamento: document.getElementById('venda-forma-pagamento').value,
                         statusPagamento: document.getElementById('venda-status-pagamento').value,
+                        taxaMaquininha: parseFloat(document.getElementById('venda-taxa-maquininha')?.value) || 0,
+                        parcelas: parseInt(document.getElementById('venda-parcelas')?.value) || 1,
+                        valorPago: parseFloat(document.getElementById('venda-valor-pago')?.value) || 0,
                         observacoes: document.getElementById('venda-observacoes').value || '',
                         observacoesInternas: document.getElementById('venda-observacoes-internas').value || ''
                     };
@@ -8765,9 +8899,10 @@
             const validacao = validarEstoqueReceita(receita, quantidade);
             
             if (!validacao.valido) {
+                // Mostra aviso mas retorna true — não bloqueia
                 alertaDiv.classList.remove('hidden');
-                mensagemSpan.innerHTML = `<strong>Estoque insuficiente:</strong><br>${validacao.faltando.join('<br>')}`;
-                return false;
+                mensagemSpan.innerHTML = `<strong>⚠️ Estoque insuficiente</strong> — você pode registrar assim mesmo:<br>${validacao.faltando.join('<br>')}`;
+                return true; // não bloqueia
             } else {
                 alertaDiv.classList.add('hidden');
                 return true;
@@ -10359,6 +10494,166 @@
                 dica: '💡 Depois de alterar Custos Fixos ou Precificação, vá em <strong>Produtos</strong> e verifique se o preço sugerido ainda faz sentido para o seu mercado. O markup pode ter mudado.',
                 exemplo: { titulo: '📌 Exemplo prático', texto: 'Seus custos fixos são R$520/mês, pró-labore alvo R$3.000, faturamento alvo R$8.000. O sistema calcula: (R$3.000 + R$520) ÷ R$8.000 = 44% + 6% (imposto+taxa) = 50% → markup ≈ 2,0×. Com piso de 2,4×, o sistema usa 2,4×.' }
             }
+
+            // ── SUB-ABAS ESPECÍFICAS ──
+            
+            materiais_lista: {
+                titulo: '🏷️ Lista de Materiais',
+                intro: 'Aqui você vê todos os ingredientes e insumos cadastrados, com estoque atual e preço médio.',
+                passos: [
+                    { icone: '🔍', titulo: 'Pesquise', desc: 'Use a barra de pesquisa para filtrar por nome rapidamente.' },
+                    { icone: '✏️', titulo: 'Edite', desc: 'Clique no ícone de lápis para corrigir dados de um material.' },
+                    { icone: '🗑️', titulo: 'Exclua com cuidado', desc: 'Excluir um material remove do histórico. Só exclua se foi cadastrado por engano.' },
+                    { icone: '➕', titulo: 'Nova compra', desc: 'Clique em "Adicionar Material" para registrar uma nova compra.' }
+                ],
+                dica: '💡 O preço exibido é o preço médio ponderado — considera todas as compras históricas daquele ingrediente.',
+                exemplo: { titulo: '📌 Lembre-se', texto: 'O estoque é calculado automaticamente. Não é possível editar o estoque direto — ele reflete as compras lançadas menos o que foi usado nas vendas.' }
+            },
+            
+            materiais_adicionar: {
+                titulo: '🏷️ Como adicionar um Material',
+                intro: 'Cada compra de ingrediente ou insumo deve ser lançada aqui. Preencha com cuidado — isso afeta o custo dos seus produtos.',
+                passos: [
+                    { icone: '📦', titulo: 'Nome e Código', desc: '<strong>Nome:</strong> escreva o nome do ingrediente exatamente igual sempre (ex: "Farinha de Trigo"). <strong>Código de barras:</strong> opcional, facilita buscar depois.' },
+                    { icone: '🏭', titulo: 'Marca e Fornecedor', desc: 'Opcional mas útil. Permite comparar preços entre marcas ao longo do tempo.' },
+                    { icone: '💰', titulo: 'Preço Total Pago', desc: 'Informe o valor TOTAL da compra. Ex: comprou 5 pacotes por R$25 no total → coloque R$25,00.' },
+                    { icone: '📏', titulo: 'Unidade de Compra', desc: 'Como você compra: <strong>un</strong> (unidade/pacote), <strong>kg</strong>, <strong>l</strong> (litro). Ex: "3 un" de pacotes de 500g.' },
+                    { icone: '📐', titulo: 'Quantidade por Unidade', desc: 'Quanto tem dentro de cada embalagem na unidade de medida. Ex: cada pacote tem <strong>500g</strong> → coloque 500. Cada lata tem <strong>395g</strong> → coloque 395.' },
+                    { icone: '⚠️', titulo: 'Estoque Mínimo', desc: 'Quanto deve ter no mínimo. Quando cair abaixo → alerta amarelo 🟡. Pode deixar 0 se não quiser alerta.' },
+                    { icone: '🗓️', titulo: 'Data e Nota Fiscal', desc: 'Opcionais. A data ajuda no histórico de preços. NF útil para controle fiscal.' }
+                ],
+                dica: '💡 O campo mais importante é <strong>Quantidade por Unidade</strong>. Se errar aqui, o custo dos produtos fica errado. Ex: "1 lata de leite condensado" = 395g, não 1g.',
+                exemplo: { titulo: '📌 Exemplo completo', texto: 'Chocolate em pó Dois Frades: comprou 3 latas de 400g por R$18 total.
+→ Nome: Chocolate em Pó
+→ Marca: Dois Frades
+→ Preço: R$18,00
+→ Quantidade: 3 un
+→ Qtd por unidade: 400 (gramas)
+→ Resultado: R$18 ÷ 1200g = R$0,015/g — usado para calcular o custo dos seus bolos.' }
+            },
+
+            sub_receitas_lista: {
+                titulo: '🧩 Lista de Sub-Receitas',
+                intro: 'Suas preparações base ficam aqui. Cada sub-receita tem custo calculado automaticamente por grama/ml.',
+                passos: [
+                    { icone: '👁️', titulo: 'Visualize custos', desc: 'Veja o custo por kg/l de cada preparação. Se subiu o preço de algum ingrediente, o custo atualiza sozinho.' },
+                    { icone: '✏️', titulo: 'Edite', desc: 'Clique no lápis para ajustar ingredientes ou rendimento.' },
+                    { icone: '📋', titulo: 'Veja onde é usada', desc: 'Cada sub-receita mostra em quais produtos ela é usada.' }
+                ],
+                dica: '💡 Se o custo de uma sub-receita parecer errado, verifique o rendimento cadastrado — é o ponto mais comum de erro.',
+                exemplo: { titulo: '📌 Dica', texto: 'Se você faz brigadeiro e usa em vários produtos, cadastre como sub-receita. Muda o preço do chocolate → o custo de todos os bolos que usam brigadeiro atualiza automaticamente.' }
+            },
+
+            sub_receitas_nova: {
+                titulo: '🧩 Como criar uma Sub-Receita',
+                intro: 'Sub-receita é qualquer preparação que você faz antes de montar o produto final. Exemplo: ganache, massa, creme, cobertura.',
+                passos: [
+                    { icone: '📝', titulo: 'Nome e Tipo', desc: '<strong>Nome:</strong> nome da preparação (ex: "Ganache Dark"). <strong>Tipo:</strong> categoriza a sub-receita (cobertura, recheio, massa, etc).' },
+                    { icone: '⚖️', titulo: 'Rendimento', desc: 'Quanto essa receita produz no final. Ex: a receita de ganache rende <strong>300g</strong>. Coloque 300 e selecione "g".' },
+                    { icone: '🥚', titulo: 'Adicionar ingredientes', desc: 'Clique em "Adicionar Ingrediente". Selecione o material, informe a quantidade usada na RECEITA INTEIRA (não por porção). Ex: "200g de chocolate para render 300g de ganache".' },
+                    { icone: '🧩', titulo: 'Usar outra sub-receita', desc: 'Você pode usar uma sub-receita dentro de outra. Ex: "Recheio de Ninho" usa "Ganache Branca" como base.' },
+                    { icone: '💰', titulo: 'Veja o custo', desc: 'O sistema calcula: custo total dos ingredientes ÷ rendimento = custo por g/ml. Use isso para precificar.' }
+                ],
+                dica: '💡 Sempre pense no rendimento FINAL, depois de cozido/resfriado. Brigadeiro: ingredientes pesam 800g mas rende 700g de doce pronto → coloque 700g de rendimento.',
+                exemplo: { titulo: '📌 Exemplo passo a passo', texto: 'Ganache Dark:
+1. Nome: "Ganache Dark" | Tipo: Cobertura
+2. Rendimento: 300g
+3. Ingredientes: 200g chocolate amargo (R$6,00) + 100ml creme de leite (R$1,50)
+4. Custo total: R$7,50 ÷ 300g = R$25,00/kg
+5. Num bolo usando 150g de ganache: R$25 × 0,15kg = R$3,75 de custo.' }
+            },
+
+            produtos_lista: {
+                titulo: '🎂 Lista de Produtos',
+                intro: 'Todos os seus produtos com custo, preço de venda e margem de lucro.',
+                passos: [
+                    { icone: '🟢', titulo: 'Semáforo de margem', desc: '🟢 Margem ≥ 20% (saudável) | 🟡 10–20% (atenção) | 🔴 < 10% (reveja o preço).' },
+                    { icone: '✏️', titulo: 'Edite o preço', desc: 'Clique no lápis para ajustar o preço de venda sem precisar recriar o produto.' },
+                    { icone: '💰', titulo: 'Preço sugerido', desc: 'O sistema sugere com base no markup configurado. Você decide se usa ou coloca o seu.' }
+                ],
+                dica: '💡 Se o custo de um produto subiu (porque o chocolate ficou mais caro), o sistema atualiza automaticamente. Revise os preços periodicamente.',
+                exemplo: { titulo: '📌 Dica', texto: 'Produto com margem vermelha 🔴 significa que você pode estar vendendo barato. Compare o preço sugerido com o que está cobrando e avalie se é possível ajustar.' }
+            },
+
+            produtos_novo: {
+                titulo: '🎂 Como criar um Produto',
+                intro: 'Produto é o que você vende para o cliente. Pode ser precificado por peso (bolo kg) ou por unidade (brigadeiro).',
+                passos: [
+                    { icone: '📝', titulo: 'Nome e Tipo', desc: '<strong>Nome:</strong> como aparece na venda (ex: "Bolo de Ninho 1kg"). <strong>Tipo:</strong> categoria do produto.' },
+                    { icone: '⚖️', titulo: 'Precificação por Peso ou Unidade', desc: '<strong>Por Peso:</strong> você define R$/kg e um peso base. O preço escala com o tamanho. <strong>Por Unidade:</strong> preço fixo por peça (brigadeiro, cupcake).' },
+                    { icone: '🧩', titulo: 'Monte a composição', desc: 'Adicione sub-receitas e ingredientes diretos com as quantidades para fazer 1 unidade ou 1kg do produto. Ex: "Bolo 1kg usa 300g de massa, 200g de recheio, 150g de cobertura".' },
+                    { icone: '💰', titulo: 'Preço de venda', desc: 'O sistema mostra o preço sugerido pelo markup. Você pode aceitar ou digitar o seu preço. Veja a margem real calculada em tempo real.' },
+                    { icone: '📸', titulo: 'Foto (opcional)', desc: 'Adicione uma foto do produto para identificar facilmente no histórico de vendas.' }
+                ],
+                dica: '💡 Monte a composição com as quantidades EXATAS que você usa na prática. Isso garante que o custo calculado bata com o custo real.',
+                exemplo: { titulo: '📌 Exemplo completo', texto: 'Bolo Ninho 1kg:
+→ Tipo: Por Peso | R$/kg: R$76,00 | Peso base: 1kg
+→ Composição: 400g Massa Baunilha + 200g Recheio Ninho + 150g Cobertura Ninho + 50g Decoração
+→ Custo: R$32,09 → Preço: R$76 → Margem: 57,8% 🟢' }
+            },
+
+            vendas_historico: {
+                titulo: '💰 Histórico de Vendas',
+                intro: 'Todas as suas vendas registradas, com filtros por status, data e cliente.',
+                passos: [
+                    { icone: '✅', titulo: 'Confirmar entrega', desc: 'Clique em "✅ Confirmar Entrega" quando entregar o pedido para o cliente.' },
+                    { icone: '💳', titulo: 'Confirmar pagamento', desc: 'Clique em "💳 Confirmar Pagamento" quando receber. Só então o valor vai para os caixas.' },
+                    { icone: '🔍', titulo: 'Filtros', desc: 'Filtre por: status (pendente/pago), período, cliente ou número da venda.' },
+                    { icone: '🗑️', titulo: 'Cancelar venda', desc: 'Vendas canceladas não saem do estoque nem dos caixas. Use somente se o pedido não foi feito.' }
+                ],
+                dica: '💡 Vendas com saldo devedor ficam marcadas em laranja. Use os filtros para ver rapidamente quais clientes ainda devem.',
+                exemplo: { titulo: '📌 Fluxo correto', texto: '1. Registra venda (status: pendente)
+2. Produz o pedido
+3. Entrega → clica "✅ Confirmar Entrega"
+4. Recebe o pagamento → clica "💳 Confirmar Pagamento"
+5. Valor vai automaticamente para os 5 caixas financeiros.' }
+            },
+
+            vendas_nova: {
+                titulo: '💰 Como registrar uma Venda',
+                intro: 'Siga este passo a passo. Cada campo importa — os dados alimentam o estoque, o CRM e os caixas financeiros.',
+                passos: [
+                    { icone: '1️⃣', titulo: 'Adicione os produtos', desc: 'Selecione o produto no dropdown, informe a quantidade e clique em "+ Adicionar". Repita para cada produto do pedido. Você vê o custo e lucro em tempo real.' },
+                    { icone: '2️⃣', titulo: 'Dados do cliente', desc: '<strong>Telefone:</strong> se o cliente já existe, nome e dados preenchem automaticamente e o desconto do nível CRM (Prata/Ouro/Diamante) é aplicado. <strong>Cliente novo?</strong> preencha nome e e-mail.' },
+                    { icone: '3️⃣', titulo: 'Data e horário de entrega', desc: 'Informe quando vai entregar. Aparece no calendário de entregas automaticamente.' },
+                    { icone: '4️⃣', titulo: 'Forma de pagamento', desc: '<strong>Dinheiro/PIX:</strong> valor direto. <strong>Débito/Crédito:</strong> informe a taxa adicional da maquininha — o sistema calcula o valor cobrado do cliente (ex: +2% = valor cliente sobe, você recebe o preço normal).' },
+                    { icone: '5️⃣', titulo: 'Status do pagamento', desc: '<strong>Pendente:</strong> cliente ainda não pagou. <strong>Parcial:</strong> pagou parte — informe o valor pago e o saldo devedor fica registrado. <strong>Pago:</strong> recebeu tudo — valores vão para os caixas imediatamente.' },
+                    { icone: '6️⃣', titulo: 'Frete, Decoração, Brinde', desc: '<strong>Frete e Decoração:</strong> são cobrados do cliente (somam no total). <strong>Brinde:</strong> desconta do seu lucro (não cobra do cliente). <strong>Observação:</strong> anote o que o cliente pediu de personalização.' }
+                ],
+                dica: '💡 Se o estoque de algum ingrediente estiver negativo (vendeu sem ter em casa), a venda é registrada normalmente e o item aparece como 🚨 urgente na Lista de Compras.',
+                exemplo: { titulo: '📌 Exemplo completo', texto: '1. + Bolo Ninho 1kg × 2 = R$152
+2. Cliente: (11) 99999-0000 → "Maria Silva" preencheu automático (nível Prata: -5%)
+3. Entrega: 10/05/2026 às 14h
+4. Pagamento: Cartão Crédito | Taxa maquininha: 2% | 3x | Valor cliente: R$155,04
+5. Status: Pendente (vai confirmar quando ela pagar)
+6. Frete: R$15,00 | Obs: "Escrever Feliz Aniversário Ana"' }
+            },
+
+            estoque_visao: {
+                titulo: '📦 Visão Geral do Estoque',
+                intro: 'Semáforo visual de todos os ingredientes. O estoque é calculado automaticamente pelas compras e vendas.',
+                passos: [
+                    { icone: '🟢', titulo: 'Verde', desc: 'Estoque OK — acima do mínimo configurado.' },
+                    { icone: '🟡', titulo: 'Amarelo', desc: 'Estoque baixo — abaixo do mínimo. Comprar em breve.' },
+                    { icone: '🔴', titulo: 'Vermelho', desc: 'Estoque zerado — comprar urgente.' },
+                    { icone: '🚨', titulo: 'Urgente', desc: 'Estoque negativo — você vendeu algo sem ter em casa. Comprar com prioridade máxima.' }
+                ],
+                dica: '💡 Configure os mínimos na aba "⚙️ Mínimos" para o semáforo funcionar direito.',
+                exemplo: { titulo: '📌 Dica', texto: 'O valor total do estoque no topo te diz quanto você tem imobilizado em ingredientes. Útil para controle de capital de giro.' }
+            },
+
+            estoque_compras: {
+                titulo: '🛒 Lista de Compras',
+                intro: 'Tudo que precisa repor, em ordem de urgência. O sistema calcula a quantidade sugerida e o custo estimado.',
+                passos: [
+                    { icone: '🚨', titulo: 'Urgente', desc: 'Estoque negativo — você vendeu sem ter em casa. Comprar antes de fazer o próximo pedido.' },
+                    { icone: '🔴', titulo: 'Crítico', desc: 'Zerado. Não consegue produzir sem comprar.' },
+                    { icone: '🟡', titulo: 'Baixo', desc: 'Abaixo do mínimo. Comprar em breve para não ficar sem.' },
+                    { icone: '➕', titulo: 'Comprar', desc: 'Clique em "➕ Comprar" para ir direto ao formulário de compra com o nome do material já preenchido.' }
+                ],
+                dica: '💡 A sugestão de quantidade é 2× o estoque mínimo — dá uma folga. Você pode ajustar na hora de lançar a compra.',
+                exemplo: { titulo: '📌 Custo estimado', texto: 'O custo estimado usa o preço médio das últimas compras. Serve para planejar quanto vai gastar na próxima ida ao fornecedor.' }
+            },
         };
 
         function abrirAjuda(pagina) {
@@ -10445,11 +10740,24 @@
         /**
          * Injeta o botão de ajuda no h2 de uma página
          */
+        // Mapa de sub-aba → chave de ajuda específica
+        const AJUDA_SUBABAS = {
+            'tab-listar-materiais':   'materiais_lista',
+            'tab-adicionar-material': 'materiais_adicionar',
+            'tab-listar-sub-receitas':'sub_receitas_lista',
+            'tab-nova-sub-receita':   'sub_receitas_nova',
+            'tab-listar-produtos':    'produtos_lista',
+            'tab-novo-produto':       'produtos_novo',
+            'tab-historico-vendas':   'vendas_historico',
+            'tab-nova-venda':         'vendas_nova',
+            'tab-visao-geral':        'estoque_visao',
+            'tab-lista-compras':      'estoque_compras',
+        };
+
         function injetarBotaoAjuda(pageId, chaveAjuda) {
             const page = document.getElementById(pageId);
             if (!page) return;
-            const h2 = page.querySelector('h2');
-            if (!h2 || h2.querySelector('.btn-ajuda')) return; // já tem botão
+            if (document.querySelector('.btn-ajuda')) return; // já tem
             
             const btn = document.createElement('button');
             btn.className = 'btn-ajuda';
@@ -10476,7 +10784,13 @@
             `;
             btn.onmouseenter = () => { btn.style.transform = 'scale(1.15)'; btn.style.boxShadow = '0 6px 16px rgba(255,107,143,0.7)'; };
             btn.onmouseleave = () => { btn.style.transform = ''; btn.style.boxShadow = '0 4px 12px rgba(255,107,143,0.5)'; };
-            btn.onclick = () => abrirAjuda(chaveAjuda);
+            btn.onclick = () => {
+                // Detectar sub-aba ativa
+                const page = document.getElementById(pageId);
+                const subAbaAtiva = page?.querySelector('.tab-content.active');
+                const chaveSubAba = subAbaAtiva ? AJUDA_SUBABAS[subAbaAtiva.id] : null;
+                abrirAjuda(chaveSubAba || chaveAjuda);
+            };
             
             document.body.appendChild(btn);
         }
@@ -10503,8 +10817,16 @@
         }
 
         function criarEntradasFinanceiras(venda) {
+            // Só lança nos caixas se houver pagamento
+            const status = venda.pagamento?.statusPagamento || venda.statusPagamento || 'pendente';
+            if (status === 'pendente') return; // aguardar confirmação
+            
             const c = configuracoesCustos;
-            const valTotal  = venda.valorTotal || 0;
+            // Para pagamento parcial, usa o valor efetivamente pago
+            const valorEfetivo = status === 'parcial'
+                ? (venda.pagamento?.valorPago || 0)
+                : (venda.valorTotal || 0);
+            const valTotal  = valorEfetivo;
             const imposto   = valTotal * ((parseFloat(c.imposto) || 3) / 100);
             const taxaMaq   = valTotal * ((parseFloat(c.taxaPagamento) || 3) / 100);
             const liquido   = valTotal - imposto - taxaMaq;
@@ -10533,7 +10855,12 @@
         }
 
         function migrarVendasSemLancamentos() {
-            const sem = vendas.filter(v => !v.cancelada && !v.lancamentosCriados);
+            // Só migrar vendas com pagamento confirmado (pago ou parcial)
+            const sem = vendas.filter(v => {
+                if (v.cancelada || v.lancamentosCriados) return false;
+                const st = v.pagamento?.statusPagamento || 'pendente';
+                return st === 'pago' || st === 'parcial';
+            });
             if (sem.length === 0) return;
             sem.forEach(v => criarEntradasFinanceiras(v));
             salvarLocalStorage();
@@ -10766,8 +11093,7 @@
                 <div class="tab-buttons">
                     <button class="tab-button active" data-tab="custos-fixos">💰 Custos Fixos</button>
                     <button class="tab-button" data-tab="precificacao">📐 Precificação</button>
-                    <button class="tab-button" data-tab="cofrinhos">🏦 Cofrinhos</button>
-                    <button class="tab-button" data-tab="meta-mes">📈 Meta do Mês</button>
+
                 </div>
                 
                 <!-- ══════════ TAB: CUSTOS FIXOS ══════════ -->
@@ -10927,139 +11253,8 @@
                 </div>
                 
                 <!-- ══════════ TAB: COFRINHOS ══════════ -->
-                <div class="tab-content" id="tab-cofrinhos">
-                    <div class="card">
-                        <h3>🏦 Cofrinhos — ${nomeMes}</h3>
-                        <p style="color:var(--cor-texto-claro);margin-bottom:10px;">
-                            Valores calculados automaticamente pelas vendas do mês. Clique em "Já transferi" quando mover o dinheiro real.
-                        </p>
-                        
-                        ${sugerirMigracao ? `
-                        <div style="background:var(--cor-sucesso-claro);padding:15px;border-radius:var(--borda-radius);margin-bottom:20px;border-left:4px solid var(--cor-sucesso);">
-                            🎉 <strong>Reserva de emergência atingida!</strong>
-                            Sua reserva acumulou ${formatarMoeda(totalReservaTodos)} — suficiente para 6 meses de custos fixos.
-                            Sugestão: migre os <strong>${c.reservaEmergencia}%</strong> da reserva para reinvestimento.
-                        </div>
-                        ` : ''}
-                        
-                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:15px;">
-                            
-                            <!-- Reserva -->
-                            <div style="background:white;border-radius:var(--borda-radius);padding:20px;box-shadow:var(--sombra-leve);border-top:4px solid #17a2b8;">
-                                <div style="font-size:28px;margin-bottom:5px;">🛡️</div>
-                                <div style="font-weight:bold;margin-bottom:3px;">Reserva de Emergência</div>
-                                <div style="font-size:11px;color:var(--cor-texto-claro);margin-bottom:12px;">${c.reservaEmergencia}% das vendas do mês</div>
-                                <div style="font-size:28px;font-weight:bold;color:#17a2b8;">${formatarMoeda(cofrinho.reserva)}</div>
-                                <div style="font-size:12px;color:var(--cor-texto-claro);margin:5px 0;">Acumulado total: ${formatarMoeda(totalReservaTodos)}</div>
-                                <button class="btn btn-secondary btn-sm" style="margin-top:10px;width:100%;"
-                                    onclick="abrirModalTransferencia('reserva', ${cofrinho.reserva})">
-                                    ✅ Já transferi
-                                </button>
-                            </div>
-                            
-                            <!-- Reinvestimento -->
-                            <div style="background:white;border-radius:var(--borda-radius);padding:20px;box-shadow:var(--sombra-leve);border-top:4px solid var(--cor-sucesso);">
-                                <div style="font-size:28px;margin-bottom:5px;">🚀</div>
-                                <div style="font-weight:bold;margin-bottom:3px;">Reinvestimento</div>
-                                <div style="font-size:11px;color:var(--cor-texto-claro);margin-bottom:12px;">${c.reinvestimento}% das vendas do mês</div>
-                                <div style="font-size:28px;font-weight:bold;color:var(--cor-sucesso);">${formatarMoeda(cofrinho.reinvest)}</div>
-                                <div style="font-size:12px;color:var(--cor-texto-claro);margin:5px 0;">&nbsp;</div>
-                                <button class="btn btn-secondary btn-sm" style="margin-top:10px;width:100%;"
-                                    onclick="abrirModalTransferencia('reinvestimento', ${cofrinho.reinvest})">
-                                    ✅ Já transferi
-                                </button>
-                            </div>
-                            
-                            <!-- Imposto -->
-                            <div style="background:white;border-radius:var(--borda-radius);padding:20px;box-shadow:var(--sombra-leve);border-top:4px solid var(--cor-aviso);">
-                                <div style="font-size:28px;margin-bottom:5px;">🏛️</div>
-                                <div style="font-weight:bold;margin-bottom:3px;">Imposto a Recolher</div>
-                                <div style="font-size:11px;color:var(--cor-texto-claro);margin-bottom:12px;">${c.imposto}% das vendas do mês</div>
-                                <div style="font-size:28px;font-weight:bold;color:var(--cor-aviso);">${formatarMoeda(cofrinho.imposto)}</div>
-                                <div style="font-size:12px;color:var(--cor-texto-claro);margin:5px 0;">&nbsp;</div>
-                                <button class="btn btn-secondary btn-sm" style="margin-top:10px;width:100%;"
-                                    onclick="abrirModalTransferencia('imposto', ${cofrinho.imposto})">
-                                    ✅ Já recolhi
-                                </button>
-                            </div>
-                            
-                            <!-- Pró-labore -->
-                            <div style="background:white;border-radius:var(--borda-radius);padding:20px;box-shadow:var(--sombra-leve);border-top:4px solid var(--cor-primaria);">
-                                <div style="font-size:28px;margin-bottom:5px;">💵</div>
-                                <div style="font-weight:bold;margin-bottom:3px;">Pró-labore + Custo Fixo</div>
-                                <div style="font-size:11px;color:var(--cor-texto-claro);margin-bottom:12px;">Resíduo após os outros cofrinhos</div>
-                                <div style="font-size:28px;font-weight:bold;color:var(--cor-primaria);">${formatarMoeda(cofrinho.proLabore)}</div>
-                                <div style="font-size:12px;color:${cofrinho.proLabore >= (c.proLaboreAlvo||3000) ? 'var(--cor-sucesso)' : 'var(--cor-erro)'};margin:5px 0;">
-                                    Meta: ${formatarMoeda(c.proLaboreAlvo)} ${cofrinho.proLabore >= (c.proLaboreAlvo||3000) ? '✅' : '⚠️'}
-                                </div>
-                                <button class="btn btn-secondary btn-sm" style="margin-top:10px;width:100%;"
-                                    onclick="abrirModalTransferencia('proLabore', ${cofrinho.proLabore})">
-                                    ✅ Já transferi
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div style="margin-top:20px;padding:15px;background:var(--cor-fundo);border-radius:var(--borda-radius);">
-                            <strong>📊 Resumo do mês (${cofrinho.vendasCount} venda(s)):</strong>
-                            <span style="margin-left:10px;">Faturamento: <strong>${formatarMoeda(cofrinho.faturamento)}</strong></span>
-                            <span style="margin-left:10px;">Taxa pag: <strong>-${formatarMoeda(cofrinho.taxaPag)}</strong></span>
-                            <span style="margin-left:10px;">Custos fixos: <strong>-${formatarMoeda(c.fixos.total)}</strong></span>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- ══════════ TAB: META DO MÊS ══════════ -->
-                <div class="tab-content" id="tab-meta-mes">
-                    <div class="card">
-                        <h3>📈 Meta do Mês — ${nomeMes}</h3>
-                        
-                        <!-- Barra de progresso faturamento -->
-                        <div style="margin-bottom:25px;">
-                            <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-                                <strong>💰 Faturamento</strong>
-                                <span style="color:var(--cor-primaria);font-weight:bold;">
-                                    ${formatarMoeda(cofrinho.faturamento)} / ${formatarMoeda(fat)}
-                                </span>
-                            </div>
-                            <div style="width:100%;height:20px;background:var(--cor-borda);border-radius:10px;overflow:hidden;">
-                                <div style="width:${percentFat}%;height:100%;background:${percentFat>=100?'var(--cor-sucesso)':'var(--cor-primaria)'};transition:width 0.5s;border-radius:10px;"></div>
-                            </div>
-                            <div style="text-align:right;font-size:13px;color:var(--cor-texto-claro);margin-top:4px;">
-                                ${percentFat >= 100 ? '🎉 Meta batida!' : 'Falta ' + formatarMoeda(fat - cofrinho.faturamento)}
-                            </div>
-                        </div>
-                        
-                        <!-- Cofrinhos do mês -->
-                        <h4 style="margin-bottom:15px;color:var(--cor-primaria);">🏦 Cofrinhos do Mês</h4>
-                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:20px;">
-                            ${[
-                                {emoji:'🛡️', nome:'Reserva', valor:cofrinho.reserva, meta: fat*(c.reservaEmergencia/100)},
-                                {emoji:'🚀', nome:'Reinvestimento', valor:cofrinho.reinvest, meta: fat*(c.reinvestimento/100)},
-                                {emoji:'🏛️', nome:'Imposto', valor:cofrinho.imposto, meta: fat*(c.imposto/100)},
-                                {emoji:'💵', nome:'Pró-labore', valor:cofrinho.proLabore, meta: parseFloat(c.proLaboreAlvo)||3000}
-                            ].map(item => `
-                                <div style="background:white;padding:15px;border-radius:var(--borda-radius);box-shadow:var(--sombra-leve);">
-                                    <div style="font-size:20px;">${item.emoji} <strong>${item.nome}</strong></div>
-                                    <div style="font-size:22px;font-weight:bold;color:var(--cor-primaria);margin:8px 0;">
-                                        ${formatarMoeda(item.valor)}
-                                    </div>
-                                    <div style="font-size:12px;color:var(--cor-texto-claro);">meta: ${formatarMoeda(item.meta)}</div>
-                                    <div style="width:100%;height:6px;background:var(--cor-borda);border-radius:3px;margin-top:8px;">
-                                        <div style="width:${Math.min((item.valor/item.meta)*100,100)}%;height:100%;background:${item.valor>=item.meta?'var(--cor-sucesso)':'var(--cor-primaria)'};border-radius:3px;"></div>
-                                    </div>
-                                    <div style="text-align:right;font-size:11px;color:var(--cor-texto-claro);margin-top:2px;">
-                                        ${item.valor>=item.meta ? '✅ atingido' : 'falta '+formatarMoeda(item.meta-item.valor)}
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                        
-                        <div style="padding:12px;background:var(--cor-fundo);border-radius:var(--borda-radius);font-size:13px;">
-                            <strong>${cofrinho.vendasCount}</strong> venda(s) registrada(s) em ${nomeMes}
-                            &nbsp;|&nbsp; Markup atual: <strong>${configuracoesCustos.multiplicadorMarkup.toFixed(2)}×</strong>
-                        </div>
-                    </div>
-                </div>
+
+            
             `;
             
             injetarBotaoAjuda('configuracoes-page', 'configuracoes');
@@ -11421,7 +11616,7 @@
          * RENDERIZA LISTA DE CLIENTES
          */
         function renderizarListaClientes() {
-            const clientesAtivos = clientes.filter(c => c.ativo);
+            const clientesAtivos = clientes.filter(c => c.ativo !== false); // inclui clientes sem o campo 'ativo'
             
             if (clientesAtivos.length === 0) {
                 return `
