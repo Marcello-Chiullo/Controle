@@ -7231,13 +7231,28 @@ Podemos confirmar a sua encomenda? 😊`;
                     novaVenda.decoracaoObs  = dados.decoracaoObs  || '';
                     // Adicionar ao ingredientesSnapshot para descontar do estoque
                     dados.decoracaoIngredientes.forEach(ing => {
-                        const existente = ingredientesConsolidados.find(i => i.materialId === ing.materialId);
-                        if (existente) { existente.quantidade += ing.quantidade; }
-                        else { ingredientesConsolidados.push({
-                            materialId: ing.materialId, materialNome: ing.materialNome,
-                            quantidade: ing.quantidade, unidadeMedida: ing.unidade,
-                            origem: 'Decoração'
-                        }); }
+                        if (ing.tipo === 'material' && ing.materialId) {
+                            const existente = ingredientesConsolidados.find(i => i.materialId === ing.materialId);
+                            if (existente) { existente.quantidade += ing.quantidade; }
+                            else { ingredientesConsolidados.push({
+                                materialId: ing.materialId, materialNome: ing.nome,
+                                quantidade: ing.quantidade, unidadeMedida: ing.unidade, origem: 'Decoração'
+                            }); }
+                        } else if (ing.tipo === 'subreceita' && ing.subReceitaId) {
+                            const sub = subReceitas.find(s => s.id === ing.subReceitaId);
+                            if (sub) {
+                                sub.ingredientes.forEach(si => {
+                                    const frac = ing.quantidade / (sub.rendimento || 1);
+                                    const existente = ingredientesConsolidados.find(i => i.materialId === si.materialId);
+                                    if (existente) { existente.quantidade += si.quantidade * frac; }
+                                    else { ingredientesConsolidados.push({
+                                        materialId: si.materialId, materialNome: si.materialNome,
+                                        quantidade: si.quantidade * frac, unidadeMedida: si.unidadeMedida, origem: 'Decoração'
+                                    }); }
+                                });
+                            }
+                        }
+                        // produtos: não desconta ingredientes automaticamente (só registra o custo)
                     });
                     novaVenda.ingredientesSnapshot = ingredientesConsolidados;
                 }
@@ -7896,16 +7911,50 @@ Podemos confirmar a sua encomenda? 😊`;
                                 
                                 <!-- Ingredientes da decoração (só para docinhos/frutas) -->
                                 <div id="campos-decor-ingredientes" style="display:none;">
-                                    <h5 style="margin:10px 0;color:var(--cor-primaria);">🍬 Ingredientes da decoração:</h5>
+                                    <h5 style="margin:10px 0;color:var(--cor-primaria);">🍬 Itens da decoração:</h5>
                                     <p style="font-size:13px;color:var(--cor-texto-claro);margin-bottom:10px;">
-                                        Adicione os docinhos e frutas usados para calcular custo e remover do estoque.
+                                        Adicione docinhos, frutas ou sub-receitas para calcular custo e remover do estoque.
                                     </p>
+                                    
+                                    <!-- Tabs de tipo de item -->
+                                    <div style="display:flex;gap:6px;margin-bottom:10px;">
+                                        <button type="button" class="tab-button active" id="decor-tab-material" 
+                                            onclick="trocarTipoDecoracao('material')" style="padding:4px 12px;font-size:13px;">
+                                            🏷️ Material
+                                        </button>
+                                        <button type="button" class="tab-button" id="decor-tab-subreceita" 
+                                            onclick="trocarTipoDecoracao('subreceita')" style="padding:4px 12px;font-size:13px;">
+                                            🧩 Sub-Receita
+                                        </button>
+                                        <button type="button" class="tab-button" id="decor-tab-produto" 
+                                            onclick="trocarTipoDecoracao('produto')" style="padding:4px 12px;font-size:13px;">
+                                            🎂 Produto
+                                        </button>
+                                    </div>
+                                    
                                     <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+                                        <!-- Material -->
                                         <select id="decor-ing-material" class="form-control" style="flex:2;min-width:180px;">
-                                            <option value="">Selecione o ingrediente...</option>
+                                            <option value="">Selecione o material...</option>
                                             ${materiais.filter(m=>!m.removed).sort((a,b)=>a.nome.localeCompare(b.nome)).map(m=>{
                                                 const preco = calcularPrecoMedioPonderado(m.nome);
-                                                return `<option value="${m.id}">${m.nome} (${formatarMoeda(preco)}/${m.unidadeMedida})</option>`;
+                                                return `<option value="mat:${m.id}">${m.nome} (${formatarMoeda(preco)}/${m.unidadeMedida})</option>`;
+                                            }).join('')}
+                                        </select>
+                                        <!-- Sub-Receita -->
+                                        <select id="decor-ing-subreceita" class="form-control" style="flex:2;min-width:180px;display:none;">
+                                            <option value="">Selecione a sub-receita...</option>
+                                            ${subReceitas.filter(s=>s.ativa).sort((a,b)=>a.nome.localeCompare(b.nome)).map(s=>{
+                                                const custos = calcularCustoSubReceita(s);
+                                                return `<option value="sub:${s.id}">${s.nome} (${formatarMoeda(custos.custoPorKg)}/${s.unidadeRendimento})</option>`;
+                                            }).join('')}
+                                        </select>
+                                        <!-- Produto -->
+                                        <select id="decor-ing-produto" class="form-control" style="flex:2;min-width:180px;display:none;">
+                                            <option value="">Selecione o produto...</option>
+                                            ${produtosFinais.filter(p=>p.ativa).sort((a,b)=>a.nome.localeCompare(b.nome)).map(p=>{
+                                                const custos = calcularCustoProdutoFinal(p);
+                                                return `<option value="prod:${p.id}">${p.nome} (custo ${formatarMoeda(custos.custoTotal)})</option>`;
                                             }).join('')}
                                         </select>
                                         <input type="number" id="decor-ing-qtd" class="form-control" style="width:90px;" 
@@ -7979,7 +8028,7 @@ Podemos confirmar a sua encomenda? 😊`;
                             
                             <div style="margin-top: 25px; display: flex; gap: 10px;">
                                 <button type="submit" class="btn btn-primary">💾 Registrar Venda</button>
-                                <button type="button" class="btn btn-secondary" onclick="RascunhoManager.limpar('rascunho_venda'); localStorage.removeItem('rascunho_venda_produtos'); produtosVendaTemp=[]; decoracaoIngredientes=[]; document.querySelectorAll('[id^="decor-card-"]').forEach(c=>{c.classList.remove('selecionado');c.style.borderColor='var(--cor-borda)';c.style.background='white';}); document.getElementById('campos-decoracao-extras').style.display='none'; renderizarProdutosVendaTemp(); atualizarResumoFinanceiroVenda(); document.getElementById('form-nova-venda').reset()">
+                                <button type="button" class="btn btn-secondary" onclick="limparFormVenda()">
                                     🔄 Limpar
                                 </button>
                             </div>
@@ -8654,6 +8703,25 @@ Podemos confirmar a sua encomenda? 😊`;
         // ====================================
         let decoracaoIngredientes = []; // ingredientes da decoração (docinhos/frutas)
         
+
+        function limparFormVenda() {
+            RascunhoManager.limpar('rascunho_venda');
+            localStorage.removeItem('rascunho_venda_produtos');
+            produtosVendaTemp = [];
+            decoracaoIngredientes = [];
+            // Resetar cards de decoração
+            document.querySelectorAll('[id^="decor-card-"]').forEach(c => {
+                c.classList.remove('selecionado');
+                c.style.borderColor = 'var(--cor-borda)';
+                c.style.background = 'white';
+            });
+            const extras = document.getElementById('campos-decoracao-extras');
+            if (extras) extras.style.display = 'none';
+            renderizarProdutosVendaTemp();
+            atualizarResumoFinanceiroVenda();
+            document.getElementById('form-nova-venda').reset();
+        }
+
         function selecionarDecoracao(id, valor, temObs, temDoces) {
             // Remover seleção anterior
             document.querySelectorAll('[id^="decor-card-"]').forEach(c => {
@@ -8718,16 +8786,130 @@ Podemos confirmar a sua encomenda? 😊`;
             calcularValorClienteCartao();
         }
         
+        let decoracaoTipoAtivo = 'material'; // 'material' | 'subreceita' | 'produto'
+        
+
+        function abrirModalCustoDecoracao(prodId, nome, qtd, unidade, custoFabUnit, precoVendaUnit, onClose) {
+            const custoFab   = custoFabUnit * qtd;
+            const custoVenda = precoVendaUnit * qtd;
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div style="background:white;border-radius:var(--borda-radius);padding:25px;max-width:450px;width:92%;box-shadow:var(--sombra-forte);">
+                    <h3>🎂 ${nome} × ${qtd} ${unidade}</h3>
+                    <p style="color:var(--cor-texto-claro);margin-bottom:18px;font-size:14px;">
+                        Qual custo usar para este item da decoração?
+                    </p>
+                    
+                    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px;">
+                        <div style="border:2px solid var(--cor-borda);border-radius:var(--borda-radius);padding:14px;cursor:pointer;"
+                            onclick="this.parentElement.querySelectorAll('div').forEach(d=>d.style.borderColor='var(--cor-borda)'); this.style.borderColor='var(--cor-primaria)';"
+                            id="opt-venda">
+                            <strong>💰 Custo de venda</strong>
+                            <div style="font-size:22px;font-weight:bold;color:var(--cor-primaria);">${formatarMoeda(custoVenda)}</div>
+                            <div style="font-size:13px;color:var(--cor-texto-claro);">${formatarMoeda(precoVendaUnit)}/${unidade} — o que você cobraria se vendesse separado</div>
+                        </div>
+                        <div style="border:2px solid var(--cor-borda);border-radius:var(--borda-radius);padding:14px;cursor:pointer;"
+                            onclick="this.parentElement.querySelectorAll('div').forEach(d=>d.style.borderColor='var(--cor-borda)'); this.style.borderColor='var(--cor-sucesso)';"
+                            id="opt-fabricacao">
+                            <strong>🏭 Custo de fabricação</strong>
+                            <div style="font-size:22px;font-weight:bold;color:var(--cor-sucesso);">${formatarMoeda(custoFab)}</div>
+                            <div style="font-size:13px;color:var(--cor-texto-claro);">${formatarMoeda(custoFabUnit)}/${unidade} — custo real dos ingredientes</div>
+                        </div>
+                    </div>
+                    
+                    <div style="background:var(--cor-aviso-claro);padding:10px;border-radius:var(--borda-radius);
+                        font-size:13px;margin-bottom:16px;border-left:3px solid var(--cor-aviso);">
+                        ℹ️ <strong>Custo venda > fabricação</strong> = você está cedendo margem.<br>
+                        <strong>Use fabricação</strong> para ver o impacto real nos ingredientes do estoque.
+                    </div>
+                    
+                    <div style="display:flex;gap:10px;">
+                        <button class="btn btn-primary" style="flex:1;" onclick="confirmarCustoDecoracao('${prodId}', '${nome}', ${qtd}, '${unidade}', ${custoFabUnit}, ${precoVendaUnit})">
+                            ✅ Adicionar
+                        </button>
+                        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">❌</button>
+                    </div>
+                </div>`;
+            modal.addEventListener('click', e => {
+                if (e.target === modal) { modal.remove(); if (onClose) onClose(); }
+            });
+            document.body.appendChild(modal);
+        }
+        
+        function confirmarCustoDecoracao(prodId, nome, qtd, unidade, custoFabUnit, precoVendaUnit) {
+            const optVenda = document.getElementById('opt-venda');
+            const optFab   = document.getElementById('opt-fabricacao');
+            const usaVenda = optVenda?.style.borderColor?.includes('primaria') || 
+                             (!optVenda?.style.borderColor?.includes('sucesso') && !optFab?.style.borderColor?.includes('sucesso'));
+            const custoUnit = usaVenda ? precoVendaUnit : custoFabUnit;
+            const tipoCusto = usaVenda ? 'venda' : 'fabricacao';
+            
+            decoracaoIngredientes.push({
+                tipo: 'produto', produtoId: prodId, nome: nome,
+                quantidade: qtd, unidade: unidade,
+                custoUnit: custoUnit, tipoCusto: tipoCusto,
+                custoFabUnit: custoFabUnit, precoVendaUnit: precoVendaUnit
+            });
+            
+            document.querySelector('.modal-overlay')?.remove();
+            document.getElementById('decor-ing-produto').value = '';
+            document.getElementById('decor-ing-qtd').value = '';
+            renderizarIngDecoracao();
+        }
+
+        function trocarTipoDecoracao(tipo) {
+            decoracaoTipoAtivo = tipo;
+            ['material','subreceita','produto'].forEach(t => {
+                const sel = document.getElementById('decor-ing-' + t);
+                const btn = document.getElementById('decor-tab-' + t);
+                if (sel) sel.style.display = t === tipo ? '' : 'none';
+                if (btn) btn.classList.toggle('active', t === tipo);
+            });
+        }
+        
         function adicionarIngDecoracao() {
-            const matId = document.getElementById('decor-ing-material')?.value;
             const qtd = parseFloat(document.getElementById('decor-ing-qtd')?.value);
-            if (!matId) { mostrarToast('Selecione o ingrediente','warning'); return; }
             if (!qtd || qtd <= 0) { mostrarToast('Informe a quantidade','warning'); return; }
-            const mat = materiais.find(m => m.id === matId);
-            if (!mat) return;
-            const preco = calcularPrecoMedioPonderado(mat.nome);
-            decoracaoIngredientes.push({ materialId:matId, materialNome:mat.nome, quantidade:qtd, unidade:mat.unidadeMedida, preco });
-            document.getElementById('decor-ing-material').value = '';
+            
+            if (decoracaoTipoAtivo === 'material') {
+                const val = document.getElementById('decor-ing-material')?.value;
+                if (!val) { mostrarToast('Selecione um material','warning'); return; }
+                const matId = val.replace('mat:','');
+                const mat = materiais.find(m => m.id === matId);
+                if (!mat) return;
+                const preco = calcularPrecoMedioPonderado(mat.nome);
+                decoracaoIngredientes.push({ tipo:'material', materialId:matId, nome:mat.nome, quantidade:qtd, unidade:mat.unidadeMedida, custoUnit:preco });
+                document.getElementById('decor-ing-material').value = '';
+                
+            } else if (decoracaoTipoAtivo === 'subreceita') {
+                const val = document.getElementById('decor-ing-subreceita')?.value;
+                if (!val) { mostrarToast('Selecione uma sub-receita','warning'); return; }
+                const subId = val.replace('sub:','');
+                const sub = subReceitas.find(s => s.id === subId);
+                if (!sub) return;
+                const custos = calcularCustoSubReceita(sub);
+                decoracaoIngredientes.push({ tipo:'subreceita', subReceitaId:subId, nome:sub.nome, quantidade:qtd, unidade:sub.unidadeRendimento, custoUnit:custos.custoPorKg });
+                document.getElementById('decor-ing-subreceita').value = '';
+                
+            } else if (decoracaoTipoAtivo === 'produto') {
+                const val = document.getElementById('decor-ing-produto')?.value;
+                if (!val) { mostrarToast('Selecione um produto','warning'); return; }
+                const prodId = val.replace('prod:','');
+                const prod = produtosFinais.find(p => p.id === prodId);
+                if (!prod) return;
+                const custos = calcularCustoProdutoFinal(prod);
+                const unidade = prod.tipoPrecificacao === 'peso' ? 'kg' : 'un';
+                const custoFabUnit = prod.tipoPrecificacao === 'peso' ? custos.custoPorKg : custos.custoTotal;
+                const precoVendaUnit = prod.tipoPrecificacao === 'peso' ? (prod.precoVendaKg||0) : (prod.precoVendaUnidade||0);
+                // Perguntar qual custo usar
+                abrirModalCustoDecoracao(prodId, prod.nome, qtd, unidade, custoFabUnit, precoVendaUnit, () => {
+                    document.getElementById('decor-ing-produto').value = '';
+                    document.getElementById('decor-ing-qtd').value = '';
+                });
+                return; // modal cuida do push
+            }
+            
             document.getElementById('decor-ing-qtd').value = '';
             renderizarIngDecoracao();
         }
@@ -8742,17 +8924,21 @@ Podemos confirmar a sua encomenda? 😊`;
             const resumo = document.getElementById('resumo-custo-decoracao');
             if (!lista) return;
             if (decoracaoIngredientes.length === 0) {
-                lista.innerHTML = '<p style="font-size:13px;color:var(--cor-texto-claro);">Nenhum ingrediente adicionado.</p>';
+                lista.innerHTML = '<p style="font-size:13px;color:var(--cor-texto-claro);">Nenhum item adicionado.</p>';
                 if (resumo) resumo.innerHTML = '';
                 return;
             }
             let custoTotal = 0;
-            lista.innerHTML = '<table style="width:100%;font-size:13px;"><tbody>' +
+            const tipoEmoji = { material:'🏷️', subreceita:'🧩', produto:'🎂' };
+            lista.innerHTML = '<table style="width:100%;font-size:13px;"><thead><tr><th>Item</th><th>Qtd</th><th>Custo</th><th></th></tr></thead><tbody>' +
                 decoracaoIngredientes.map((ing, i) => {
-                    const custo = ing.preco * ing.quantidade;
+                    const custo = (ing.custoUnit || ing.preco || 0) * ing.quantidade;
                     custoTotal += custo;
+                    const tipoCustoLabel = ing.tipo === 'produto'
+                        ? `<br><small style="color:var(--cor-info);">${ing.tipoCusto === 'venda' ? '💰 custo venda' : '🏭 custo fabricação'}</small>`
+                        : '';
                     return `<tr>
-                        <td>${ing.materialNome}</td>
+                        <td>${tipoEmoji[ing.tipo]||'📦'} ${ing.nome || ing.materialNome}${tipoCustoLabel}</td>
                         <td>${ing.quantidade} ${ing.unidade}</td>
                         <td>${formatarMoeda(custo)}</td>
                         <td><button type="button" class="btn btn-danger btn-sm" onclick="removerIngDecoracao(${i})">🗑️</button></td>
@@ -11350,36 +11536,100 @@ Podemos confirmar a sua encomenda? 😊`;
         function criarEntradasFinanceiras(venda) {
             // Só lança nos caixas se houver pagamento
             const status = venda.pagamento?.statusPagamento || venda.statusPagamento || 'pendente';
-            if (status === 'pendente') return; // aguardar confirmação
+            if (status === 'pendente') return;
             
             const c = configuracoesCustos;
-            // Para pagamento parcial, usa o valor efetivamente pago
             const valorEfetivo = status === 'parcial'
                 ? (venda.pagamento?.valorPago || 0)
                 : (venda.valorTotal || 0);
-            const valTotal  = valorEfetivo;
-            const imposto   = valTotal * ((parseFloat(c.imposto) || 3) / 100);
-            const taxaMaq   = valTotal * ((parseFloat(c.taxaPagamento) || 3) / 100);
-            const liquido   = valTotal - imposto - taxaMaq;
-            const pctEmerg   = parseFloat(c.pctEmergencia)    || 5;
-            const pctReinv   = parseFloat(c.pctReinvestimento) || 5;
-            const pctCF      = parseFloat(c.pctCustosFixos)   || 6.5;
-            const vlrOper    = venda.custoTotal || 0;
-            const vlrEmerg   = liquido * pctEmerg / 100;
-            const vlrReinv   = liquido * pctReinv / 100;
-            const vlrCF      = liquido * pctCF    / 100;
-            // Pró-labore = resíduo após todos os outros caixas
-            const vlrProLabore = Math.max(liquido - vlrOper - vlrEmerg - vlrReinv - vlrCF, 0);
+            
+            const pctEmerg = parseFloat(c.pctEmergencia)    || 5;
+            const pctReinv = parseFloat(c.pctReinvestimento) || 5;
+            const pctCF    = parseFloat(c.pctCustosFixos)   || 6.5;
+            
+            // ── SEPARAR componentes de receita ──
+            const frete     = parseFloat(venda.custoDireto?.frete || 0);
+            const decoracao = parseFloat(venda.custoDireto?.decoracao || 0);
+            const decorTipo = venda.decoracaoTipo || '';
+            
+            // Custo real dos ingredientes de decoração (docinhos/frutas)
+            let custoIngDecor = 0;
+            if (decorTipo === 'doces_frutas' && venda.decoracaoIngredientes?.length > 0) {
+                venda.decoracaoIngredientes.forEach(ing => {
+                    const custoUnit = ing.custoUnit || ing.preco || 0;
+                    custoIngDecor += custoUnit * (ing.quantidade || 0);
+                });
+            }
+            
+            // ── BASE: valor dos bolos (sem frete e decoração) ──
+            const valorBolos    = Math.max(valorEfetivo - frete - decoracao, 0);
+            const impostoBolos  = valorBolos * ((parseFloat(c.imposto) || 3) / 100);
+            const taxaBolos     = valorBolos * ((parseFloat(c.taxaPagamento) || 3) / 100);
+            const liquidoBolos  = valorBolos - impostoBolos - taxaBolos;
+            
+            // Custo ingredientes dos bolos
+            const custoIngBolos = (venda.custoTotal || 0) - custoIngDecor;
+            
+            // Distribuição dos bolos
+            const emerg_bolos = liquidoBolos * pctEmerg / 100;
+            const reinv_bolos = liquidoBolos * pctReinv / 100;
+            const cf_bolos    = liquidoBolos * pctCF    / 100;
+            let   prol_bolos  = Math.max(liquidoBolos - custoIngBolos - emerg_bolos - reinv_bolos - cf_bolos, 0);
+            
+            // ── FRETE → 100% operacional (valor bruto, sem desconto) ──
+            // O valor do frete é um repasse direto — o que cobrou do cliente vai para pagar a gasolina
+            const oper_frete   = frete;
+            
+            // ── DECORAÇÃO → roteamento por tipo (valor bruto) ──
+            // Topo/doces: o valor cobrado é o que vai para o destino — sem desconto de imposto/taxa
+            const liquidoDecor = decoracao;
+            
+            let oper_decor = 0, emerg_decor = 0, reinv_decor = 0, prol_decor = 0;
+            
+            if (decorTipo === 'topo_simples' || decorTipo === 'topo_3d') {
+                // Topo → 100% operacional (pagar quem faz o topo)
+                oper_decor = liquidoDecor;
+                
+            } else if (decorTipo === 'doces_frutas') {
+                // Decoração doces/frutas: comparar custo vs. cobrado
+                if (custoIngDecor <= liquidoDecor) {
+                    // Cobrou mais do que custou → custo vai ao operacional, sobra divide
+                    oper_decor  = custoIngDecor;
+                    const sobra = liquidoDecor - custoIngDecor;
+                    emerg_decor = sobra * pctEmerg / 100;
+                    reinv_decor = sobra * pctReinv / 100;
+                    prol_decor  = Math.max(sobra - emerg_decor - reinv_decor, 0);
+                } else {
+                    // Custou mais do que cobrou → diferença sai do pró-labore dos bolos
+                    oper_decor = liquidoDecor; // o que entrou
+                    const prejuizoDecor = custoIngDecor - liquidoDecor;
+                    prol_bolos = Math.max(prol_bolos - prejuizoDecor, 0);
+                }
+            }
+            // Simples chantilly → sem custo extra, não tem decoracao > 0
+            
+            // ── MONTAR LANÇAMENTOS ──
             const agora = venda.dataVenda || new Date().toISOString();
-            [
-                { cofrinho:'operacional',  valor: vlrOper,      desc: `Custo ingredientes — ${venda.numero}` },
-                { cofrinho:'custosFixos',  valor: vlrCF,        desc: `${pctCF}% do líquido — ${venda.numero}` },
-                { cofrinho:'emergencia',   valor: vlrEmerg,     desc: `${pctEmerg}% do líquido — ${venda.numero}` },
-                { cofrinho:'reinvestimento',valor: vlrReinv,    desc: `${pctReinv}% do líquido — ${venda.numero}` },
-                { cofrinho:'prolabore',    valor: vlrProLabore, desc: `Pró-labore — ${venda.numero}` }
-            ].forEach(e => {
+            const lancamentos = [
+                // Bolos
+                { cofrinho:'operacional',    valor: custoIngBolos,  desc: `Custo ingredientes bolos — ${venda.numero}` },
+                { cofrinho:'custosFixos',    valor: cf_bolos,       desc: `${pctCF}% líquido bolos — ${venda.numero}` },
+                { cofrinho:'emergencia',     valor: emerg_bolos + emerg_decor, desc: `${pctEmerg}% líquido — ${venda.numero}` },
+                { cofrinho:'reinvestimento', valor: reinv_bolos + reinv_decor, desc: `${pctReinv}% líquido — ${venda.numero}` },
+                { cofrinho:'prolabore',      valor: prol_bolos  + prol_decor,  desc: `Pró-labore — ${venda.numero}` },
+                // Frete
+                ...(oper_frete > 0.001 ? [{ cofrinho:'operacional', valor: oper_frete, desc: `Frete (operacional) — ${venda.numero}` }] : []),
+                // Decoração
+                ...(oper_decor > 0.001 ? [{ cofrinho:'operacional', valor: oper_decor, desc: `Decoração (operacional) — ${venda.numero}` }] : []),
+            ];
+            
+            lancamentos.forEach(e => {
                 if (e.valor > 0.001) {
-                    lancamentosFinanceiros.push({ id:gerarId(), tipo:'entrada_venda', descricao:e.desc, valor:e.valor, cofrinho:e.cofrinho, data:agora, referencia:venda.id });
+                    lancamentosFinanceiros.push({
+                        id: gerarId(), tipo:'entrada_venda',
+                        descricao: e.desc, valor: e.valor,
+                        cofrinho: e.cofrinho, data: agora, referencia: venda.id
+                    });
                 }
             });
             venda.lancamentosCriados = true;
