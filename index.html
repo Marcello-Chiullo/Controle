@@ -7916,18 +7916,24 @@ Podemos confirmar a sua encomenda? 😊`;
                                         Adicione docinhos, frutas ou sub-receitas para calcular custo e remover do estoque.
                                     </p>
                                     
-                                    <!-- Tabs de tipo de item -->
+                                    <!-- Tabs de tipo de item (classe própria para não conflitar com tabs da página) -->
                                     <div style="display:flex;gap:6px;margin-bottom:10px;">
-                                        <button type="button" class="tab-button active" id="decor-tab-material" 
-                                            onclick="trocarTipoDecoracao('material')" style="padding:4px 12px;font-size:13px;">
+                                        <button type="button" class="decor-tab-btn active" id="decor-tab-material" 
+                                            onclick="trocarTipoDecoracao('material')"
+                                            style="padding:4px 12px;font-size:13px;border:none;border-radius:var(--borda-radius-sm);
+                                            cursor:pointer;background:var(--cor-primaria);color:white;font-weight:500;">
                                             🏷️ Material
                                         </button>
-                                        <button type="button" class="tab-button" id="decor-tab-subreceita" 
-                                            onclick="trocarTipoDecoracao('subreceita')" style="padding:4px 12px;font-size:13px;">
+                                        <button type="button" class="decor-tab-btn" id="decor-tab-subreceita" 
+                                            onclick="trocarTipoDecoracao('subreceita')"
+                                            style="padding:4px 12px;font-size:13px;border:none;border-radius:var(--borda-radius-sm);
+                                            cursor:pointer;background:var(--cor-borda);color:var(--cor-texto);font-weight:500;">
                                             🧩 Sub-Receita
                                         </button>
-                                        <button type="button" class="tab-button" id="decor-tab-produto" 
-                                            onclick="trocarTipoDecoracao('produto')" style="padding:4px 12px;font-size:13px;">
+                                        <button type="button" class="decor-tab-btn" id="decor-tab-produto" 
+                                            onclick="trocarTipoDecoracao('produto')"
+                                            style="padding:4px 12px;font-size:13px;border:none;border-radius:var(--borda-radius-sm);
+                                            cursor:pointer;background:var(--cor-borda);color:var(--cor-texto);font-weight:500;">
                                             🎂 Produto
                                         </button>
                                     </div>
@@ -8723,6 +8729,9 @@ Podemos confirmar a sua encomenda? 😊`;
         }
 
         function selecionarDecoracao(id, valor, temObs, temDoces) {
+            // Salvar posição do scroll para não pular para o topo
+            const scrollY = window.scrollY;
+            
             // Remover seleção anterior
             document.querySelectorAll('[id^="decor-card-"]').forEach(c => {
                 c.classList.remove('selecionado');
@@ -8777,6 +8786,9 @@ Podemos confirmar a sua encomenda? 😊`;
             
             atualizarResumoFinanceiroVenda();
             calcularValorClienteCartao();
+            
+            // Restaurar posição do scroll
+            requestAnimationFrame(() => window.scrollTo(0, scrollY));
         }
         
         function atualizarValorDecoracao() {
@@ -8864,7 +8876,10 @@ Podemos confirmar a sua encomenda? 😊`;
                 const sel = document.getElementById('decor-ing-' + t);
                 const btn = document.getElementById('decor-tab-' + t);
                 if (sel) sel.style.display = t === tipo ? '' : 'none';
-                if (btn) btn.classList.toggle('active', t === tipo);
+                if (btn) {
+                    btn.style.background = t === tipo ? 'var(--cor-primaria)' : 'var(--cor-borda)';
+                    btn.style.color = t === tipo ? 'white' : 'var(--cor-texto)';
+                }
             });
         }
         
@@ -10203,14 +10218,20 @@ Podemos confirmar a sua encomenda? 😊`;
         function confirmarPagamentoERecarregar(vendaId) {
             const venda = vendas.find(v => v.id === vendaId);
             if (!venda) return;
+            const jaPago = venda.pagamento?.valorPago || 0;
+            const saldo = Math.max(venda.valorTotal - jaPago, 0);
             const modal = document.createElement('div');
             modal.className = 'modal-overlay';
             modal.innerHTML = `
-                <div style="background:white;border-radius:var(--borda-radius);padding:25px;max-width:400px;width:90%;box-shadow:var(--sombra-forte);">
+                <div style="background:white;border-radius:var(--borda-radius);padding:25px;max-width:420px;width:90%;box-shadow:var(--sombra-forte);">
                     <h3>💳 Confirmar Pagamento</h3>
-                    <p style="margin:12px 0;">Cliente: <strong>${venda.cliente?.nome || '—'}</strong></p>
-                    <p>Valor total: <strong style="color:var(--cor-primaria);font-size:18px;">${formatarMoeda(venda.valorTotal)}</strong></p>
-                    <div class="form-group" style="margin-top:15px;">
+                    <p style="margin:10px 0;">Cliente: <strong>${venda.cliente?.nome || '—'}</strong></p>
+                    <div style="background:var(--cor-fundo);padding:12px;border-radius:var(--borda-radius);margin-bottom:15px;">
+                        <div>Total: <strong style="color:var(--cor-primaria);font-size:18px;">${formatarMoeda(venda.valorTotal)}</strong></div>
+                        ${jaPago > 0 ? `<div style="font-size:13px;color:var(--cor-sucesso);">Já pago: ${formatarMoeda(jaPago)}</div>` : ''}
+                        ${saldo < venda.valorTotal ? `<div style="font-size:14px;font-weight:bold;color:var(--cor-erro);">Saldo devedor: ${formatarMoeda(saldo)}</div>` : ''}
+                    </div>
+                    <div class="form-group">
                         <label>Forma de pagamento:</label>
                         <select id="conf-pag-forma" class="form-control">
                             <option value="Dinheiro" ${venda.pagamento?.formaPagamento==='Dinheiro'?'selected':''}>💵 Dinheiro</option>
@@ -10220,8 +10241,22 @@ Podemos confirmar a sua encomenda? 😊`;
                             <option value="Transferência">🏦 Transferência</option>
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label>Tipo de pagamento:</label>
+                        <select id="conf-pag-tipo" class="form-control" onchange="toggleValorParcialConf()">
+                            <option value="total">✅ Pagamento total (${formatarMoeda(saldo)})</option>
+                            <option value="parcial">💰 Pagamento parcial</option>
+                        </select>
+                    </div>
+                    <div id="campo-valor-parcial-conf" style="display:none;" class="form-group">
+                        <label>Valor pago agora (R$):</label>
+                        <input type="number" id="conf-valor-parcial" class="form-control" 
+                            min="0.01" step="0.01" max="${saldo}" placeholder="0,00"
+                            oninput="this.value=Math.min(this.value,${saldo})">
+                        <small style="color:var(--cor-texto-claro);">Máximo: ${formatarMoeda(saldo)}</small>
+                    </div>
                     <div style="display:flex;gap:10px;margin-top:20px;">
-                        <button class="btn btn-success" style="flex:1;" onclick="executarConfirmarPagamento('${vendaId}')">✅ Confirmar Pago</button>
+                        <button class="btn btn-success" style="flex:1;" onclick="executarConfirmarPagamento('${vendaId}')">✅ Confirmar</button>
                         <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">❌</button>
                     </div>
                 </div>`;
@@ -10229,16 +10264,42 @@ Podemos confirmar a sua encomenda? 😊`;
             document.body.appendChild(modal);
         }
         
+        function toggleValorParcialConf() {
+            const tipo = document.getElementById('conf-pag-tipo')?.value;
+            const campo = document.getElementById('campo-valor-parcial-conf');
+            if (campo) campo.style.display = tipo === 'parcial' ? '' : 'none';
+        }
+        
         function executarConfirmarPagamento(vendaId) {
             const forma = document.getElementById('conf-pag-forma')?.value;
+            const tipo  = document.getElementById('conf-pag-tipo')?.value || 'total';
             const venda = vendas.find(v => v.id === vendaId);
-            if (venda && forma) venda.pagamento.formaPagamento = forma;
-            document.querySelector('.modal-overlay')?.remove();
-            if (confirmarPagamento(vendaId)) {
-                salvarLocalStorage();
-                sincronizarComNuvem();
+            if (!venda) return;
+            
+            if (forma) venda.pagamento.formaPagamento = forma;
+            
+            if (tipo === 'parcial') {
+                const valorNovo = parseFloat(document.getElementById('conf-valor-parcial')?.value) || 0;
+                if (!valorNovo || valorNovo <= 0) { mostrarToast('Informe o valor pago', 'warning'); return; }
+                const jaPago = venda.pagamento?.valorPago || 0;
+                const totalPago = jaPago + valorNovo;
+                const saldo = Math.max(venda.valorTotal - totalPago, 0);
+                venda.pagamento.valorPago = totalPago;
+                venda.pagamento.saldoDevedor = saldo;
+                venda.pagamento.statusPagamento = saldo <= 0 ? 'pago' : 'parcial';
+                if (saldo <= 0 && !venda.lancamentosCriados) criarEntradasFinanceiras(venda);
+                else if (saldo > 0 && !venda.lancamentosCriados) criarEntradasFinanceiras(venda);
+                document.querySelector('.modal-overlay')?.remove();
+                salvarLocalStorage(); sincronizarComNuvem();
+                mostrarToast(saldo <= 0 ? '✅ Pago integralmente!' : `💰 Parcial registrado. Falta ${formatarMoeda(saldo)}`, 'success');
                 carregarPaginaVendas();
-                mostrarToast('💳 Pagamento confirmado!', 'success');
+            } else {
+                document.querySelector('.modal-overlay')?.remove();
+                if (confirmarPagamento(vendaId)) {
+                    salvarLocalStorage(); sincronizarComNuvem();
+                    carregarPaginaVendas();
+                    mostrarToast('💳 Pagamento confirmado!', 'success');
+                }
             }
         }
         
