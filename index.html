@@ -854,8 +854,18 @@
             <div id="user-info" class="hidden">
                 <span id="user-email"></span>
                 <button id="btn-admin-nav" class="hidden">👥 Navegar Usuários</button>
-                <button id="btn-upload-firebase" class="hidden">⬆️ Enviar</button>
-                <button id="btn-download-firebase" class="hidden">⬇️ Buscar</button>
+                <button id="btn-upload-firebase" class="hidden" 
+                    style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);
+                    color:white;padding:5px 12px;border-radius:5px;cursor:pointer;font-size:13px;
+                    display:inline-flex;align-items:center;gap:5px;transition:0.2s;"
+                    onmouseover="this.style.background='rgba(255,255,255,0.3)'"
+                    onmouseout="this.style.background='rgba(255,255,255,0.2)'">⬆️ Enviar</button>
+                <button id="btn-download-firebase" class="hidden"
+                    style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);
+                    color:white;padding:5px 12px;border-radius:5px;cursor:pointer;font-size:13px;
+                    display:inline-flex;align-items:center;gap:5px;transition:0.2s;"
+                    onmouseover="this.style.background='rgba(255,255,255,0.3)'"
+                    onmouseout="this.style.background='rgba(255,255,255,0.2)'">⬇️ Buscar</button>
                 <button id="btn-logout">🚪 Sair</button>
             </div>
             <div>
@@ -3558,27 +3568,25 @@
             // Mudar para aba de adicionar
             document.querySelector('#sub-receitas-page .tab-button[data-tab="adicionar-sub"]').click();
             
-            // Alterar título
-            document.getElementById('titulo-form-sub-receita').textContent = '✏️ Editar Sub-Receita';
-            
-            // Preencher formulário
-            document.getElementById('sub-receita-id').value = subReceita.id;
-            document.getElementById('sub-receita-nome').value = subReceita.nome;
-            document.getElementById('sub-receita-tipo').value = subReceita.tipo;
-            document.getElementById('sub-receita-rendimento').value = subReceita.rendimento;
-            document.getElementById('sub-receita-unidade-rendimento').value = subReceita.unidadeRendimento;
-            document.getElementById('sub-receita-observacoes').value = subReceita.observacoes || '';
-            
-            // Carregar ingredientes temporários
-            subIngredientesTemp = [...subReceita.ingredientes];
-            
-            // Renderizar ingredientes
-            renderizarSubIngredientesTemp();
-            
-            // Atualizar resumo de custos
-            atualizarResumoSubReceita();
-            
-            mostrarToast('Sub-receita carregada para edição', 'info');
+            // Aguardar a aba renderizar e carregar dados
+            setTimeout(() => {
+                document.getElementById('titulo-form-sub-receita').textContent = '✏️ Editar Sub-Receita';
+                document.getElementById('sub-receita-id').value = subReceita.id;
+                document.getElementById('sub-receita-nome').value = subReceita.nome;
+                document.getElementById('sub-receita-tipo').value = subReceita.tipo;
+                document.getElementById('sub-receita-rendimento').value = subReceita.rendimento;
+                document.getElementById('sub-receita-unidade-rendimento').value = subReceita.unidadeRendimento;
+                document.getElementById('sub-receita-observacoes').value = subReceita.observacoes || '';
+                
+                // Carregar ingredientes via referência global exposta em configurarFormularioSubReceita
+                if (window.ingredientesTempSubReceita) {
+                    window.ingredientesTempSubReceita.length = 0;
+                    subReceita.ingredientes.forEach(ing => window.ingredientesTempSubReceita.push({...ing}));
+                    renderizarListaSubIngredientes();
+                    atualizarResumoSubReceita();
+                }
+                mostrarToast('Sub-receita carregada para edição ✏️', 'info');
+            }, 150);
         }
         
         /**
@@ -6324,18 +6332,26 @@
                             ${todasCompras.map(compra => `
                                 <tr style="${compra.removed ? 'opacity: 0.5; text-decoration: line-through;' : ''}">
                                     <td>${formatarData(compra.data)}</td>
-                                    <td>${compra.quantidade}</td>
-                                    <td>${formatarMoeda(compra.preco)}</td>
-                                    <td>${compra.fornecedor || '-'}</td>
-                                    <td>${compra.notaFiscal || '-'}</td>
+                                    <td>
+                                        ${compra.quantidadeUnidades ? `${compra.quantidadeUnidades} un` : '—'}<br>
+                                        <small style="color:var(--cor-texto-claro);">${compra.quantidadeTotal ? compra.quantidadeTotal.toFixed(2)+' total' : (compra.quantidade||'').toString()}</small>
+                                    </td>
+                                    <td>${formatarMoeda(compra.precoTotal || compra.preco)}</td>
+                                    <td style="font-size:13px;">${compra.fornecedor || '-'}</td>
+                                    <td style="font-size:13px;">${compra.notaFiscal || '-'}</td>
                                     <td>
                                         ${compra.removed ? 
                                             '<span class="badge badge-danger">Removido</span>' : 
                                             '<span class="badge badge-success">Ativo</span>'
                                         }
                                     </td>
-                                    <td>
+                                    <td style="display:flex;gap:5px;">
                                         ${!compra.removed ? `
+                                            <button class="btn btn-secondary btn-sm" 
+                                                onclick="editarCompraModal('${compra.materialId}', '${compra.id}')"
+                                                title="Editar preço ou data">
+                                                ✏️
+                                            </button>
                                             <button class="btn btn-danger btn-sm" 
                                                 onclick="removerCompraERecarregar('${compra.materialId}', '${compra.id}')">
                                                 🗑️
@@ -6375,6 +6391,68 @@
         /**
          * Remove compra e recarrega página
          */
+
+        function editarCompraModal(materialId, compraId) {
+            const material = materiais.find(m => m.id === materialId);
+            const compra = material?.historicoCompras?.find(c => c.id === compraId);
+            if (!compra) { mostrarToast('Compra não encontrada', 'error'); return; }
+            
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div style="background:white;border-radius:var(--borda-radius);padding:25px;max-width:400px;width:92%;box-shadow:var(--sombra-forte);">
+                    <h3>✏️ Editar Compra — ${material.nome}</h3>
+                    <div class="form-group" style="margin-top:15px;">
+                        <label>Preço total pago (R$):</label>
+                        <input type="number" id="edit-compra-preco" class="form-control" 
+                            min="0.01" step="0.01" value="${compra.precoTotal || compra.preco}">
+                    </div>
+                    <div class="form-group">
+                        <label>Fornecedor:</label>
+                        <input type="text" id="edit-compra-forn" class="form-control" 
+                            value="${compra.fornecedor || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>Data da compra:</label>
+                        <input type="date" id="edit-compra-data" class="form-control" 
+                            value="${compra.data ? compra.data.substring(0,10) : ''}">
+                    </div>
+                    <div style="display:flex;gap:10px;margin-top:20px;">
+                        <button class="btn btn-primary" style="flex:1;" onclick="confirmarEditarCompra('${materialId}','${compraId}')">💾 Salvar</button>
+                        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">❌</button>
+                    </div>
+                </div>`;
+            modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
+            document.body.appendChild(modal);
+        }
+        
+        function confirmarEditarCompra(materialId, compraId) {
+            const material = materiais.find(m => m.id === materialId);
+            const compra = material?.historicoCompras?.find(c => c.id === compraId);
+            if (!compra) return;
+            
+            const novoPreco = parseFloat(document.getElementById('edit-compra-preco')?.value) || compra.precoTotal;
+            const novoForn  = document.getElementById('edit-compra-forn')?.value || '';
+            const novaData  = document.getElementById('edit-compra-data')?.value;
+            
+            compra.precoTotal = novoPreco;
+            compra.preco      = novoPreco;
+            compra.fornecedor = novoForn;
+            if (novaData) compra.data = new Date(novaData + 'T12:00:00').toISOString();
+            
+            // Recalcular preço médio
+            material.precoMedio = calcularPrecoMedioPonderado(material.nome);
+            
+            salvarLocalStorage();
+            database.ref(`usuarios/${getUsuarioAtual().replace(/\./g,'_')}/materiais`).set(materiais).catch(()=>{});
+            
+            document.querySelector('.modal-overlay')?.remove();
+            mostrarToast('Compra atualizada!', 'success');
+            
+            // Reabrir histórico atualizado
+            setTimeout(() => verHistoricoMaterial(material.nome), 200);
+        }
+
         function removerCompraERecarregar(materialId, compraId) {
             const motivo = prompt('Motivo da remoção (opcional):') || 'Não informado';
             
@@ -6720,8 +6798,8 @@ ${produtos}${linhaDecor}${linhaFrete}${linhaDesconto}
 💰 Valor total: ${formatarMoeda(venda.valorTotal)}
 💳 Pagamento: ${formaPag}${parcelas}
 
-PIX: 11998383421
-Nubank / Andreia Chiullo 🏦
+PIX: 35998912335
+Nubank / Marcello Chiullo 🏦
 
 ⚠️ O pagamento deverá ser realizado até 1 dia antes da data do evento. Pode ser dado uma entrada e o restante pago na entrega. Para pagamento no cartão, consultar taxa da maquininha.
 
@@ -6852,7 +6930,7 @@ Podemos confirmar a sua encomenda? 😊`;
                             <button class="btn btn-warning btn-sm" onclick="registrarPagamentoParcialDivida('${v.id}')">
                                 💰 Recebeu Parte
                             </button>`}
-                            <button class="btn btn-primary btn-sm" onclick="abrirModalConfirmacaoPedido('${v.id}')">
+                            <button class="btn btn-primary btn-sm" onclick="abrirModalCobrancaWhatsApp('${v.id}')">
                                 📱 Cobrar via WhatsApp
                             </button>
                         </div>
@@ -6863,6 +6941,106 @@ Podemos confirmar a sua encomenda? 😊`;
             return html;
         }
         
+
+        function abrirModalCobrancaWhatsApp(vendaId) {
+            const venda = vendas.find(v => v.id === vendaId);
+            if (!venda) return;
+            
+            const status = venda.pagamento?.statusPagamento || 'pendente';
+            const jaPago = venda.pagamento?.valorPago || 0;
+            const saldo  = status === 'parcial' ? (venda.pagamento?.saldoDevedor || 0) : venda.valorTotal;
+            const dataEntrega = venda.dataEntrega ? formatarData(venda.dataEntrega) : '—';
+            
+            const nomeCliente = venda.cliente?.nome?.split(' ')[0] || 'amiga'; // primeiro nome
+            
+            const produto = venda.produtos && venda.produtos.length > 0
+                ? venda.produtos.map(p => `${p.quantidade}${p.unidade} ${p.produtoNome}`).join(', ')
+                : `${venda.quantidade}x ${venda.receitaNome}`;
+            
+            const textoCobranca = status === 'parcial'
+                ? `Oi, ${nomeCliente}! 🎂💕
+
+Tudo bem com você?
+
+Passando aqui rapidinho para te lembrar que ainda temos um saldinho aberto do seu pedido de ${produto} (entrega em ${dataEntrega}).
+
+💰 Valor pago: ${formatarMoeda(jaPago)}
+💸 Saldo restante: ${formatarMoeda(saldo)}
+
+Qualquer dúvida é só me chamar, combinado? 😊
+
+PIX: 11998383421
+Nubank / Andreia Chiullo 🏦`
+                : `Oi, ${nomeCliente}! 🎂💕
+
+Tudo bem com você?
+
+Passando aqui para te lembrar do pagamento do seu pedido de ${produto} (entrega em ${dataEntrega}).
+
+💸 Valor: ${formatarMoeda(saldo)}
+
+PIX: 11998383421
+Nubank / Andreia Chiullo 🏦
+
+Qualquer dúvida é só me chamar, tá? 🥰
+Fico no aguardo, beijinho!`;
+            
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.style.zIndex = '1500';
+            modal.innerHTML = `
+                <div style="background:white;border-radius:var(--borda-radius);padding:0;
+                    max-width:550px;width:92%;max-height:88vh;overflow:hidden;
+                    display:flex;flex-direction:column;box-shadow:var(--sombra-forte);">
+                    <div style="background:linear-gradient(135deg,#25D366 0%,#128C7E 100%);
+                        color:white;padding:18px 22px;display:flex;justify-content:space-between;align-items:center;">
+                        <h3 style="margin:0;">💬 Lembrete de Pagamento</h3>
+                        <button onclick="this.closest('.modal-overlay').remove()"
+                            style="background:rgba(255,255,255,0.2);border:none;color:white;
+                            width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:18px;">×</button>
+                    </div>
+                    <div style="padding:20px;overflow-y:auto;flex:1;">
+                        <div style="background:#e7f8ee;padding:10px 14px;border-radius:var(--borda-radius);
+                            border-left:4px solid #25D366;margin-bottom:12px;font-size:13px;">
+                            😊 Mensagem simpática e amigável — sem constranger o cliente!
+                        </div>
+                        <textarea id="texto-cobranca-wa" style="width:100%;height:280px;border:1px solid var(--cor-borda);
+                            border-radius:var(--borda-radius);padding:12px;font-size:14px;resize:vertical;
+                            font-family:inherit;line-height:1.6;">${textoCobranca}</textarea>
+                    </div>
+                    <div style="padding:15px 20px;border-top:1px solid var(--cor-borda);display:flex;gap:10px;">
+                        <button class="btn btn-success" style="flex:1;" onclick="copiarTextoCobranca()">
+                            📋 Copiar
+                        </button>
+                        <button class="btn btn-primary" style="flex:1;" onclick="enviarCobrancaWhatsApp('${venda.cliente?.telefone || ''}')">
+                            💬 Enviar WhatsApp
+                        </button>
+                        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">✕</button>
+                    </div>
+                </div>
+            `;
+            modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
+            document.body.appendChild(modal);
+        }
+        
+        function copiarTextoCobranca() {
+            const textarea = document.getElementById('texto-cobranca-wa');
+            if (!textarea) return;
+            textarea.select();
+            navigator.clipboard.writeText(textarea.value)
+                .then(() => mostrarToast('Texto copiado! Cole no WhatsApp 📱', 'success'))
+                .catch(() => { document.execCommand('copy'); mostrarToast('Copiado!', 'success'); });
+        }
+        
+        function enviarCobrancaWhatsApp(telefone) {
+            const textarea = document.getElementById('texto-cobranca-wa');
+            const texto = textarea ? textarea.value : '';
+            const tel = telefone.replace(/\D/g, '');
+            if (!tel) { mostrarToast('Telefone do cliente não cadastrado', 'warning'); return; }
+            const url = `https://wa.me/55${tel}?text=${encodeURIComponent(texto)}`;
+            window.open(url, '_blank');
+        }
+
         function registrarPagamentoParcialDivida(vendaId) {
             const venda = vendas.find(v => v.id === vendaId);
             if (!venda) return;
@@ -11420,6 +11598,19 @@ Podemos confirmar a sua encomenda? 😊`;
                 exemplo: { titulo: '📌 Dica', texto: 'O valor total do estoque no topo te diz quanto você tem imobilizado em ingredientes. Útil para controle de capital de giro.' }
             },
 
+            vendas_dividas: {
+                titulo: '💸 Controle de Dívidas',
+                intro: 'Aqui você acompanha todos os clientes com pagamento pendente ou parcial, e pode agir rapidamente para receber.',
+                passos: [
+                    { icone: '🔴', titulo: 'Não pago', desc: 'Venda registrada mas o cliente ainda não pagou nada. Use "✅ Marcar Pago" quando receber.' },
+                    { icone: '🟡', titulo: 'Parcialmente pago', desc: 'Cliente pagou uma entrada. O saldo devedor aparece em destaque.' },
+                    { icone: '💰', titulo: 'Recebeu Parte', desc: 'Registre um recebimento parcial. O sistema atualiza o saldo devedor automaticamente.' },
+                    { icone: '📱', titulo: 'Cobrar via WhatsApp', desc: 'Envia uma mensagem simpática e amigável lembrando do pagamento — sem constranger o cliente.' }
+                ],
+                dica: '💡 Vendas pagas aparecem automaticamente nos 5 caixas financeiros. Enquanto estiver pendente, não entra no Financeiro.',
+                exemplo: { titulo: '📌 Fluxo correto', texto: 'Maria entrou, não pagou. Aparece aqui como Não Pago. Você clica "📱 Cobrar". Ela paga. Você clica "✅ Marcar Pago" e o valor vai para os caixas automaticamente.' }
+            },
+            
             estoque_compras: {
                 titulo: '🛒 Lista de Compras',
                 intro: 'Tudo que precisa repor, em ordem de urgência. O sistema calcula a quantidade sugerida e o custo estimado.',
@@ -11520,16 +11711,25 @@ Podemos confirmar a sua encomenda? 😊`;
          */
         // Mapa de sub-aba → chave de ajuda específica
         const AJUDA_SUBABAS = {
+            // Materiais
             'tab-listar-materiais':   'materiais_lista',
             'tab-adicionar-material': 'materiais_adicionar',
-            'tab-listar-sub-receitas':'sub_receitas_lista',
-            'tab-nova-sub-receita':   'sub_receitas_nova',
+            // Sub-Receitas
+            'tab-listar-sub':         'sub_receitas_lista',
+            'tab-adicionar-sub':      'sub_receitas_nova',
+            // Produtos
             'tab-listar-produtos':    'produtos_lista',
-            'tab-novo-produto':       'produtos_novo',
-            'tab-historico-vendas':   'vendas_historico',
+            'tab-adicionar-produto':  'produtos_novo',
+            // Vendas
+            'tab-listar-vendas':      'vendas_historico',
             'tab-nova-venda':         'vendas_nova',
+            'tab-dividas-clientes':   'vendas_dividas',
+            // Estoque
             'tab-visao-geral':        'estoque_visao',
             'tab-lista-compras':      'estoque_compras',
+            // Financeiro
+            'tab-custos-fixos':       'configuracoes',
+            'tab-precificacao':       'configuracoes',
         };
 
         function injetarBotaoAjuda(pageId, chaveAjuda) {
