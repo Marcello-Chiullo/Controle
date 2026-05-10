@@ -6509,8 +6509,8 @@
                 <h2>📦 Gestão de Estoque</h2>
                 <div class="tab-buttons">
                     <button class="tab-button" onclick="carregarPaginaEstoque()">📦 Visão Geral</button>
+                    <button class="tab-button active">⚙️ Mínimos</button>
                     <button class="tab-button" onclick="carregarPaginaEstoqueAba('lista-compras')">🛒 Lista de Compras</button>
-                    <button class="tab-button active">⚙️ Estoques Mínimos</button>
                 </div>
                 <div class="card">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px;">
@@ -6582,15 +6582,17 @@
             `;
             
             page.innerHTML = tabHTML;
+            injetarBotaoAjuda('estoque-page', 'estoque');
         }
         
         function salvarMinimoMaterial(materialId, valor) {
             const mat = materiais.find(m => m.id === materialId);
             if (!mat) return;
             mat.estoqueMinimo = parseFloat(valor) || 0;
-            salvarLocalStorage();
-            sincronizarComNuvem();
+            salvarLocalStorage(); // Salva localmente, sem recarregar tela
             mostrarToast(`Mínimo de "${mat.nome}" atualizado!`, 'success');
+            // Sincroniza em background sem modal de loading
+            database.ref(`usuarios/${getUsuarioAtual().replace(/\./g,'_')}/materiais`).set(materiais).catch(()=>{});
         }
         
         function salvarTodosMinimos() {
@@ -6599,8 +6601,10 @@
                 if (input) m.estoqueMinimo = parseFloat(input.value) || 0;
             });
             salvarLocalStorage();
-            sincronizarComNuvem();
-            mostrarToast('Todos os mínimos salvos!', 'success');
+            mostrarToast('Todos os mínimos salvos! Sincronizando...', 'success');
+            database.ref(`usuarios/${getUsuarioAtual().replace(/\./g,'_')}/materiais`).set(materiais)
+                .then(() => mostrarToast('Mínimos sincronizados com a nuvem ✅', 'success'))
+                .catch(() => mostrarToast('Salvos localmente (sem internet)', 'warning'));
         }
         
         function aplicarTodosSugeridos() {
@@ -6625,6 +6629,92 @@
         /**
          * GERA NÚMERO DE VENDA SEQUENCIAL
          */
+
+        // ====================================
+        // CONFIRMAÇÃO DE PEDIDO (WhatsApp)
+        // ====================================
+        
+        function gerarTextoConfirmacaoPedido(venda) {
+            const produtos = venda.produtos && venda.produtos.length > 0
+                ? venda.produtos.map(p => `• ${p.quantidade}${p.unidade} ${p.produtoNome} — ${formatarMoeda(p.subtotal)}`).join('\n')
+                : `• ${venda.quantidade}x ${venda.receitaNome} — ${formatarMoeda(venda.valorTotal)}`;
+            
+            const dataEntrega = venda.dataEntrega ? formatarData(venda.dataEntrega) : '—';
+            const horario = venda.horaEntrega ? ` às ${venda.horaEntrega}` : '';
+            const formaPag = venda.pagamento?.formaPagamento || 'A combinar';
+            const parcelas = venda.pagamento?.parcelas > 1 ? ` em ${venda.pagamento.parcelas}x` : '';
+            
+            return `Olá, ${venda.cliente?.nome || ''}! 🎂
+
+Seu pedido foi registrado com sucesso! Seguem os detalhes:
+
+${produtos}
+
+📅 Data de entrega: ${dataEntrega}${horario}
+💰 Valor total: ${formatarMoeda(venda.valorTotal)}
+💳 Pagamento: ${formaPag}${parcelas}
+
+PIX: 11998383421
+Nubank / Andreia Chiullo 🏦
+
+O pagamento deverá ser realizado até 1 dia antes da data do evento, ou poderá ser dado uma entrada com o restante no dia da entrega. Para pagamento no cartão, consultar taxa da maquininha.
+
+Podemos confirmar a sua encomenda? 😊`;
+        }
+        
+        function abrirModalConfirmacaoPedido(vendaId) {
+            const venda = vendas.find(v => v.id === vendaId);
+            if (!venda) return;
+            
+            const texto = gerarTextoConfirmacaoPedido(venda);
+            
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.style.zIndex = '1500';
+            modal.innerHTML = `
+                <div style="background:white;border-radius:var(--borda-radius);padding:0;
+                    max-width:600px;width:92%;max-height:90vh;overflow:hidden;
+                    display:flex;flex-direction:column;box-shadow:var(--sombra-forte);">
+                    <div style="background:linear-gradient(135deg,#25D366 0%,#128C7E 100%);
+                        color:white;padding:18px 22px;display:flex;justify-content:space-between;align-items:center;">
+                        <h3 style="margin:0;">📱 Confirmação de Pedido</h3>
+                        <button onclick="this.closest('.modal-overlay').remove()"
+                            style="background:rgba(255,255,255,0.2);border:none;color:white;
+                            width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:18px;">×</button>
+                    </div>
+                    <div style="padding:20px;overflow-y:auto;flex:1;">
+                        <p style="font-size:13px;color:var(--cor-texto-claro);margin-bottom:12px;">
+                            Copie o texto abaixo e envie para o cliente via WhatsApp:
+                        </p>
+                        <textarea id="texto-confirmacao" style="width:100%;height:320px;border:1px solid var(--cor-borda);
+                            border-radius:var(--borda-radius);padding:12px;font-size:14px;resize:vertical;
+                            font-family:inherit;line-height:1.6;">${texto}</textarea>
+                    </div>
+                    <div style="padding:15px 20px;border-top:1px solid var(--cor-borda);display:flex;gap:10px;">
+                        <button class="btn btn-success" style="flex:1;" onclick="copiarTextoConfirmacao()">
+                            📋 Copiar Texto
+                        </button>
+                        <a href="https://wa.me/55${venda.cliente?.telefone?.replace(/\D/g,'') || ''}" 
+                            target="_blank" class="btn btn-primary" style="flex:1;text-decoration:none;text-align:center;">
+                            💬 Abrir WhatsApp
+                        </a>
+                        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">✕</button>
+                    </div>
+                </div>
+            `;
+            modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+            document.body.appendChild(modal);
+        }
+        
+        function copiarTextoConfirmacao() {
+            const textarea = document.getElementById('texto-confirmacao');
+            if (!textarea) return;
+            textarea.select();
+            navigator.clipboard.writeText(textarea.value)
+                .then(() => mostrarToast('Texto copiado! Cole no WhatsApp 📱', 'success'))
+                .catch(() => { document.execCommand('copy'); mostrarToast('Texto copiado!', 'success'); });
+        }
+
         function gerarNumeroVenda() {
             const ano = new Date().getFullYear();
             const vendasAno = vendas.filter(v => {
@@ -8058,6 +8148,9 @@
                             <button class="btn btn-primary btn-sm" onclick="verDetalhesVenda('${venda.id}')">
                                 👁️ Ver Detalhes
                             </button>
+                            <button class="btn btn-success btn-sm" onclick="abrirModalConfirmacaoPedido('${venda.id}')" title="Gerar mensagem WhatsApp">
+                                📋 Confirmação
+                            </button>
                             
                             ${!venda.cancelada ? `
                                 ${venda.statusEntrega !== 'entregue' ? `
@@ -8464,6 +8557,9 @@
                     carregarPaginaVendas();
                     
                     mostrarToast(`Venda ${novaVenda.numero} registrada com sucesso!`, 'success');
+                    
+                    // Oferecer confirmação para WhatsApp
+                    setTimeout(() => abrirModalConfirmacaoPedido(novaVenda.id), 600);
                     
                 } catch (erro) {
                     toggleModal(false);
@@ -11348,23 +11444,7 @@
             setEl('sim-exemplo',  formatarMoeda(10 * mult));
         }
         
-        function abrirModalTransferencia(tipo, valor) {
-            const nomes = {reserva:'Reserva de Emergência',reinvestimento:'Reinvestimento',imposto:'Imposto',proLabore:'Pró-labore'};
-            const modal = document.createElement('div');
-            modal.className = 'modal-overlay';
-            modal.innerHTML = `
-                <div class="modal" style="max-width:400px;">
-                    <h3>✅ Confirmar Transferência</h3>
-                    <p>Registrar transferência de <strong>${formatarMoeda(valor)}</strong> para o cofrinho <strong>${nomes[tipo]||tipo}</strong>?</p>
-                    <div style="display:flex;gap:10px;margin-top:20px;">
-                        <button class="btn btn-success" onclick="registrarTransferenciaCofrinho('${tipo}',${valor});this.closest('.modal-overlay').remove();">
-                            ✅ Confirmar
-                        </button>
-                        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancelar</button>
-                    </div>
-                </div>`;
-            document.body.appendChild(modal);
-        }
+// abrirModalTransferencia consolidada acima
         
                 function configurarFormularioMeta() {
             const form = document.getElementById('form-meta-producao');
