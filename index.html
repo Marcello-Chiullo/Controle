@@ -6634,10 +6634,51 @@
         // CONFIRMAÇÃO DE PEDIDO (WhatsApp)
         // ====================================
         
+
+        function abrirWhatsApp(telefone) {
+            const textarea = document.getElementById('texto-confirmacao');
+            const texto = textarea ? textarea.value : '';
+            const tel = telefone.replace(/\D/g, '');
+            if (!tel) {
+                mostrarToast('Telefone do cliente não cadastrado', 'warning');
+                return;
+            }
+            const url = `https://wa.me/55${tel}?text=${encodeURIComponent(texto)}`;
+            window.open(url, '_blank');
+        }
+
         function gerarTextoConfirmacaoPedido(venda) {
-            const produtos = venda.produtos && venda.produtos.length > 0
-                ? venda.produtos.map(p => `• ${p.quantidade}${p.unidade} ${p.produtoNome} — ${formatarMoeda(p.subtotal)}`).join('\n')
-                : `• ${venda.quantidade}x ${venda.receitaNome} — ${formatarMoeda(venda.valorTotal)}`;
+            // Agrupar produtos: embalagens/caixas somam no bolo principal
+            let produtos = '';
+            if (venda.produtos && venda.produtos.length > 0) {
+                const EMBALAGEM_KEYWORDS = ['caixa','embalagem','box','fita','tag','lacinho','saco'];
+                const BOLO_KEYWORDS = ['bolo','cake'];
+                const isBolo = n => BOLO_KEYWORDS.some(k => n.toLowerCase().includes(k));
+                const isEmbalagem = n => EMBALAGEM_KEYWORDS.some(k => n.toLowerCase().includes(k));
+                
+                // Separar bolos, embalagens e outros
+                const bolos = venda.produtos.filter(p => isBolo(p.produtoNome));
+                const embalagens = venda.produtos.filter(p => isEmbalagem(p.produtoNome) && !isBolo(p.produtoNome));
+                const outros = venda.produtos.filter(p => !isBolo(p.produtoNome) && !isEmbalagem(p.produtoNome));
+                
+                const linhas = [];
+                
+                // Bolos: somar embalagens junto se houver 1 bolo
+                if (bolos.length === 1 && embalagens.length > 0) {
+                    const totalBolo = bolos[0].subtotal + embalagens.reduce((s,e)=>s+e.subtotal,0);
+                    linhas.push(`• ${bolos[0].quantidade}${bolos[0].unidade} ${bolos[0].produtoNome} — ${formatarMoeda(totalBolo)}`);
+                } else {
+                    bolos.forEach(p => linhas.push(`• ${p.quantidade}${p.unidade} ${p.produtoNome} — ${formatarMoeda(p.subtotal)}`));
+                    embalagens.forEach(p => linhas.push(`• ${p.quantidade}${p.unidade} ${p.produtoNome} — ${formatarMoeda(p.subtotal)}`));
+                }
+                
+                // Outros (docinhos, etc) sempre separados
+                outros.forEach(p => linhas.push(`• ${p.quantidade}${p.unidade} ${p.produtoNome} — ${formatarMoeda(p.subtotal)}`));
+                
+                produtos = linhas.join('\n');
+            } else {
+                produtos = `• ${venda.quantidade}x ${venda.receitaNome} — ${formatarMoeda(venda.valorTotal)}`;
+            }
             
             const dataEntrega = venda.dataEntrega ? formatarData(venda.dataEntrega) : '—';
             const horario = venda.horaEntrega ? ` às ${venda.horaEntrega}` : '';
@@ -6694,10 +6735,9 @@ Podemos confirmar a sua encomenda? 😊`;
                         <button class="btn btn-success" style="flex:1;" onclick="copiarTextoConfirmacao()">
                             📋 Copiar Texto
                         </button>
-                        <a href="https://wa.me/55${venda.cliente?.telefone?.replace(/\D/g,'') || ''}" 
-                            target="_blank" class="btn btn-primary" style="flex:1;text-decoration:none;text-align:center;">
-                            💬 Abrir WhatsApp
-                        </a>
+                        <button class="btn btn-primary" style="flex:1;" onclick="abrirWhatsApp('${venda.cliente?.telefone || ''}')">
+                            💬 Enviar WhatsApp
+                        </button>
                         <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">✕</button>
                     </div>
                 </div>
@@ -6713,6 +6753,127 @@ Podemos confirmar a sua encomenda? 😊`;
             navigator.clipboard.writeText(textarea.value)
                 .then(() => mostrarToast('Texto copiado! Cole no WhatsApp 📱', 'success'))
                 .catch(() => { document.execCommand('copy'); mostrarToast('Texto copiado!', 'success'); });
+        }
+
+
+        function renderizarListaDividas() {
+            const vendasComDivida = vendas.filter(v => {
+                if (v.cancelada) return false;
+                const status = v.pagamento?.statusPagamento || 'pendente';
+                const saldo  = v.pagamento?.saldoDevedor || 0;
+                return status === 'parcial' || (status === 'pendente' && v.valorTotal > 0) || saldo > 0;
+            }).sort((a, b) => new Date(a.dataEntrega) - new Date(b.dataEntrega));
+            
+            if (vendasComDivida.length === 0) {
+                return `<div style="text-align:center;padding:40px;color:var(--cor-texto-claro);">
+                    <div style="font-size:48px;margin-bottom:10px;">✅</div>
+                    <p><strong>Sem dívidas!</strong> Todos os pagamentos estão em dia.</p>
+                </div>`;
+            }
+            
+            const totalDividas = vendasComDivida.reduce((s, v) => {
+                const status = v.pagamento?.statusPagamento || 'pendente';
+                if (status === 'parcial') return s + (v.pagamento?.saldoDevedor || 0);
+                return s + v.valorTotal;
+            }, 0);
+            
+            let html = `
+                <div style="background:var(--cor-erro-claro);padding:12px 16px;border-radius:var(--borda-radius);
+                    margin-bottom:20px;border-left:4px solid var(--cor-erro);display:flex;justify-content:space-between;align-items:center;">
+                    <span>💸 <strong>${vendasComDivida.length} cliente(s)</strong> com pagamento pendente</span>
+                    <strong style="color:var(--cor-erro);font-size:18px;">${formatarMoeda(totalDividas)} a receber</strong>
+                </div>
+            `;
+            
+            vendasComDivida.forEach(v => {
+                const status = v.pagamento?.statusPagamento || 'pendente';
+                const saldo = status === 'parcial' ? (v.pagamento?.saldoDevedor || 0) : v.valorTotal;
+                const valorPago = v.pagamento?.valorPago || 0;
+                const corStatus = status === 'parcial' ? 'var(--cor-aviso)' : 'var(--cor-erro)';
+                const labelStatus = status === 'parcial' ? '🟡 Parcialmente pago' : '🔴 Não pago';
+                
+                html += `
+                    <div class="card" style="margin-bottom:12px;border-left:4px solid ${corStatus};">
+                        <div style="display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;gap:10px;">
+                            <div>
+                                <strong style="font-size:16px;">👤 ${v.cliente?.nome || '—'}</strong>
+                                ${v.cliente?.telefone ? `<span style="color:var(--cor-texto-claro);margin-left:10px;font-size:13px;">📞 ${v.cliente.telefone}</span>` : ''}
+                                <div style="font-size:13px;color:var(--cor-texto-claro);margin-top:4px;">
+                                    ${v.numero} | Entrega: ${formatarData(v.dataEntrega)}
+                                </div>
+                                <div style="margin-top:6px;">
+                                    <span style="color:${corStatus};font-weight:bold;font-size:13px;">${labelStatus}</span>
+                                </div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:13px;color:var(--cor-texto-claro);">Total: ${formatarMoeda(v.valorTotal)}</div>
+                                ${status === 'parcial' ? `<div style="font-size:13px;color:var(--cor-sucesso);">Pago: ${formatarMoeda(valorPago)}</div>` : ''}
+                                <div style="font-size:22px;font-weight:bold;color:${corStatus};">
+                                    Deve: ${formatarMoeda(saldo)}
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+                            <button class="btn btn-success btn-sm" onclick="confirmarPagamentoERecarregar('${v.id}')">
+                                ✅ Marcar Pago
+                            </button>
+                            ${status === 'parcial' ? '' : `
+                            <button class="btn btn-warning btn-sm" onclick="registrarPagamentoParcialDivida('${v.id}')">
+                                💰 Recebeu Parte
+                            </button>`}
+                            <button class="btn btn-primary btn-sm" onclick="abrirModalConfirmacaoPedido('${v.id}')">
+                                📱 Cobrar via WhatsApp
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            return html;
+        }
+        
+        function registrarPagamentoParcialDivida(vendaId) {
+            const venda = vendas.find(v => v.id === vendaId);
+            if (!venda) return;
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div style="background:white;border-radius:var(--borda-radius);padding:25px;max-width:380px;width:90%;box-shadow:var(--sombra-forte);">
+                    <h3>💰 Registrar Pagamento Parcial</h3>
+                    <p style="color:var(--cor-texto-claro);margin-bottom:15px;">
+                        Total da venda: <strong>${formatarMoeda(venda.valorTotal)}</strong><br>
+                        Já pago: <strong>${formatarMoeda(venda.pagamento?.valorPago || 0)}</strong>
+                    </p>
+                    <div class="form-group">
+                        <label>Valor recebido agora (R$):</label>
+                        <input type="number" id="parcial-valor" class="form-control" min="0.01" step="0.01" autofocus>
+                    </div>
+                    <div style="display:flex;gap:10px;margin-top:20px;">
+                        <button class="btn btn-success" style="flex:1;" onclick="confirmarParcialDivida('${vendaId}')">✅ Confirmar</button>
+                        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">❌</button>
+                    </div>
+                </div>`;
+            modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
+            document.body.appendChild(modal);
+        }
+        
+        function confirmarParcialDivida(vendaId) {
+            const venda = vendas.find(v => v.id === vendaId);
+            const novoValor = parseFloat(document.getElementById('parcial-valor')?.value) || 0;
+            if (!novoValor || novoValor <= 0) { mostrarToast('Informe o valor recebido','warning'); return; }
+            const totalPago = (venda.pagamento?.valorPago || 0) + novoValor;
+            const saldo = Math.max(venda.valorTotal - totalPago, 0);
+            venda.pagamento.valorPago = totalPago;
+            venda.pagamento.saldoDevedor = saldo;
+            venda.pagamento.statusPagamento = saldo <= 0 ? 'pago' : 'parcial';
+            if (saldo <= 0) {
+                venda.pagamento.dataPagamento = new Date().toISOString();
+                if (!venda.lancamentosCriados) criarEntradasFinanceiras(venda);
+            }
+            salvarLocalStorage(); sincronizarComNuvem();
+            document.querySelector('.modal-overlay')?.remove();
+            mostrarToast(saldo <= 0 ? 'Pago integralmente! ✅' : `Parcial registrado. Falta ${formatarMoeda(saldo)}`, 'success');
+            carregarPaginaVendas();
         }
 
         function gerarNumeroVenda() {
@@ -7240,7 +7401,17 @@ Podemos confirmar a sua encomenda? 😊`;
                 <div class="tab-buttons">
                     <button class="tab-button active" data-tab="listar-vendas">📋 Histórico</button>
                     <button class="tab-button" data-tab="nova-venda">➕ Nova Venda</button>
-
+                    <button class="tab-button" data-tab="dividas-clientes">💸 Dívidas</button>
+                </div>
+                
+                <!-- TAB: DÍVIDAS -->
+                <div class="tab-content" id="tab-dividas-clientes">
+                    <div class="card">
+                        <h3>💸 Controle de Dívidas</h3>
+                        <div id="lista-dividas-content">
+                            ${renderizarListaDividas()}
+                        </div>
+                    </div>
                 </div>
                 
                 <!-- TAB: Listar Vendas -->
@@ -8148,8 +8319,8 @@ Podemos confirmar a sua encomenda? 😊`;
                             <button class="btn btn-primary btn-sm" onclick="verDetalhesVenda('${venda.id}')">
                                 👁️ Ver Detalhes
                             </button>
-                            <button class="btn btn-success btn-sm" onclick="abrirModalConfirmacaoPedido('${venda.id}')" title="Gerar mensagem WhatsApp">
-                                📋 Confirmação
+                            <button class="btn btn-success btn-sm" onclick="abrirModalConfirmacaoPedido('${venda.id}')" title="Gerar mensagem de pedido para o cliente">
+                                📱 Msg. Cliente
                             </button>
                             
                             ${!venda.cancelada ? `
@@ -8343,12 +8514,10 @@ Podemos confirmar a sua encomenda? 😊`;
                     if (tabContent) {
                         tabContent.classList.add('active');
                         
-                        // Se for aba de resumo, recarregar
-                        if (tabId === 'resumo-vendas') {
-                            const resumoDiv = tabContent.querySelector('.card');
-                            if (resumoDiv) {
-                                resumoDiv.innerHTML = '<h3>📊 Resumo de Vendas</h3>' + renderizarResumoVendas();
-                            }
+                        // Recarregar conteúdo dinâmico das abas
+                        if (tabId === 'dividas-clientes') {
+                            const div = tabContent.querySelector('#lista-dividas-content');
+                            if (div) div.innerHTML = renderizarListaDividas();
                         }
                     }
                 });
@@ -8386,21 +8555,27 @@ Podemos confirmar a sua encomenda? 😊`;
             const taxa = parseFloat(document.getElementById('venda-taxa-maquininha')?.value) || 0;
             const parcelas = parseInt(document.getElementById('venda-parcelas')?.value) || 1;
             const forma = document.getElementById('venda-forma-pagamento')?.value || '';
-            const totalVenda = produtosVendaTemp.reduce((s,p) => s + (p.precoCustomizado * p.quantidade), 0);
+            
+            // Base = produtos + frete + decoração - desconto (valor FINAL que o cliente paga)
+            const valorProdutos = produtosVendaTemp.reduce((s,p) => s + ((p.precoCustomizado || 0) * p.quantidade), 0);
+            const frete     = parseFloat(document.getElementById('venda-frete')?.value) || 0;
+            const decoracao = parseFloat(document.getElementById('venda-decoracao')?.value) || 0;
+            const desconto  = parseFloat(document.getElementById('venda-desconto')?.value) || 0;
+            const valorBase = valorProdutos + frete + decoracao - desconto;
 
-            if (totalVenda <= 0 || taxa <= 0) { infoDiv.style.display = 'none'; return; }
+            if (valorBase <= 0 || taxa <= 0) { infoDiv.style.display = 'none'; return; }
 
-            const valorCliente = totalVenda * (1 + taxa / 100);
+            const valorCliente = valorBase * (1 + taxa / 100);
             const vlrParcela   = valorCliente / parcelas;
             const isCredito    = forma === 'Cartão Crédito';
 
             infoDiv.style.display = '';
             infoDiv.innerHTML = `
-                <strong>💳 Valor para o cliente:</strong> ${formatarMoeda(valorCliente)}
-                ${isCredito && parcelas > 1 ? ` (${parcelas}x de ${formatarMoeda(vlrParcela)})` : ''}
+                <strong>💳 Valor cobrado do cliente:</strong> ${formatarMoeda(valorCliente)}
+                ${isCredito && parcelas > 1 ? ` — ${parcelas}x de ${formatarMoeda(vlrParcela)}` : ''}
                 <br>
                 <span style="color:var(--cor-texto-claro);">
-                    Você recebe: ${formatarMoeda(totalVenda)} | Taxa adicional: +${formatarMoeda(valorCliente - totalVenda)}
+                    Base: ${formatarMoeda(valorBase)} | Taxa +${taxa}%: +${formatarMoeda(valorCliente - valorBase)} | Você recebe: ${formatarMoeda(valorBase)}
                 </span>
             `;
         }
