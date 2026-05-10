@@ -6685,11 +6685,36 @@
             const formaPag = venda.pagamento?.formaPagamento || 'A combinar';
             const parcelas = venda.pagamento?.parcelas > 1 ? ` em ${venda.pagamento.parcelas}x` : '';
             
+            // Linha de decoração
+            const nomesDecor = {
+                simples_chantilly: '🎂 Decoração simples de chantilly',
+                topo_simples: '⭐ Topo simples',
+                topo_3d: '🏆 Topo 3D',
+                doces_frutas: '🍓 Decoração com docinhos e frutas'
+            };
+            const decorTipo = venda.decoracaoTipo || '';
+            const decorObs  = venda.decoracaoObs  || '';
+            const decorValor = parseFloat(venda.custoDireto?.decoracao || 0);
+            let linhaDecor = '';
+            if (decorTipo && decorTipo !== 'simples_chantilly') {
+                linhaDecor = `\n🎨 Decoração: ${nomesDecor[decorTipo] || decorTipo}`;
+                if (decorObs) linhaDecor += ` — ${decorObs}`;
+                linhaDecor += decorValor > 0 ? ` (+${formatarMoeda(decorValor)})` : '';
+            } else if (decorTipo === 'simples_chantilly') {
+                linhaDecor = '\n🎨 Decoração: Chantilly simples (incluso)';
+            }
+            
+            // Frete e desconto
+            const frete = parseFloat(venda.custoDireto?.frete || 0);
+            const desconto = parseFloat(venda.desconto || 0);
+            let linhaFrete = frete > 0 ? `\n🚗 Frete: ${formatarMoeda(frete)}` : '';
+            let linhaDesconto = desconto > 0 ? `\n🏷️ Desconto aplicado: -${formatarMoeda(desconto)}` : '';
+            
             return `Olá, ${venda.cliente?.nome || ''}! 🎂
 
 Seu pedido foi registrado com sucesso! Seguem os detalhes:
 
-${produtos}
+${produtos}${linhaDecor}${linhaFrete}${linhaDesconto}
 
 📅 Data de entrega: ${dataEntrega}${horario}
 💰 Valor total: ${formatarMoeda(venda.valorTotal)}
@@ -6698,7 +6723,7 @@ ${produtos}
 PIX: 11998383421
 Nubank / Andreia Chiullo 🏦
 
-O pagamento deverá ser realizado até 1 dia antes da data do evento, ou poderá ser dado uma entrada com o restante no dia da entrega. Para pagamento no cartão, consultar taxa da maquininha.
+⚠️ O pagamento deverá ser realizado até 1 dia antes da data do evento. Pode ser dado uma entrada e o restante pago na entrega. Para pagamento no cartão, consultar taxa da maquininha.
 
 Podemos confirmar a sua encomenda? 😊`;
         }
@@ -6724,8 +6749,14 @@ Podemos confirmar a sua encomenda? 😊`;
                             width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:18px;">×</button>
                     </div>
                     <div style="padding:20px;overflow-y:auto;flex:1;">
+                        <div style="background:#e7f8ee;padding:10px 14px;border-radius:var(--borda-radius);
+                            border-left:4px solid #25D366;margin-bottom:12px;font-size:13px;">
+                            📱 <strong>Para enviar do WhatsApp certo:</strong> 
+                            abra o app no celular com o número da Andreia, clique em "Enviar WhatsApp" abaixo 
+                            (abre a conversa com o cliente) ou copie e cole manualmente.
+                        </div>
                         <p style="font-size:13px;color:var(--cor-texto-claro);margin-bottom:12px;">
-                            Copie o texto abaixo e envie para o cliente via WhatsApp:
+                            Edite a mensagem se necessário e envie para o cliente:
                         </p>
                         <textarea id="texto-confirmacao" style="width:100%;height:320px;border:1px solid var(--cor-borda);
                             border-radius:var(--borda-radius);padding:12px;font-size:14px;resize:vertical;
@@ -7108,6 +7139,10 @@ Podemos confirmar a sua encomenda? 😊`;
                     horaEntrega: dados.horaEntrega || '',
                     statusEntrega: 'pendente',
                     
+                    // DECORAÇÃO
+                    decoracaoTipo: dados.decoracaoTipo || '',
+                    decoracaoObs:  dados.decoracaoObs  || '',
+                    
                     // PAGAMENTO
                     pagamento: {
                         formaPagamento: dados.formaPagamento || 'Dinheiro',
@@ -7188,6 +7223,24 @@ Podemos confirmar a sua encomenda? 😊`;
 
                 // 10. ADICIONAR VENDA
                 vendas.push(novaVenda);
+                
+                // 10.5 ADICIONAR INGREDIENTES DA DECORAÇÃO ao snapshot
+                if (dados.decoracaoIngredientes && dados.decoracaoIngredientes.length > 0) {
+                    novaVenda.decoracaoIngredientes = dados.decoracaoIngredientes;
+                    novaVenda.decoracaoTipo = dados.decoracaoTipo || '';
+                    novaVenda.decoracaoObs  = dados.decoracaoObs  || '';
+                    // Adicionar ao ingredientesSnapshot para descontar do estoque
+                    dados.decoracaoIngredientes.forEach(ing => {
+                        const existente = ingredientesConsolidados.find(i => i.materialId === ing.materialId);
+                        if (existente) { existente.quantidade += ing.quantidade; }
+                        else { ingredientesConsolidados.push({
+                            materialId: ing.materialId, materialNome: ing.materialNome,
+                            quantidade: ing.quantidade, unidadeMedida: ing.unidade,
+                            origem: 'Decoração'
+                        }); }
+                    });
+                    novaVenda.ingredientesSnapshot = ingredientesConsolidados;
+                }
                 
                 // 11. RECALCULAR ESTOQUE (irá subtrair automaticamente)
                 estoque = calcularEstoqueCompleto();
@@ -7760,40 +7813,107 @@ Podemos confirmar a sua encomenda? 😊`;
                             </h4>
                             
                             <div class="notification notification-info" style="margin-bottom: 15px;">
-                                ℹ️ <strong>Importante:</strong> Frete e Decoração são cobrados do cliente. 
-                                Brindes são descontados do lucro (não cobrados do cliente).
+                                ℹ️ <strong>Frete e Decoração</strong> são cobrados do cliente (somam no total). 
+                                <strong>Brindes</strong> saem do seu lucro (não cobrados do cliente).
                             </div>
                             
+                            <!-- FRETE + DESCONTO -->
                             <div class="form-row">
                                 <div class="form-col">
                                     <div class="form-group">
-                                        <label for="venda-frete">Frete (cobrado do cliente):</label>
+                                        <label for="venda-frete">🚗 Frete (cobrado do cliente):</label>
                                         <input type="number" id="venda-frete" class="form-control" 
-                                            min="0" step="0.01" value="0">
+                                            min="0" step="0.01" value="0" oninput="atualizarResumoFinanceiroVenda(); calcularValorClienteCartao()">
                                     </div>
                                 </div>
                                 <div class="form-col">
                                     <div class="form-group">
-                                        <label for="venda-decoracao">Decoração (cobrada do cliente):</label>
-                                        <input type="number" id="venda-decoracao" class="form-control" 
-                                            min="0" step="0.01" value="0">
-                                    </div>
-                                </div>
-                                <div class="form-col">
-                                    <div class="form-group">
-                                        <label for="venda-brindes">Brindes (R$):</label>
+                                        <label for="venda-brindes">🎁 Brindes (custo seu):</label>
                                         <input type="number" id="venda-brindes" class="form-control" 
                                             min="0" step="0.01" value="0">
-                                        <small style="color: var(--cor-texto-claro);">Custo de brindes oferecidos</small>
+                                        <small style="color: var(--cor-texto-claro);">Sai do seu lucro, não cobra do cliente</small>
                                     </div>
                                 </div>
                                 <div class="form-col">
                                     <div class="form-group">
-                                        <label for="venda-desconto">Desconto (R$):</label>
+                                        <label for="venda-desconto">🏷️ Desconto (R$):</label>
                                         <input type="number" id="venda-desconto" class="form-control" 
-                                            min="0" step="0.01" value="0">
-                                        <small style="color: var(--cor-texto-claro);">Desconto aplicado ao cliente</small>
+                                            min="0" step="0.01" value="0" oninput="atualizarResumoFinanceiroVenda(); calcularValorClienteCartao()">
                                     </div>
+                                </div>
+                            </div>
+                            
+                            <!-- CARD DE DECORAÇÃO -->
+                            <h4 style="margin-bottom:12px;color:var(--cor-primaria);">🎨 Decoração do Bolo</h4>
+                            <input type="hidden" id="venda-decoracao" value="0">
+                            <input type="hidden" id="venda-decoracao-tipo" value="">
+                            <input type="hidden" id="venda-decoracao-obs" value="">
+                            
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:15px;">
+                                ${[
+                                    { id:'simples_chantilly', emoji:'🎂', nome:'Decoração Simples de Chantilly', valor:0, obs:false, doces:false },
+                                    { id:'topo_simples', emoji:'⭐', nome:'Topo Simples', valor:15, obs:true, doces:false },
+                                    { id:'topo_3d', emoji:'🏆', nome:'Topo 3D', valor:30, obs:true, doces:false },
+                                    { id:'doces_frutas', emoji:'🍓', nome:'Decoração com Docinhos e Frutas', valor:15, obs:true, doces:true }
+                                ].map(opt => `
+                                    <div id="decor-card-${opt.id}" 
+                                        style="border:2px solid var(--cor-borda);border-radius:var(--borda-radius);
+                                        padding:14px;cursor:pointer;transition:all 0.2s;background:white;"
+                                        onclick="selecionarDecoracao('${opt.id}', ${opt.valor}, ${opt.obs}, ${opt.doces})"
+                                        onmouseover="this.style.borderColor='var(--cor-primaria)'"
+                                        onmouseout="if(!this.classList.contains('selecionado')) this.style.borderColor='var(--cor-borda)'">
+                                        <div style="font-size:28px;margin-bottom:6px;">${opt.emoji}</div>
+                                        <div style="font-weight:600;font-size:14px;margin-bottom:4px;">${opt.nome}</div>
+                                        <div style="color:${opt.valor>0?'var(--cor-primaria)':'var(--cor-sucesso)'};font-weight:bold;">
+                                            ${opt.valor>0 ? '+ R$ '+opt.valor.toFixed(2).replace('.',',') : '✅ Grátis'}
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            
+                            <!-- Campos extras de decoração (aparecem quando selecionado) -->
+                            <div id="campos-decoracao-extras" style="display:none;background:var(--cor-secundaria-clara);
+                                padding:15px;border-radius:var(--borda-radius);margin-bottom:15px;border-left:4px solid var(--cor-primaria);">
+                                <div id="decor-nome-selecionado" style="font-weight:bold;margin-bottom:12px;color:var(--cor-primaria);"></div>
+                                
+                                <div class="form-row">
+                                    <div class="form-col">
+                                        <div class="form-group">
+                                            <label>Valor cobrado ao cliente (R$):</label>
+                                            <input type="number" id="decor-valor-editavel" class="form-control" 
+                                                min="0" step="0.01" oninput="atualizarValorDecoracao()">
+                                        </div>
+                                    </div>
+                                    <div class="form-col">
+                                        <div class="form-group">
+                                            <label>Observação / Tema:</label>
+                                            <input type="text" id="decor-observacao" class="form-control"
+                                                placeholder="Ex: Topo do Minecraft, Laço azul..."
+                                                oninput="document.getElementById('venda-decoracao-obs').value=this.value">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Ingredientes da decoração (só para docinhos/frutas) -->
+                                <div id="campos-decor-ingredientes" style="display:none;">
+                                    <h5 style="margin:10px 0;color:var(--cor-primaria);">🍬 Ingredientes da decoração:</h5>
+                                    <p style="font-size:13px;color:var(--cor-texto-claro);margin-bottom:10px;">
+                                        Adicione os docinhos e frutas usados para calcular custo e remover do estoque.
+                                    </p>
+                                    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+                                        <select id="decor-ing-material" class="form-control" style="flex:2;min-width:180px;">
+                                            <option value="">Selecione o ingrediente...</option>
+                                            ${materiais.filter(m=>!m.removed).sort((a,b)=>a.nome.localeCompare(b.nome)).map(m=>{
+                                                const preco = calcularPrecoMedioPonderado(m.nome);
+                                                return `<option value="${m.id}">${m.nome} (${formatarMoeda(preco)}/${m.unidadeMedida})</option>`;
+                                            }).join('')}
+                                        </select>
+                                        <input type="number" id="decor-ing-qtd" class="form-control" style="width:90px;" 
+                                            min="0.01" step="0.01" placeholder="Qtd">
+                                        <button type="button" class="btn btn-success" onclick="adicionarIngDecoracao()">➕</button>
+                                    </div>
+                                    <div id="lista-ing-decoracao"></div>
+                                    <div id="resumo-custo-decoracao" style="margin-top:8px;font-size:14px;"></div>
                                 </div>
                             </div>
                             
@@ -7859,7 +7979,7 @@ Podemos confirmar a sua encomenda? 😊`;
                             
                             <div style="margin-top: 25px; display: flex; gap: 10px;">
                                 <button type="submit" class="btn btn-primary">💾 Registrar Venda</button>
-                                <button type="button" class="btn btn-secondary" onclick="RascunhoManager.limpar('rascunho_venda'); localStorage.removeItem('rascunho_venda_produtos'); produtosVendaTemp=[]; renderizarProdutosVendaTemp(); atualizarResumoFinanceiroVenda(); document.getElementById('form-nova-venda').reset()">
+                                <button type="button" class="btn btn-secondary" onclick="RascunhoManager.limpar('rascunho_venda'); localStorage.removeItem('rascunho_venda_produtos'); produtosVendaTemp=[]; decoracaoIngredientes=[]; document.querySelectorAll('[id^="decor-card-"]').forEach(c=>{c.classList.remove('selecionado');c.style.borderColor='var(--cor-borda)';c.style.background='white';}); document.getElementById('campos-decoracao-extras').style.display='none'; renderizarProdutosVendaTemp(); atualizarResumoFinanceiroVenda(); document.getElementById('form-nova-venda').reset()">
                                     🔄 Limpar
                                 </button>
                             </div>
@@ -8528,6 +8648,126 @@ Podemos confirmar a sua encomenda? 😊`;
          * Configura formulário de venda
          */
 
+
+        // ====================================
+        // DECORAÇÃO DO BOLO
+        // ====================================
+        let decoracaoIngredientes = []; // ingredientes da decoração (docinhos/frutas)
+        
+        function selecionarDecoracao(id, valor, temObs, temDoces) {
+            // Remover seleção anterior
+            document.querySelectorAll('[id^="decor-card-"]').forEach(c => {
+                c.classList.remove('selecionado');
+                c.style.borderColor = 'var(--cor-borda)';
+                c.style.background = 'white';
+            });
+            
+            const card = document.getElementById('decor-card-' + id);
+            if (card) {
+                card.classList.add('selecionado');
+                card.style.borderColor = 'var(--cor-primaria)';
+                card.style.background = 'var(--cor-secundaria-clara)';
+            }
+            
+            // Salvar tipo
+            document.getElementById('venda-decoracao-tipo').value = id;
+            document.getElementById('venda-decoracao').value = valor;
+            document.getElementById('venda-decoracao-obs').value = '';
+            
+            const extras = document.getElementById('campos-decoracao-extras');
+            const nomeDiv = document.getElementById('decor-nome-selecionado');
+            
+            if (id === 'simples_chantilly') {
+                extras.style.display = 'none';
+                decoracaoIngredientes = [];
+                atualizarResumoFinanceiroVenda();
+                calcularValorClienteCartao();
+                return;
+            }
+            
+            // Mostrar campos extras
+            extras.style.display = '';
+            const nomesDecor = {
+                topo_simples: '⭐ Topo Simples',
+                topo_3d: '🏆 Topo 3D',
+                doces_frutas: '🍓 Decoração com Docinhos e Frutas'
+            };
+            nomeDiv.textContent = nomesDecor[id] || id;
+            
+            // Preencher valor editável
+            const inputValor = document.getElementById('decor-valor-editavel');
+            if (inputValor) { inputValor.value = valor; }
+            
+            // Mostrar/esconder campo de ingredientes
+            const campoIng = document.getElementById('campos-decor-ingredientes');
+            if (campoIng) campoIng.style.display = temDoces ? '' : 'none';
+            
+            if (temDoces) {
+                decoracaoIngredientes = [];
+                renderizarIngDecoracao();
+            }
+            
+            atualizarResumoFinanceiroVenda();
+            calcularValorClienteCartao();
+        }
+        
+        function atualizarValorDecoracao() {
+            const val = parseFloat(document.getElementById('decor-valor-editavel')?.value) || 0;
+            document.getElementById('venda-decoracao').value = val;
+            atualizarResumoFinanceiroVenda();
+            calcularValorClienteCartao();
+        }
+        
+        function adicionarIngDecoracao() {
+            const matId = document.getElementById('decor-ing-material')?.value;
+            const qtd = parseFloat(document.getElementById('decor-ing-qtd')?.value);
+            if (!matId) { mostrarToast('Selecione o ingrediente','warning'); return; }
+            if (!qtd || qtd <= 0) { mostrarToast('Informe a quantidade','warning'); return; }
+            const mat = materiais.find(m => m.id === matId);
+            if (!mat) return;
+            const preco = calcularPrecoMedioPonderado(mat.nome);
+            decoracaoIngredientes.push({ materialId:matId, materialNome:mat.nome, quantidade:qtd, unidade:mat.unidadeMedida, preco });
+            document.getElementById('decor-ing-material').value = '';
+            document.getElementById('decor-ing-qtd').value = '';
+            renderizarIngDecoracao();
+        }
+        
+        function removerIngDecoracao(idx) {
+            decoracaoIngredientes.splice(idx, 1);
+            renderizarIngDecoracao();
+        }
+        
+        function renderizarIngDecoracao() {
+            const lista = document.getElementById('lista-ing-decoracao');
+            const resumo = document.getElementById('resumo-custo-decoracao');
+            if (!lista) return;
+            if (decoracaoIngredientes.length === 0) {
+                lista.innerHTML = '<p style="font-size:13px;color:var(--cor-texto-claro);">Nenhum ingrediente adicionado.</p>';
+                if (resumo) resumo.innerHTML = '';
+                return;
+            }
+            let custoTotal = 0;
+            lista.innerHTML = '<table style="width:100%;font-size:13px;"><tbody>' +
+                decoracaoIngredientes.map((ing, i) => {
+                    const custo = ing.preco * ing.quantidade;
+                    custoTotal += custo;
+                    return `<tr>
+                        <td>${ing.materialNome}</td>
+                        <td>${ing.quantidade} ${ing.unidade}</td>
+                        <td>${formatarMoeda(custo)}</td>
+                        <td><button type="button" class="btn btn-danger btn-sm" onclick="removerIngDecoracao(${i})">🗑️</button></td>
+                    </tr>`;
+                }).join('') + '</tbody></table>';
+            const valorCobrado = parseFloat(document.getElementById('decor-valor-editavel')?.value) || 0;
+            const lucroDecor = valorCobrado - custoTotal;
+            if (resumo) resumo.innerHTML = `
+                <span style="color:var(--cor-texto-claro);">Custo da decoração: <strong>${formatarMoeda(custoTotal)}</strong></span> | 
+                <span style="color:${lucroDecor>=0?'var(--cor-sucesso)':'var(--cor-erro)'};">
+                    ${lucroDecor>=0?'Lucro':'Prejuízo'}: <strong>${formatarMoeda(Math.abs(lucroDecor))}</strong>
+                </span>
+            `;
+        }
+
         // Atualizar campos visíveis conforme forma de pagamento
         function atualizarCamposPagamento() {
             const forma = document.getElementById('venda-forma-pagamento')?.value || '';
@@ -8693,6 +8933,9 @@ Podemos confirmar a sua encomenda? 😊`;
                         horaEntrega: document.getElementById('venda-hora-entrega').value || '',
                         frete: document.getElementById('venda-frete').value || 0,
                         decoracao: document.getElementById('venda-decoracao').value || 0,
+                        decoracaoTipo: document.getElementById('venda-decoracao-tipo')?.value || '',
+                        decoracaoObs: document.getElementById('venda-decoracao-obs')?.value || '',
+                        decoracaoIngredientes: decoracaoIngredientes || [],
                         brindes: document.getElementById('venda-brindes').value || 0,
                         desconto: document.getElementById('venda-desconto').value || 0,
                         formaPagamento: document.getElementById('venda-forma-pagamento').value,
@@ -9760,16 +10003,56 @@ Podemos confirmar a sua encomenda? 😊`;
          * Funções auxiliares para recarregar após ações
          */
         function marcarComoEntregueERecarregar(vendaId) {
+            const venda = vendas.find(v => v.id === vendaId);
+            if (!venda) return;
+            if (!confirm(`✅ Confirmar entrega para ${venda.cliente?.nome || 'cliente'}?`)) return;
             if (marcarComoEntregue(vendaId)) {
+                salvarLocalStorage();
+                sincronizarComNuvem();
                 carregarPaginaVendas();
-                mostrarToast('Venda marcada como entregue!', 'success');
+                mostrarToast('✅ Entrega confirmada!', 'success');
             }
         }
         
         function confirmarPagamentoERecarregar(vendaId) {
+            const venda = vendas.find(v => v.id === vendaId);
+            if (!venda) return;
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div style="background:white;border-radius:var(--borda-radius);padding:25px;max-width:400px;width:90%;box-shadow:var(--sombra-forte);">
+                    <h3>💳 Confirmar Pagamento</h3>
+                    <p style="margin:12px 0;">Cliente: <strong>${venda.cliente?.nome || '—'}</strong></p>
+                    <p>Valor total: <strong style="color:var(--cor-primaria);font-size:18px;">${formatarMoeda(venda.valorTotal)}</strong></p>
+                    <div class="form-group" style="margin-top:15px;">
+                        <label>Forma de pagamento:</label>
+                        <select id="conf-pag-forma" class="form-control">
+                            <option value="Dinheiro" ${venda.pagamento?.formaPagamento==='Dinheiro'?'selected':''}>💵 Dinheiro</option>
+                            <option value="PIX" ${venda.pagamento?.formaPagamento==='PIX'?'selected':''}>📱 PIX</option>
+                            <option value="Cartão Débito" ${venda.pagamento?.formaPagamento?.includes('Débito')?'selected':''}>💳 Cartão Débito</option>
+                            <option value="Cartão Crédito" ${venda.pagamento?.formaPagamento?.includes('Crédito')?'selected':''}>💳 Cartão Crédito</option>
+                            <option value="Transferência">🏦 Transferência</option>
+                        </select>
+                    </div>
+                    <div style="display:flex;gap:10px;margin-top:20px;">
+                        <button class="btn btn-success" style="flex:1;" onclick="executarConfirmarPagamento('${vendaId}')">✅ Confirmar Pago</button>
+                        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">❌</button>
+                    </div>
+                </div>`;
+            modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
+            document.body.appendChild(modal);
+        }
+        
+        function executarConfirmarPagamento(vendaId) {
+            const forma = document.getElementById('conf-pag-forma')?.value;
+            const venda = vendas.find(v => v.id === vendaId);
+            if (venda && forma) venda.pagamento.formaPagamento = forma;
+            document.querySelector('.modal-overlay')?.remove();
             if (confirmarPagamento(vendaId)) {
+                salvarLocalStorage();
+                sincronizarComNuvem();
                 carregarPaginaVendas();
-                mostrarToast('Pagamento confirmado!', 'success');
+                mostrarToast('💳 Pagamento confirmado!', 'success');
             }
         }
         
